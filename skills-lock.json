@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "app-store-optimization": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "97e4f104bd4861b4c3b4eab494c3ec782f49d144b9e78b4f2de3c8c92d688eea"
+    },
+    "firebase": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "26498d0ecb98c48de7040dce5e5b26882b3982526cfc90d290164d5546cc4b16"
+    },
+    "firebase-ai-logic": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "029bc1cf1086d0932baa79028705c8590e1940b52b79d1bae64d16439ca47370"
+    },
+    "firebase-auth-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "dc0f5eb514504721993982202627440da3b52b01beaf136471a8c3517e298652"
+    },
+    "firebase-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "8a60cf1bfb567805bc70395842dcbd18bc00ee1898adaae2a472050fa24311eb"
+    },
+    "firebase-firestore-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "a8be2664e90d697740c013f13b95d1857f56d8670818fa8c18ba99b93bccace3"
+    },
+    "flutter-adaptive-ui": {
+      "source": "madteacher/mad-agents-skills",
+      "sourceType": "github",
+      "computedHash": "7b9c4ecda94f80ae16addab433432ae0e76d1b114a3f87e2df9269954e6196b6"
+    },
+    "flutter-animations": {
+      "source": "madteacher/mad-agents-skills",
+      "sourceType": "github",
+      "computedHash": "0c62d299cfdb82a8a22eadcb9b58c998cb6ceb85368a342689143a0278e4c7bb"
+    },
+    "flutter-expert": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "d260811d0d6d769174e0615ae06e189a67ee04c70e6cf57b19e9096be2d205f1"
+    },
+    "flutter-testing": {
+      "source": "madteacher/mad-agents-skills",
+      "sourceType": "github",
+      "computedHash": "fd878a3c2073f6efbc6cedc4d02c926d1dba79307aa837b2df88c383605dad1e"
+    },
+    "flutter-theming": {
+      "source": "flutter/skills",
+      "sourceType": "github",
+      "computedHash": "ebc026601a8a3e0991c665444e267226e740fc212c1ee6fcded9fafca33dbbcb"
+    },
+    "interface-design": {
+      "source": "dammyjay93/interface-design",
+      "sourceType": "github",
+      "computedHash": "4d5fe1dacfebc0c1b3837b061405150ed2e4971c096543afc46c23161c5a4f7a"
+    }
+  }
+}
