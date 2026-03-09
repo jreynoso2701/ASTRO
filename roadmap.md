@@ -106,11 +106,24 @@
 
 ### 1.7 Levantamiento de Requerimientos
 
-- [ ] Modelo de datos de Requerimiento en Firestore.
-- [ ] Creación y edición de requerimientos.
-- [ ] Asociación de requerimientos a proyectos y módulos.
-- [ ] Estados de requerimiento.
-- [ ] Participación de Supervisor, Usuario, Soporte y Root.
+- [x] Modelo de datos de Requerimiento en Firestore (colección `Requerimientos/{docId}`).
+- [x] Enums: RequerimientoStatus (8 estados: Propuesto → En Revisión → Aprobado/Diferido/Rechazado → En Desarrollo → Implementado → Cerrado), RequerimientoTipo (Funcional, No Funcional), RequerimientoFase (Fase Actual, Próxima Fase).
+- [x] Modelo con CriterioAceptacion (texto + checkbox completado), Participante (uid, nombre, rol).
+- [x] Porcentaje de avance auto-calculado desde criterios de aceptación, con override manual por Root/Soporte.
+- [x] Modelo de RequerimientoComment (colección separada `ComentariosRequerimientos/{docId}`).
+- [x] Repositorio: RequerimientoRepository con CRUD, folio auto-incremental V1, comentarios, criterios, adjuntos, asignación.
+- [x] Providers: requerimientos por proyecto, filtros (estado, tipo, búsqueda), conteo de pendientes, visibilidad por rol.
+- [x] Creación y edición de requerimientos con asociación a proyecto y módulo (existente o propuesto).
+- [x] Pantalla de listado con búsqueda, chips de estado y tipo, tarjetas informativas con progreso circular.
+- [x] Pantalla de detalle con info, criterios de aceptación (checklist interactivo), participantes, adjuntos, observaciones internas (solo Root/Soporte), motivo de rechazo, acciones de cambio de estado, hilo de comentarios.
+- [x] Pantalla de creación / edición con criterios dinámicos, adjuntos (galería + archivos), gestión manual de porcentaje y fase.
+- [x] Root como gatekeeper: aprueba, rechaza, difiere. Soporte avanza estado operativo.
+- [x] ObservacionesRoot visibles solo para Root y Soporte.
+- [x] Badge de requerimientos pendientes en botón "Ver requerimientos" de detalle de proyecto.
+- [x] Navegación: `/projects/:id/requirements`, `requirements/new`, `requirements/:reqId`, `requirements/:reqId/edit`.
+- [x] `StorageService.uploadToPath` — método genérico para subir adjuntos a rutas arbitrarias en Firebase Storage.
+- [x] Visibilidad por rol: Usuario solo ve sus propios requerimientos; Root/Supervisor/Soporte ven todos.
+- [ ] Vinculación con minutas y citas/videoconferencias (Fase 2).
 
 ### 1.8 Notificaciones Push
 
@@ -197,4 +210,4 @@
 
 ---
 
-*Última actualización: 10 de julio de 2025 — Onboarding, Dashboard principal, asignación de equipo desde proyecto*
+*Última actualización: 11 de julio de 2025 — Fase 1.7 Levantamiento de Requerimientos completado (modelos, repositorio, providers, pantallas, rutas, StorageService genérico)*

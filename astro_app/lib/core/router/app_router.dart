@@ -20,6 +20,9 @@ import 'package:astro/features/tickets/presentation/screens/ticket_list_screen.d
 import 'package:astro/features/tickets/presentation/screens/ticket_detail_screen.dart';
 import 'package:astro/features/tickets/presentation/screens/ticket_form_screen.dart';
 import 'package:astro/features/auth/presentation/screens/onboarding_screen.dart';
+import 'package:astro/features/requirements/presentation/screens/requerimiento_list_screen.dart';
+import 'package:astro/features/requirements/presentation/screens/requerimiento_detail_screen.dart';
+import 'package:astro/features/requirements/presentation/screens/requerimiento_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -43,6 +46,10 @@ abstract final class AppRoutes {
   static const String ticketNew = '/projects/:id/tickets/new';
   static const String ticketDetail = '/projects/:id/tickets/:ticketId';
   static const String ticketEdit = '/projects/:id/tickets/:ticketId/edit';
+  static const String projectRequirements = '/projects/:id/requirements';
+  static const String reqNew = '/projects/:id/requirements/new';
+  static const String reqDetail = '/projects/:id/requirements/:reqId';
+  static const String reqEdit = '/projects/:id/requirements/:reqId/edit';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -172,6 +179,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.projectTickets,
         builder: (context, state) =>
             TicketListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de requerimientos (más específicas primero)
+      GoRoute(
+        path: AppRoutes.reqNew,
+        builder: (context, state) =>
+            RequerimientoFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.reqEdit,
+        builder: (context, state) => RequerimientoFormScreen(
+          projectId: state.pathParameters['id']!,
+          reqId: state.pathParameters['reqId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.reqDetail,
+        builder: (context, state) => RequerimientoDetailScreen(
+          projectId: state.pathParameters['id']!,
+          reqId: state.pathParameters['reqId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectRequirements,
+        builder: (context, state) =>
+            RequerimientoListScreen(projectId: state.pathParameters['id']!),
       ),
 
       // ── Rutas de módulos (más específicas primero)

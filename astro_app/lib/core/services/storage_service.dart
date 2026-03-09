@@ -46,6 +46,26 @@ class StorageService {
     return urls;
   }
 
+  /// Sube un archivo a una ruta genérica y retorna la URL de descarga.
+  Future<String> uploadToPath(String storagePath, XFile file) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final name = file.name.isNotEmpty ? file.name : 'archivo_$timestamp';
+    final ref = _storage.ref('$storagePath/$name');
+
+    final SettableMetadata metadata = SettableMetadata(
+      contentType: _contentType(name),
+    );
+
+    if (kIsWeb) {
+      final bytes = await file.readAsBytes();
+      await ref.putData(bytes, metadata);
+    } else {
+      await ref.putFile(File(file.path), metadata);
+    }
+
+    return ref.getDownloadURL();
+  }
+
   /// Elimina un archivo por su URL de descarga.
   Future<void> deleteByUrl(String downloadUrl) async {
     try {

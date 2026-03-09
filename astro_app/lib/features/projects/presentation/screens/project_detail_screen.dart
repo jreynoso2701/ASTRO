@@ -8,6 +8,7 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
+import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de detalle/dashboard de un proyecto.
@@ -72,6 +73,9 @@ class ProjectDetailScreen extends ConsumerWidget {
             onModulesTap: () => context.go('/projects/$projectId/modules'),
             onTicketsTap: () => context.go('/projects/$projectId/tickets'),
             openTickets: ref.watch(openTicketCountProvider(projectId)),
+            onRequirementsTap: () =>
+                context.go('/projects/$projectId/requirements'),
+            pendingReqs: ref.watch(pendingReqCountProvider(projectId)),
           );
 
           final membersSection = _MembersSection(
@@ -142,6 +146,8 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.onModulesTap,
     required this.onTicketsTap,
     required this.openTickets,
+    required this.onRequirementsTap,
+    required this.pendingReqs,
     this.descripcion,
   });
 
@@ -156,6 +162,8 @@ class _ProjectInfoSection extends StatelessWidget {
   final VoidCallback onModulesTap;
   final VoidCallback onTicketsTap;
   final int openTickets;
+  final VoidCallback onRequirementsTap;
+  final int pendingReqs;
 
   @override
   Widget build(BuildContext context) {
@@ -311,6 +319,22 @@ class _ProjectInfoSection extends StatelessWidget {
               child: const Icon(Icons.confirmation_num_outlined),
             ),
             label: const Text('Ver tickets'),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Botón de requerimientos
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onRequirementsTap,
+            icon: Badge(
+              isLabelVisible: pendingReqs > 0,
+              label: Text('$pendingReqs'),
+              child: const Icon(Icons.assignment_outlined),
+            ),
+            label: const Text('Ver requerimientos'),
           ),
         ),
 
