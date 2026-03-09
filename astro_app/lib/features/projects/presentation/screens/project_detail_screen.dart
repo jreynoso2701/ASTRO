@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/user_role.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/features/modules/providers/module_providers.dart';
+import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de detalle/dashboard de un proyecto.
@@ -62,6 +65,12 @@ class ProjectDetailScreen extends ConsumerWidget {
             isRoot: isRoot,
             onToggleStatus: () =>
                 _toggleStatus(ref, proyecto.id, proyecto.estatusProyecto),
+            progress: ref.watch(
+              projectProgressProvider(proyecto.nombreProyecto),
+            ),
+            onModulesTap: () => context.go('/projects/$projectId/modules'),
+            onTicketsTap: () => context.go('/projects/$projectId/tickets'),
+            openTickets: ref.watch(openTicketCountProvider(projectId)),
           );
 
           final membersSection = _MembersSection(members: members);
@@ -124,6 +133,10 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.estatus,
     required this.isRoot,
     required this.onToggleStatus,
+    required this.progress,
+    required this.onModulesTap,
+    required this.onTicketsTap,
+    required this.openTickets,
     this.descripcion,
   });
 
@@ -134,6 +147,10 @@ class _ProjectInfoSection extends StatelessWidget {
   final bool estatus;
   final bool isRoot;
   final VoidCallback onToggleStatus;
+  final double progress;
+  final VoidCallback onModulesTap;
+  final VoidCallback onTicketsTap;
+  final int openTickets;
 
   @override
   Widget build(BuildContext context) {
@@ -212,6 +229,83 @@ class _ProjectInfoSection extends StatelessWidget {
                   _InfoRow(label: 'Descripción', value: descripcion!),
               ],
             ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Progreso del proyecto
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'PROGRESO',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        letterSpacing: 1,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '${progress.clamp(0, 100).toStringAsFixed(0)}%',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: progress >= 100
+                            ? Colors.green
+                            : const Color(0xFFD71921),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress.clamp(0, 100) / 100,
+                    minHeight: 8,
+                    backgroundColor: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.1,
+                    ),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      progressColor(progress),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Botón de módulos
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onModulesTap,
+            icon: const Icon(Icons.view_module_outlined),
+            label: const Text('Ver módulos'),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Botón de tickets
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onTicketsTap,
+            icon: Badge(
+              isLabelVisible: openTickets > 0,
+              label: Text('$openTickets'),
+              child: const Icon(Icons.confirmation_num_outlined),
+            ),
+            label: const Text('Ver tickets'),
           ),
         ),
 

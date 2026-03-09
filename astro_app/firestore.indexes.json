@@ -1,0 +1,64 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "folioIncidente", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "fkxUsuarioReporta", "order": "ASCENDING" },
+        { "fieldPath": "fkxEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fhActualizacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "fkxEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fhActualizacion", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "fkxEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fhActualizacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Comentarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refIncidente", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fhActualizacion", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

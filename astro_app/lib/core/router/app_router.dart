@@ -13,6 +13,12 @@ import 'package:astro/features/users/presentation/screens/assign_project_screen.
 import 'package:astro/features/projects/presentation/screens/project_list_screen.dart';
 import 'package:astro/features/projects/presentation/screens/project_detail_screen.dart';
 import 'package:astro/features/projects/presentation/screens/project_form_screen.dart';
+import 'package:astro/features/modules/presentation/screens/module_list_screen.dart';
+import 'package:astro/features/modules/presentation/screens/module_detail_screen.dart';
+import 'package:astro/features/modules/presentation/screens/module_form_screen.dart';
+import 'package:astro/features/tickets/presentation/screens/ticket_list_screen.dart';
+import 'package:astro/features/tickets/presentation/screens/ticket_detail_screen.dart';
+import 'package:astro/features/tickets/presentation/screens/ticket_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -27,6 +33,14 @@ abstract final class AppRoutes {
   static const String projectNew = '/projects/new';
   static const String projectDetail = '/projects/:id';
   static const String projectEdit = '/projects/:id/edit';
+  static const String projectModules = '/projects/:id/modules';
+  static const String moduleNew = '/projects/:id/modules/new';
+  static const String moduleDetail = '/projects/:id/modules/:moduleId';
+  static const String moduleEdit = '/projects/:id/modules/:moduleId/edit';
+  static const String projectTickets = '/projects/:id/tickets';
+  static const String ticketNew = '/projects/:id/tickets/new';
+  static const String ticketDetail = '/projects/:id/tickets/:ticketId';
+  static const String ticketEdit = '/projects/:id/tickets/:ticketId/edit';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -111,14 +125,68 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProjectFormScreen(),
       ),
       GoRoute(
-        path: AppRoutes.projectDetail,
-        builder: (context, state) =>
-            ProjectDetailScreen(projectId: state.pathParameters['id']!),
-      ),
-      GoRoute(
         path: AppRoutes.projectEdit,
         builder: (context, state) =>
             ProjectFormScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de tickets (más específicas primero)
+      GoRoute(
+        path: AppRoutes.ticketNew,
+        builder: (context, state) =>
+            TicketFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.ticketEdit,
+        builder: (context, state) => TicketFormScreen(
+          projectId: state.pathParameters['id']!,
+          ticketId: state.pathParameters['ticketId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ticketDetail,
+        builder: (context, state) => TicketDetailScreen(
+          projectId: state.pathParameters['id']!,
+          ticketId: state.pathParameters['ticketId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectTickets,
+        builder: (context, state) =>
+            TicketListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de módulos (más específicas primero)
+      GoRoute(
+        path: AppRoutes.moduleNew,
+        builder: (context, state) =>
+            ModuleFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.moduleEdit,
+        builder: (context, state) => ModuleFormScreen(
+          projectId: state.pathParameters['id']!,
+          moduleId: state.pathParameters['moduleId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.moduleDetail,
+        builder: (context, state) => ModuleDetailScreen(
+          projectId: state.pathParameters['id']!,
+          moduleId: state.pathParameters['moduleId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectModules,
+        builder: (context, state) =>
+            ModuleListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Detalle de proyecto (al final porque :id matchea cualquier cosa)
+      GoRoute(
+        path: AppRoutes.projectDetail,
+        builder: (context, state) =>
+            ProjectDetailScreen(projectId: state.pathParameters['id']!),
       ),
     ],
   );

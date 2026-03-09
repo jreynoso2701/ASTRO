@@ -62,24 +62,38 @@
 - [ ] Dashboard de proyecto con progreso general.
 - [ ] Asignación de módulos a proyectos.
 - [ ] Asignación de equipos a proyectos (desde el proyecto).
+- [x] Progreso del proyecto calculado desde módulos.
+- [x] Botón "Ver módulos" en detalle de proyecto.
 
 ### 1.5 Gestión de Módulos
 
-- [ ] Modelo de datos de Módulo en Firestore.
-- [ ] CRUD de módulos dentro de un proyecto.
-- [ ] Funcionalidades dentro de cada módulo.
-- [ ] Estado y progreso de módulos.
+- [x] Modelo de datos de Módulo en Firestore (V2 con compatibilidad V1).
+- [x] Repositorio: ModuloRepository con CRUD completo.
+- [x] Providers: módulos por proyecto, búsqueda, filtrado, progreso.
+- [x] Pantalla de listado de módulos con búsqueda, progreso del proyecto y grid adaptativo.
+- [x] Pantalla de detalle de módulo con progreso, info y placeholder de funcionalidades.
+- [x] Pantalla de creación / edición de módulo (Root).
+- [x] Navegación: `/projects/:id/modules`, `modules/new`, `modules/:moduleId`, `modules/:moduleId/edit`.
+- [x] Funcionalidades dentro de cada módulo (sub-colección, checklist con progreso).
+- [x] Estado y progreso de módulos (auto-cálculo desde funcionalidades completadas).
 
 ### 1.6 Gestión de Incidentes / Tickets
 
-- [ ] Modelo de datos de Ticket en Firestore.
-- [ ] Creación de tickets (todos los roles según permisos).
-- [ ] Asignación de tickets a usuarios de Soporte.
-- [ ] Estados de ticket (abierto, en progreso, resuelto, cerrado, etc.).
-- [ ] Prioridades de tickets.
-- [ ] Historial de cambios / comentarios en tickets.
-- [ ] Filtros y búsqueda de tickets.
-- [ ] Vista de tickets por proyecto, módulo, usuario.
+- [x] Modelo de datos de Ticket en Firestore (colección `Tickets/{docId}`).
+- [x] Modelo de TicketComment (sub-colección `Tickets/{ticketId}/comments/{docId}`).
+- [x] Enums: TicketStatus (Abierto, En Progreso, Resuelto, Cerrado), TicketPriority (Baja, Media, Alta, Crítica).
+- [x] Repositorio: TicketRepository con CRUD, comentarios, folio auto-incremental TK-001.
+- [x] Providers: tickets por proyecto, por usuario, filtros (estado, prioridad, búsqueda), conteo de abiertos.
+- [x] Creación de tickets (todos los roles) con proyecto + módulo obligatorio.
+- [x] Pantalla de listado de tickets con búsqueda, chips de estado y prioridad, tarjetas informativas.
+- [x] Pantalla de detalle de ticket con info, acciones de cambio de estado, asignación a Soporte, hilo de comentarios.
+- [x] Pantalla de creación / edición de ticket (título, descripción, módulo, prioridad).
+- [x] Historial de cambios / comentarios con tipos (comment, statusChange, assignment, priorityChange).
+- [x] Asignación de tickets a usuarios de Soporte (diálogo con miembros Soporte del proyecto).
+- [x] Badge de tickets abiertos en botón "Ver tickets" de detalle de proyecto.
+- [x] Navegación: `/projects/:id/tickets`, `tickets/new`, `tickets/:ticketId`, `tickets/:ticketId/edit`.
+- [x] Visibilidad por rol: Usuario solo ve sus propios tickets; Root/Supervisor/Soporte ven todos.
+- [ ] Notificaciones push al asignar/cambiar estado (Fase 1.8).
 
 ### 1.7 Levantamiento de Requerimientos
 

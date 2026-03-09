@@ -3,6 +3,7 @@ import 'package:astro/core/models/app_user.dart';
 import 'package:astro/core/models/project_assignment.dart';
 import 'package:astro/core/models/empresa.dart';
 import 'package:astro/core/models/proyecto.dart';
+import 'package:astro/core/models/user_role.dart';
 import 'package:astro/features/users/data/user_repository.dart';
 import 'package:astro/features/users/data/project_assignment_repository.dart';
 import 'package:astro/features/users/data/empresa_repository.dart';
@@ -42,6 +43,24 @@ final currentUserProfileProvider = StreamProvider<AppUser?>((ref) {
 final isCurrentUserRootProvider = Provider<bool>((ref) {
   final profile = ref.watch(currentUserProfileProvider);
   return profile.value?.isRoot ?? false;
+});
+
+/// Indica si el usuario actual puede gestionar módulos/funcionalidades
+/// de un proyecto: es Root global **o** tiene rol Soporte en ese proyecto.
+final canManageProjectProvider = Provider.family<bool, String>((
+  ref,
+  projectId,
+) {
+  final isRoot = ref.watch(isCurrentUserRootProvider);
+  if (isRoot) return true;
+
+  final uid = ref.watch(authStateProvider).value?.uid;
+  if (uid == null) return false;
+
+  final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
+  return assignments.any(
+    (a) => a.projectId == projectId && a.isActive && a.role == UserRole.soporte,
+  );
 });
 
 // ── All users (para gestión Root) ────────────────────────
