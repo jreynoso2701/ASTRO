@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/notifications/providers/notification_providers.dart';
 
 /// Destino de navegación compartido entre NavigationBar y NavigationRail.
 class AppDestination {
@@ -34,6 +35,12 @@ const List<AppDestination> _allDestinations = [
     path: '/projects',
   ),
   AppDestination(
+    label: 'Notificaciones',
+    icon: Icons.notifications_outlined,
+    selectedIcon: Icons.notifications,
+    path: '/notifications',
+  ),
+  AppDestination(
     label: 'Usuarios',
     icon: Icons.people_outline,
     selectedIcon: Icons.people,
@@ -52,7 +59,8 @@ class AppShell extends ConsumerWidget {
     return [
       _allDestinations[0], // Dashboard — siempre visible
       _allDestinations[1], // Proyectos — siempre visible
-      if (isRoot) _allDestinations[2], // Usuarios — solo Root
+      _allDestinations[2], // Notificaciones — siempre visible
+      if (isRoot) _allDestinations[3], // Usuarios — solo Root
     ];
   }
 
@@ -79,6 +87,12 @@ class AppShell extends ConsumerWidget {
     final destinations = _visibleDestinations(isRoot);
     final width = MediaQuery.sizeOf(context).width;
     final selectedIndex = _currentIndex(context, destinations);
+    final unreadCount = ref.watch(unreadCountProvider);
+
+    Widget badgeIcon(IconData icon, bool isBell) {
+      if (!isBell || unreadCount == 0) return Icon(icon);
+      return Badge.count(count: unreadCount, child: Icon(icon));
+    }
 
     // ── Expanded / Large → NavigationRail (tablet, desktop, web)
     if (width >= AppBreakpoints.compact && destinations.length >= 2) {
@@ -92,15 +106,14 @@ class AppShell extends ConsumerWidget {
               selectedIndex: selectedIndex,
               onDestinationSelected: (i) =>
                   _onDestinationSelected(context, i, destinations),
-              destinations: destinations
-                  .map(
-                    (d) => NavigationRailDestination(
-                      icon: Icon(d.icon),
-                      selectedIcon: Icon(d.selectedIcon),
-                      label: Text(d.label),
-                    ),
-                  )
-                  .toList(),
+              destinations: destinations.map((d) {
+                final isBell = d.path == '/notifications';
+                return NavigationRailDestination(
+                  icon: badgeIcon(d.icon, isBell),
+                  selectedIcon: badgeIcon(d.selectedIcon, isBell),
+                  label: Text(d.label),
+                );
+              }).toList(),
             ),
             const VerticalDivider(width: 1, thickness: 1),
             Expanded(child: child),
@@ -110,7 +123,6 @@ class AppShell extends ConsumerWidget {
     }
 
     // ── Compact → NavigationBar (móvil)
-    // NavigationBar requiere mínimo 2 destinos; si solo hay 1, omitirlo.
     return Scaffold(
       body: child,
       bottomNavigationBar: destinations.length >= 2
@@ -118,15 +130,14 @@ class AppShell extends ConsumerWidget {
               selectedIndex: selectedIndex,
               onDestinationSelected: (i) =>
                   _onDestinationSelected(context, i, destinations),
-              destinations: destinations
-                  .map(
-                    (d) => NavigationDestination(
-                      icon: Icon(d.icon),
-                      selectedIcon: Icon(d.selectedIcon),
-                      label: d.label,
-                    ),
-                  )
-                  .toList(),
+              destinations: destinations.map((d) {
+                final isBell = d.path == '/notifications';
+                return NavigationDestination(
+                  icon: badgeIcon(d.icon, isBell),
+                  selectedIcon: badgeIcon(d.selectedIcon, isBell),
+                  label: d.label,
+                );
+              }).toList(),
             )
           : null,
     );

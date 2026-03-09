@@ -16,6 +16,7 @@ class AppUser {
     this.phoneNumber,
     this.photoUrl,
     this.defaultEmpresaId,
+    this.fcmTokens = const [],
     // Campos legacy V1 para compatibilidad de lectura
     this.legacyDeEmpresa,
     this.legacyRolUsuario,
@@ -30,6 +31,7 @@ class AppUser {
   final bool isActive;
   final bool isRoot;
   final String? defaultEmpresaId;
+  final List<String> fcmTokens;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -73,6 +75,11 @@ class AppUser {
       isActive: data['isActive'] as bool? ?? true,
       isRoot: data['isRoot'] as bool? ?? false,
       defaultEmpresaId: data['defaultEmpresaId'] as String?,
+      fcmTokens:
+          (data['fcmTokens'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       createdAt: parseDate(data['createdAt'] ?? data['created_time']),
       updatedAt: parseDate(
         data['updatedAt'] ?? data['createdAt'] ?? data['created_time'],
@@ -96,6 +103,7 @@ class AppUser {
       'isActive': isActive,
       'isRoot': isRoot,
       if (defaultEmpresaId != null) 'defaultEmpresaId': defaultEmpresaId,
+      'fcmTokens': fcmTokens,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -110,6 +118,7 @@ class AppUser {
     bool? isActive,
     bool? isRoot,
     String? defaultEmpresaId,
+    List<String>? fcmTokens,
     DateTime? updatedAt,
   }) {
     return AppUser(
@@ -121,6 +130,7 @@ class AppUser {
       isActive: isActive ?? this.isActive,
       isRoot: isRoot ?? this.isRoot,
       defaultEmpresaId: defaultEmpresaId ?? this.defaultEmpresaId,
+      fcmTokens: fcmTokens ?? this.fcmTokens,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       legacyDeEmpresa: legacyDeEmpresa,

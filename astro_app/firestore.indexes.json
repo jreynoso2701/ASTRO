@@ -43,6 +43,18 @@
       ]
     },
     {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "fkxUsuarioReporta", "order": "ASCENDING" },
+        { "fieldPath": "fkxEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fhActualizacion", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "Comentarios",
       "queryScope": "COLLECTION",
       "fields": [
@@ -57,6 +69,260 @@
         { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "fhActualizacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Notificaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Notificaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "leida", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ComentariosRequerimientos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refRequerimiento", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Requerimientos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Modulos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkProyecto", "order": "ASCENDING" },
+        { "fieldPath": "estatusModulo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Modulos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkProyecto", "order": "ASCENDING" },
+        { "fieldPath": "nombreModulo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "projectAssignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "projectAssignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "projectAssignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "createdBy", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "moduleId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Tickets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "folio", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "display_name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "display_name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Proyectos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "nombreProyecto", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "subComentarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refIncidente", "order": "ASCENDING" },
+        { "fieldPath": "refComentario", "order": "ASCENDING" },
+        { "fieldPath": "fechaCreacion", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "NotificacionesGral",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fEmpresaReporta", "order": "ASCENDING" },
+        { "fieldPath": "fProyecto", "order": "ASCENDING" },
+        { "fieldPath": "fFechaNotificacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "NotificacionesGral",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fEmpresaReporta", "order": "ASCENDING" },
+        { "fieldPath": "fProyecto", "order": "ASCENDING" },
+        { "fieldPath": "fUsuarioReporta", "order": "ASCENDING" },
+        { "fieldPath": "fFechaNotificacion", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "NotificacionesGral",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fEmpresaReporta", "order": "ASCENDING" },
+        { "fieldPath": "fProyecto", "order": "ASCENDING" },
+        { "fieldPath": "fUsuarioReporta", "order": "ASCENDING" },
+        { "fieldPath": "fFechaNotificacion", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "NotificacionesGral",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fEmpresaReporta", "order": "ASCENDING" },
+        { "fieldPath": "fProyecto", "order": "ASCENDING" },
+        { "fieldPath": "fFechaNotificacion", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "NotificacionesGral",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fEmpresaReporta", "order": "ASCENDING" },
+        { "fieldPath": "fFechaNotificacion", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Cobertura",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "nombreCobertura", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chatAI",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creador", "order": "ASCENDING" },
+        { "fieldPath": "fkEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "fkProyecto", "order": "ASCENDING" },
+        { "fieldPath": "thread", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chatAI",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creador", "order": "ASCENDING" },
+        { "fieldPath": "fkEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "thread", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chatAI",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creador", "order": "ASCENDING" },
+        { "fieldPath": "fkEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "fkProyecto", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chatAI",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creador", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chat_messages",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "chat", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "users", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "last_message_time", "order": "DESCENDING" }
       ]
     }
   ],

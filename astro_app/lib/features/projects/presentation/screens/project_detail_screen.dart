@@ -76,6 +76,9 @@ class ProjectDetailScreen extends ConsumerWidget {
             onRequirementsTap: () =>
                 context.go('/projects/$projectId/requirements'),
             pendingReqs: ref.watch(pendingReqCountProvider(projectId)),
+            onNotifSettingsTap: isRoot
+                ? () => context.go('/projects/$projectId/notification-settings')
+                : null,
           );
 
           final membersSection = _MembersSection(
@@ -148,6 +151,7 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.openTickets,
     required this.onRequirementsTap,
     required this.pendingReqs,
+    this.onNotifSettingsTap,
     this.descripcion,
   });
 
@@ -164,6 +168,7 @@ class _ProjectInfoSection extends StatelessWidget {
   final int openTickets;
   final VoidCallback onRequirementsTap;
   final int pendingReqs;
+  final VoidCallback? onNotifSettingsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -337,6 +342,19 @@ class _ProjectInfoSection extends StatelessWidget {
             label: const Text('Ver requerimientos'),
           ),
         ),
+
+        // Botón de notificaciones (solo Root)
+        if (isRoot && onNotifSettingsTap != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onNotifSettingsTap,
+              icon: const Icon(Icons.notifications_outlined),
+              label: const Text('Configurar notificaciones'),
+            ),
+          ),
+        ],
 
         const SizedBox(height: 16),
 

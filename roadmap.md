@@ -17,9 +17,11 @@
 - [x] Configurar Firebase Authentication (email + Google Sign-In).
 - [x] Configurar Firestore Database.
 - [x] Configurar Firebase Storage.
-- [ ] Configurar Firebase Cloud Messaging (notificaciones push).
-- [ ] Configurar Firebase Functions.
+- [x] Configurar Firebase Cloud Messaging (notificaciones push).
+- [x] Configurar Firebase Functions.
 - [x] Configurar estructura de carpetas del proyecto.
+- [x] Configurar plataforma iOS (`flutter create --platforms=ios`, bundle ID, Firebase iOS app registrada).
+- [x] Configurar FCM para iOS (AppDelegate con APNs token forwarding, Background Modes, `FirebaseAppDelegateProxyEnabled`).
 - [x] Configurar sistema de temas Dark (default) / Light inspirado en Nothing Phone.
 - [x] Definir tipografías y paleta de colores.
 - [ ] Configurar deploy web en Railway.
@@ -127,11 +129,43 @@
 
 ### 1.8 Notificaciones Push
 
-- [ ] Configuración de Firebase Cloud Messaging.
-- [ ] Notificaciones en tiempo real para asignación de tickets.
-- [ ] Notificaciones de cambios de estado en tickets.
-- [ ] Notificaciones de nuevos requerimientos.
-- [ ] Gestión de preferencias de notificaciones por usuario.
+- [x] Configuración de Firebase Cloud Messaging (`firebase_messaging` ya en pubspec).
+- [x] `NotificationService` — solicitar permiso, obtener/refrescar FCM token, guardar en Firestore (`users/{uid}.fcmTokens`).
+- [x] Handler de mensajes en background (`firebaseMessagingBackgroundHandler` top-level).
+- [x] `FcmInitializer` — widget wrapper que inicializa FCM al login y limpia token al logout.
+- [x] `main.dart` actualizado — `FirebaseMessaging.onBackgroundMessage` + `FcmInitializer` envolviendo `MaterialApp`.
+- [x] `AndroidManifest.xml` — ícono y canal de notificación por defecto (`astro_default`).
+- [x] Campo `fcmTokens` (array) añadido al modelo `AppUser` (Firestore `users/{uid}`).
+- [x] Modelo `NotificationType` — 10 tipos de notificación (5 tickets + 5 requerimientos).
+- [x] Modelo `InAppNotification` — bandeja in-app (`Notificaciones/{docId}`).
+- [x] Modelo `NotificationConfig` — configuración por usuario/proyecto (`NotificationConfig/{projectId_userId}`).
+- [x] Enum `NotificationScope` — `participante`, `proyecto`, `todos` con defaults por rol.
+- [x] `NotificationConfigRepository` — CRUD de configuraciones, watch por proyecto.
+- [x] `NotificationRepository` — bandeja in-app: watch, markAsRead, markAllAsRead, delete.
+- [x] Providers: `inboxNotificationsProvider`, `unreadNotificationsProvider`, `unreadCountProvider`, `projectNotifConfigsProvider`, `userNotifConfigProvider`.
+- [x] Pantalla **Bandeja de Notificaciones** — historial in-app con iconos por tipo, marca leído/no leído, tiempo relativo, navegación a ticket/req, eliminar con long-press.
+- [x] Pantalla **Notificaciones del Proyecto** (Root) — gestión granular por usuario: master toggle, recibir tickets on/off, recibir reqs on/off, selector de alcance (`SegmentedButton`), indicador de override vs defaults, restaurar defaults.
+- [x] Destino "Notificaciones" en shell de navegación con badge de no leídas (todos los roles).
+- [x] Botón "Configurar notificaciones" en detalle de proyecto (solo Root).
+- [x] Navegación: `/notifications` (inbox), `/projects/:id/notification-settings` (Root config).
+- [x] Reglas de notificación por defecto según rol: Usuario=participante, Supervisor=proyecto, Soporte=proyecto, Root=todos.
+- [x] Cloud Functions v2 (TypeScript) — `functions/src/index.ts`:
+  - [x] `onTicketCreated` — notifica al crear ticket.
+  - [x] `onTicketUpdated` — notifica cambio de status, asignación, prioridad.
+  - [x] `onTicketCommentCreated` — notifica comentarios (no system entries).
+  - [x] `onReqCreated` — notifica al crear requerimiento.
+  - [x] `onReqUpdated` — notifica cambio de status, asignación, fase.
+  - [x] `onReqCommentCreated` — notifica comentarios de requerimiento.
+  - [x] Limpieza automática de FCM tokens inválidos.
+  - [x] Escritura dual: push FCM + entrada in-app (Notificaciones).
+  - [x] Respeta `NotificationConfig` overrides por usuario/proyecto.
+- [x] Índices Firestore para `Notificaciones` (userId+createdAt, userId+leida+createdAt).
+- [x] Índices Firestore completos desplegados (37 índices: Notificaciones, Tickets, projectAssignments, Modulos, Requerimientos, ComentariosRequerimientos, users, Proyectos, NotificacionesGral, chatAI, chats, etc.).
+- [x] `firebase.json` y `.firebaserc` en raíz del repo para deploy de functions.
+- [x] Botón back en pantalla de Notificaciones del Proyecto (soporte iOS/tablet sin botón hardware).
+- [x] Buscador de miembros en pantalla de Notificaciones del Proyecto (filtro por nombre, email, rol).
+- [x] Deploy de Cloud Functions a Firebase (`firebase deploy --only functions`) — 6 triggers v2 en us-central1.
+- [x] Configurar VAPID key para notificaciones push web — service worker `firebase-messaging-sw.js`, constante `fcmVapidKey` en `fcm_config.dart` (pendiente: pegar key real de Firebase Console).
 
 ### 1.9 Documentación del Proyecto
 
@@ -210,4 +244,4 @@
 
 ---
 
-*Última actualización: 11 de julio de 2025 — Fase 1.7 Levantamiento de Requerimientos completado (modelos, repositorio, providers, pantallas, rutas, StorageService genérico)*
+*Última actualización: 9 de marzo de 2026 — Fase 1.8 Notificaciones Push completada (FCM, Cloud Functions, bandeja in-app, config por usuario/proyecto, badge en shell)*

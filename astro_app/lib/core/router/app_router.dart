@@ -23,6 +23,8 @@ import 'package:astro/features/auth/presentation/screens/onboarding_screen.dart'
 import 'package:astro/features/requirements/presentation/screens/requerimiento_list_screen.dart';
 import 'package:astro/features/requirements/presentation/screens/requerimiento_detail_screen.dart';
 import 'package:astro/features/requirements/presentation/screens/requerimiento_form_screen.dart';
+import 'package:astro/features/notifications/presentation/screens/notification_inbox_screen.dart';
+import 'package:astro/features/notifications/presentation/screens/notification_settings_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -50,6 +52,9 @@ abstract final class AppRoutes {
   static const String reqNew = '/projects/:id/requirements/new';
   static const String reqDetail = '/projects/:id/requirements/:reqId';
   static const String reqEdit = '/projects/:id/requirements/:reqId/edit';
+  static const String notifications = '/notifications';
+  static const String projectNotifSettings =
+      '/projects/:id/notification-settings';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -131,6 +136,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: ProjectListScreen()),
           ),
+          GoRoute(
+            path: AppRoutes.notifications,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: NotificationInboxScreen()),
+          ),
         ],
       ),
 
@@ -156,6 +166,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Rutas de tickets (más específicas primero)
+      GoRoute(
+        path: AppRoutes.projectNotifSettings,
+        builder: (context, state) =>
+            NotificationSettingsScreen(projectId: state.pathParameters['id']!),
+      ),
       GoRoute(
         path: AppRoutes.ticketNew,
         builder: (context, state) =>
