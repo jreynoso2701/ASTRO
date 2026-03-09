@@ -105,6 +105,16 @@ class TicketRepository {
         .set(ticket.toFirestore(), SetOptions(merge: true));
   }
 
+  /// Actualiza solo las evidencias de un ticket.
+  Future<void> updateEvidencias(String ticketId, List<String> urls) async {
+    final now = DateTime.now();
+    await _ref.doc(ticketId).update({
+      'evidenciasIncidente': FieldValue.arrayUnion(urls),
+      'fhActualizacion': _nowV1String(now),
+      'updatedAt': Timestamp.fromDate(now),
+    });
+  }
+
   /// Cambia el estado de un ticket.
   Future<void> updateStatus(String ticketId, TicketStatus newStatus) async {
     final now = DateTime.now();

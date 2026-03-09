@@ -79,13 +79,13 @@
 
 ### 1.6 Gestión de Incidentes / Tickets
 
-- [x] Modelo de datos de Ticket en Firestore (colección `Tickets/{docId}`).
-- [x] Modelo de TicketComment (sub-colección `Tickets/{ticketId}/comments/{docId}`).
+- [x] Modelo de datos de Ticket en Firestore (colección `Incidentes/{docId}` — V1 compat).
+- [x] Modelo de TicketComment (colección top-level `Comentarios/{docId}` con `refIncidente`).
 - [x] Enums: TicketStatus (Abierto, En Progreso, Resuelto, Cerrado), TicketPriority (Baja, Media, Alta, Crítica).
-- [x] Repositorio: TicketRepository con CRUD, comentarios, folio auto-incremental TK-001.
+- [x] Repositorio: TicketRepository con CRUD, comentarios, folio auto-incremental V1 (EMPRESA-PROYECTO-MÓDULO-NUM).
 - [x] Providers: tickets por proyecto, por usuario, filtros (estado, prioridad, búsqueda), conteo de abiertos.
 - [x] Creación de tickets (todos los roles) con proyecto + módulo obligatorio.
-- [x] Pantalla de listado de tickets con búsqueda, chips de estado y prioridad, tarjetas informativas.
+- [x] Pantalla de listado de tickets con búsqueda, chips de estado y prioridad, tarjetas informativas estilo V1.
 - [x] Pantalla de detalle de ticket con info, acciones de cambio de estado, asignación a Soporte, hilo de comentarios.
 - [x] Pantalla de creación / edición de ticket (título, descripción, módulo, prioridad).
 - [x] Historial de cambios / comentarios con tipos (comment, statusChange, assignment, priorityChange).
@@ -93,6 +93,15 @@
 - [x] Badge de tickets abiertos en botón "Ver tickets" de detalle de proyecto.
 - [x] Navegación: `/projects/:id/tickets`, `tickets/new`, `tickets/:ticketId`, `tickets/:ticketId/edit`.
 - [x] Visibilidad por rol: Usuario solo ve sus propios tickets; Root/Supervisor/Soporte ven todos.
+- [x] Adjuntar evidencias (imágenes, videos, documentos) con Firebase Storage — upload múltiple desde galería, cámara o archivos.
+- [x] Porcentaje de avance editable (slider 0-100%, solo Root/Soporte) con indicador de progreso con color.
+- [x] Impacto del incidente (selector 1-10, solo Root/Soporte).
+- [x] Cobertura del incidente (dropdown: Garantía, Póliza de Soporte, Presupuesto, Cortesía — solo Root/Soporte).
+- [x] Fecha de solución programada (date picker, solo Root/Soporte).
+- [x] Empresa auto-asignada desde el proyecto.
+- [x] Galería de evidencias en detalle de ticket con vista ampliada (tap para zoom interactivo).
+- [x] Tarjeta de "Progreso y Gestión" en detalle: avance circular + lineal, impacto, cobertura, solución programada, última actualización.
+- [x] `StorageService` para gestión de archivos en Firebase Storage (upload, delete, content-type detection).
 - [ ] Notificaciones push al asignar/cambiar estado (Fase 1.8).
 
 ### 1.7 Levantamiento de Requerimientos
@@ -188,4 +197,4 @@
 
 ---
 
-*Última actualización: 8 de marzo de 2026 — Setup inicial del proyecto completado*
+*Última actualización: 9 de marzo de 2026 — Evidencias, porcentaje de avance, impacto, cobertura y fecha de solución en tickets*

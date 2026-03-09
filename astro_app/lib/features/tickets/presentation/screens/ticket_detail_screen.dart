@@ -6,6 +6,7 @@ import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
 import 'package:astro/core/models/ticket_comment.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -358,6 +359,9 @@ class _TicketInfoSection extends StatelessWidget {
                 const Divider(height: 24),
                 _InfoRow(label: 'Proyecto', value: ticket.projectName),
                 _InfoRow(label: 'Módulo', value: ticket.moduleName),
+                if (ticket.empresaName != null &&
+                    ticket.empresaName!.isNotEmpty)
+                  _InfoRow(label: 'Empresa', value: ticket.empresaName!),
                 _InfoRow(label: 'Creado por', value: ticket.createdByName),
                 _InfoRow(
                   label: 'Asignado a',
@@ -403,6 +407,192 @@ class _TicketInfoSection extends StatelessWidget {
             ),
           ),
         ),
+
+        const SizedBox(height: 16),
+
+        // Progreso y datos de gestión
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PROGRESO Y GESTIÓN',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Divider(height: 24),
+
+                // Porcentaje de avance
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: ticket.porcentajeAvance / 100,
+                            strokeWidth: 5,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            color: progressColor(ticket.porcentajeAvance),
+                          ),
+                          Text(
+                            '${ticket.porcentajeAvance.round()}%',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: progressColor(ticket.porcentajeAvance),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Avance del ticket',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: ticket.porcentajeAvance / 100,
+                              minHeight: 8,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              color: progressColor(ticket.porcentajeAvance),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (ticket.impacto != null)
+                  _InfoRow(label: 'Impacto', value: '${ticket.impacto}/10'),
+                if (ticket.cobertura != null && ticket.cobertura!.isNotEmpty)
+                  _InfoRow(label: 'Cobertura', value: ticket.cobertura!),
+                if (ticket.solucionProgramada != null &&
+                    ticket.solucionProgramada!.isNotEmpty)
+                  _InfoRow(
+                    label: 'Solución programada',
+                    value: ticket.solucionProgramada!,
+                  ),
+                if (ticket.updatedAt != null)
+                  _InfoRow(
+                    label: 'Última actualización',
+                    value: _formatDateTime(ticket.updatedAt!),
+                  ),
+              ],
+            ),
+          ),
+        ),
+
+        // Evidencias
+        if (ticket.evidencias.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'EVIDENCIAS (${ticket.evidencias.length})',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  SizedBox(
+                    height: 120,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: ticket.evidencias.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final url = ticket.evidencias[i];
+                        final isImg = _isImageUrl(url);
+                        return GestureDetector(
+                          onTap: () => _showEvidenceDialog(context, url),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: isImg
+                                ? Image.network(
+                                    url,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 120,
+                                      height: 120,
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      child: const Icon(
+                                        Icons.broken_image,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          _fileIcon(url),
+                                          size: 32,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                          ),
+                                          child: Text(
+                                            _fileName(url),
+                                            style: theme.textTheme.labelSmall,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
 
         const SizedBox(height: 16),
 
@@ -466,6 +656,69 @@ class _TicketInfoSection extends StatelessWidget {
         '${dt.month.toString().padLeft(2, '0')}/'
         '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
         '${dt.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _showEvidenceDialog(BuildContext context, String url) {
+    final isImg = _isImageUrl(url);
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        child: isImg
+            ? InteractiveViewer(
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.broken_image, size: 64),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_fileIcon(url), size: 48),
+                    const SizedBox(height: 16),
+                    Text(_fileName(url)),
+                  ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  static bool _isImageUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.jpg') ||
+        lower.contains('.jpeg') ||
+        lower.contains('.png') ||
+        lower.contains('.gif') ||
+        lower.contains('.webp');
+  }
+
+  static IconData _fileIcon(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('.pdf')) return Icons.picture_as_pdf_outlined;
+    if (lower.contains('.doc')) return Icons.description_outlined;
+    if (lower.contains('.xls')) return Icons.table_chart_outlined;
+    if (lower.contains('.mp4') || lower.contains('.mov')) {
+      return Icons.videocam_outlined;
+    }
+    return Icons.insert_drive_file_outlined;
+  }
+
+  static String _fileName(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final segments = uri.pathSegments;
+      if (segments.isNotEmpty) {
+        final name = Uri.decodeComponent(segments.last);
+        return name.length > 30 ? '${name.substring(0, 30)}...' : name;
+      }
+    } catch (_) {
+      // ignore
+    }
+    return 'Archivo';
   }
 }
 
