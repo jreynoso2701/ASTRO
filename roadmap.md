@@ -29,7 +29,7 @@
 - [x] Pantalla de login (email + contraseña).
 - [x] Registro con email y contraseña.
 - [x] Registro / Login con cuenta de Google.
-- [ ] Flujo de onboarding para nuevos usuarios (asignación de proyecto y rol posterior).
+- [x] Flujo de onboarding para nuevos usuarios (asignación de proyecto y rol posterior).
 - [x] Recuperación de contraseña.
 - [x] Persistencia de sesión.
 
@@ -59,9 +59,9 @@
 - [x] Providers: proyectos filtrados, búsqueda, miembros de proyecto.
 - [x] Navegación: `/projects`, `/projects/new`, `/projects/:id`, `/projects/:id/edit`.
 - [x] Destino "Proyectos" en el shell de navegación (visible para todos los roles).
-- [ ] Dashboard de proyecto con progreso general.
-- [ ] Asignación de módulos a proyectos.
-- [ ] Asignación de equipos a proyectos (desde el proyecto).
+- [x] Dashboard principal con resumen de proyectos, tickets abiertos y progreso.
+- [x] Asignación de módulos a proyectos (módulos se crean dentro de cada proyecto).
+- [x] Asignación de equipos a proyectos (desde el detalle del proyecto, diálogo de agregar miembro con selector de rol).
 - [x] Progreso del proyecto calculado desde módulos.
 - [x] Botón "Ver módulos" en detalle de proyecto.
 
@@ -197,4 +197,4 @@
 
 ---
 
-*Última actualización: 9 de marzo de 2026 — Evidencias, porcentaje de avance, impacto, cobertura y fecha de solución en tickets*
+*Última actualización: 10 de julio de 2025 — Onboarding, Dashboard principal, asignación de equipo desde proyecto*

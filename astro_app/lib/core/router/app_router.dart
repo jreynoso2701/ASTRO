@@ -19,6 +19,7 @@ import 'package:astro/features/modules/presentation/screens/module_form_screen.d
 import 'package:astro/features/tickets/presentation/screens/ticket_list_screen.dart';
 import 'package:astro/features/tickets/presentation/screens/ticket_detail_screen.dart';
 import 'package:astro/features/tickets/presentation/screens/ticket_form_screen.dart';
+import 'package:astro/features/auth/presentation/screens/onboarding_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -26,6 +27,7 @@ abstract final class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
+  static const String onboarding = '/onboarding';
   static const String users = '/users';
   static const String userDetail = '/users/:uid';
   static const String userAssign = '/users/:uid/assign';
@@ -63,6 +65,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Autenticado → no permitir acceder a pantallas de auth.
       if (isLoggedIn && isAuthRoute) return AppRoutes.dashboard;
 
+      // Onboarding: usuario sin asignaciones (excepto Root).
+      if (isLoggedIn && state.uri.path != AppRoutes.onboarding) {
+        final hasAssignments = ref.read(hasProjectAssignmentsProvider);
+        if (hasAssignments == false) return AppRoutes.onboarding;
+      }
+
+      // Ya tiene asignaciones → no permitir acceder a onboarding.
+      if (isLoggedIn && state.uri.path == AppRoutes.onboarding) {
+        final hasAssignments = ref.read(hasProjectAssignmentsProvider);
+        if (hasAssignments == true) return AppRoutes.dashboard;
+      }
+
       // Guardia de rol: /users solo para Root.
       if (isLoggedIn && state.uri.path.startsWith('/users')) {
         if (!userProfile.isLoading && !(userProfile.value?.isRoot ?? false)) {
@@ -85,6 +99,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.onboarding,
+        builder: (context, state) => const OnboardingScreen(),
       ),
 
       // ── Rutas protegidas (con shell adaptativo)

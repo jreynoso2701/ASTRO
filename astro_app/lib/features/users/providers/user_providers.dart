@@ -45,6 +45,25 @@ final isCurrentUserRootProvider = Provider<bool>((ref) {
   return profile.value?.isRoot ?? false;
 });
 
+/// Indica si el usuario actual tiene al menos una asignación activa,
+/// o es Root (Root siempre tiene acceso completo).
+/// Retorna null mientras se carga la información.
+final hasProjectAssignmentsProvider = Provider<bool?>((ref) {
+  final profile = ref.watch(currentUserProfileProvider);
+  if (profile.isLoading) return null;
+
+  final user = profile.value;
+  if (user == null) return null;
+  if (user.isRoot) return true;
+
+  final uid = user.uid;
+  final assignments = ref.watch(userAssignmentsProvider(uid));
+  if (assignments.isLoading) return null;
+
+  final list = assignments.value ?? [];
+  return list.isNotEmpty;
+});
+
 /// Indica si el usuario actual puede gestionar módulos/funcionalidades
 /// de un proyecto: es Root global **o** tiene rol Soporte en ese proyecto.
 final canManageProjectProvider = Provider.family<bool, String>((

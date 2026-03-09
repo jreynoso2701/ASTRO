@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/user_role.dart';
+import 'package:astro/core/models/app_user.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/core/utils/progress_color.dart';
@@ -73,7 +74,11 @@ class ProjectDetailScreen extends ConsumerWidget {
             openTickets: ref.watch(openTicketCountProvider(projectId)),
           );
 
-          final membersSection = _MembersSection(members: members);
+          final membersSection = _MembersSection(
+            members: members,
+            projectId: projectId,
+            isRoot: isRoot,
+          );
 
           if (isWide) {
             return Row(
@@ -369,31 +374,54 @@ class _InfoRow extends StatelessWidget {
 
 // ── Members Section ──────────────────────────────────────
 
-class _MembersSection extends StatelessWidget {
-  const _MembersSection({required this.members});
+class _MembersSection extends ConsumerWidget {
+  const _MembersSection({
+    required this.members,
+    required this.projectId,
+    required this.isRoot,
+  });
 
   final List<({dynamic assignment, dynamic user})> members;
+  final String projectId;
+  final bool isRoot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'EQUIPO DEL PROYECTO',
-          style: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${members.length} miembro${members.length != 1 ? 's' : ''}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'EQUIPO DEL PROYECTO',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${members.length} miembro${members.length != 1 ? 's' : ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isRoot)
+              FilledButton.icon(
+                onPressed: () => _showAddMemberDialog(context, ref),
+                icon: const Icon(Icons.person_add_outlined, size: 18),
+                label: const Text('Agregar'),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
 
@@ -460,6 +488,41 @@ class _MembersSection extends StatelessWidget {
     );
   }
 
+  Future<void> _showAddMemberDialog(BuildContext context, WidgetRef ref) async {
+    final allUsers = ref.read(allUsersProvider).value ?? [];
+    final existingUserIds = members
+        .map((m) => m.assignment.userId as String)
+        .toSet();
+    final availableUsers = allUsers
+        .where(
+          (u) => u.isActive && !existingUserIds.contains(u.uid) && !u.isRoot,
+        )
+        .toList();
+
+    if (!context.mounted) return;
+
+    final result = await showDialog<({String userId, UserRole role})>(
+      context: context,
+      builder: (ctx) => _AddMemberDialog(availableUsers: availableUsers),
+    );
+
+    if (result == null || !context.mounted) return;
+
+    final proyecto = ref.read(proyectoByIdProvider(projectId)).value;
+    final currentUser = ref.read(currentUserProfileProvider).value;
+    if (proyecto == null || currentUser == null) return;
+
+    await ref
+        .read(projectAssignmentRepositoryProvider)
+        .assignUserToProject(
+          userId: result.userId,
+          projectId: projectId,
+          empresaId: proyecto.fkEmpresa,
+          role: result.role,
+          assignedBy: currentUser.uid,
+        );
+  }
+
   String _initials(String name) {
     final parts = name.trim().split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}';
@@ -500,6 +563,145 @@ class _RoleBadge extends StatelessWidget {
           letterSpacing: 0.5,
         ),
       ),
+    );
+  }
+}
+
+// ── Add Member Dialog ───────────────────────────────────────
+
+class _AddMemberDialog extends StatefulWidget {
+  const _AddMemberDialog({required this.availableUsers});
+
+  final List<AppUser> availableUsers;
+
+  @override
+  State<_AddMemberDialog> createState() => _AddMemberDialogState();
+}
+
+class _AddMemberDialogState extends State<_AddMemberDialog> {
+  AppUser? _selectedUser;
+  UserRole _selectedRole = UserRole.usuario;
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final filtered = _search.isEmpty
+        ? widget.availableUsers
+        : widget.availableUsers.where((u) {
+            final q = _search.toUpperCase();
+            return u.displayName.toUpperCase().contains(q) ||
+                u.email.toUpperCase().contains(q);
+          }).toList();
+
+    return AlertDialog(
+      title: const Text('Agregar miembro'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Búsqueda
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar usuario...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _search = v),
+            ),
+            const SizedBox(height: 12),
+
+            // Lista de usuarios
+            if (filtered.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  _search.isEmpty
+                      ? 'No hay usuarios disponibles para asignar.'
+                      : 'Sin resultados.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, i) {
+                    final user = filtered[i];
+                    final selected = _selectedUser?.uid == user.uid;
+                    return ListTile(
+                      selected: selected,
+                      leading: CircleAvatar(
+                        radius: 16,
+                        child: Text(
+                          user.displayName.isNotEmpty
+                              ? user.displayName[0]
+                              : '?',
+                          style: theme.textTheme.labelSmall,
+                        ),
+                      ),
+                      title: Text(
+                        user.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        user.email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      dense: true,
+                      onTap: () => setState(() => _selectedUser = user),
+                    );
+                  },
+                ),
+              ),
+
+            if (_selectedUser != null) ...[
+              const Divider(height: 24),
+              // Selector de rol
+              DropdownButtonFormField<UserRole>(
+                initialValue: _selectedRole,
+                decoration: const InputDecoration(
+                  labelText: 'Rol',
+                  prefixIcon: Icon(Icons.shield_outlined),
+                ),
+                items: [UserRole.usuario, UserRole.supervisor, UserRole.soporte]
+                    .map(
+                      (r) => DropdownMenuItem(value: r, child: Text(r.label)),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _selectedRole = v);
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _selectedUser == null
+              ? null
+              : () => Navigator.pop(context, (
+                  userId: _selectedUser!.uid,
+                  role: _selectedRole,
+                )),
+          child: const Text('Asignar'),
+        ),
+      ],
     );
   }
 }
