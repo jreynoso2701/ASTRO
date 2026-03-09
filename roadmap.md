@@ -7,48 +7,61 @@
 
 ## Fase 1 — MVP: Sistema Base de Gestión de Proyectos
 
-**Estado:** 🔲 Por iniciar
+**Estado:** � En progreso
 
 ### 1.1 Setup del Proyecto
 
-- [ ] Crear proyecto Flutter desde cero.
-- [ ] Configurar identificador `com.constelacionr.apps.astro`.
-- [ ] Conectar con Firebase (proyecto `astro-b97c2`).
-- [ ] Configurar Firebase Authentication (email + Google Sign-In).
-- [ ] Configurar Firestore Database.
-- [ ] Configurar Firebase Storage.
+- [x] Crear proyecto Flutter desde cero.
+- [x] Configurar identificador `com.constelacionr.apps.astro`.
+- [x] Conectar con Firebase (proyecto `astro-b97c2`).
+- [x] Configurar Firebase Authentication (email + Google Sign-In).
+- [x] Configurar Firestore Database.
+- [x] Configurar Firebase Storage.
 - [ ] Configurar Firebase Cloud Messaging (notificaciones push).
 - [ ] Configurar Firebase Functions.
-- [ ] Configurar estructura de carpetas del proyecto.
-- [ ] Configurar sistema de temas Dark (default) / Light inspirado en Nothing Phone.
-- [ ] Definir tipografías y paleta de colores.
+- [x] Configurar estructura de carpetas del proyecto.
+- [x] Configurar sistema de temas Dark (default) / Light inspirado en Nothing Phone.
+- [x] Definir tipografías y paleta de colores.
 - [ ] Configurar deploy web en Railway.
 
 ### 1.2 Autenticación y Onboarding
 
-- [ ] Pantalla de login (email + contraseña).
-- [ ] Registro con email y contraseña.
-- [ ] Registro / Login con cuenta de Google.
+- [x] Pantalla de login (email + contraseña).
+- [x] Registro con email y contraseña.
+- [x] Registro / Login con cuenta de Google.
 - [ ] Flujo de onboarding para nuevos usuarios (asignación de proyecto y rol posterior).
-- [ ] Recuperación de contraseña.
-- [ ] Persistencia de sesión.
+- [x] Recuperación de contraseña.
+- [x] Persistencia de sesión.
 
 ### 1.3 Gestión de Usuarios y Roles
 
-- [ ] Modelo de datos de Usuario en Firestore.
-- [ ] CRUD de usuarios (Root).
-- [ ] Asignación de roles: Root, Supervisor, Usuario, Soporte.
-- [ ] Asignación de usuarios a proyectos.
-- [ ] Permisos diferenciados por rol.
-- [ ] Listado y búsqueda de usuarios.
+- [x] Modelo de datos de Usuario en Firestore (V2 con compatibilidad V1).
+- [x] Modelo de datos `projectAssignments` (roles por proyecto).
+- [x] Modelos: Empresa, Proyecto (lectura de colecciones existentes).
+- [x] Repositorios: UserRepository, ProjectAssignmentRepository, EmpresaRepository, ProyectoRepository.
+- [x] Providers Riverpod: usuarios, asignaciones, empresas, proyectos, búsqueda.
+- [x] Pantalla de listado de usuarios (Root) con búsqueda y grid adaptativo.
+- [x] Pantalla de detalle de usuario con info + asignaciones.
+- [x] Pantalla de asignación de proyecto/rol (Empresa → Proyecto → Rol).
+- [x] Navegación: ruta `/users`, `/users/:uid`, `/users/:uid/assign`.
+- [x] Destino "Usuarios" en el shell de navegación.
+- [x] Guardia de acceso: solo Root ve la sección de usuarios.
+- [x] Permisos diferenciados por rol en UI.
+- [x] Edición inline de datos de usuario (nombre, teléfono).
 
 ### 1.4 Gestión de Proyectos
 
-- [ ] Modelo de datos de Proyecto en Firestore.
-- [ ] CRUD de proyectos (Root / Soporte limitado).
+- [x] Modelo de datos de Proyecto en Firestore (V2 con campos adicionales).
+- [x] CRUD de proyectos (Root: crear, editar, activar/desactivar).
+- [x] Pantalla de listado de proyectos con búsqueda y grid adaptativo.
+- [x] Pantalla de detalle de proyecto con info y miembros del equipo.
+- [x] Pantalla de creación / edición de proyecto (Root).
+- [x] Providers: proyectos filtrados, búsqueda, miembros de proyecto.
+- [x] Navegación: `/projects`, `/projects/new`, `/projects/:id`, `/projects/:id/edit`.
+- [x] Destino "Proyectos" en el shell de navegación (visible para todos los roles).
 - [ ] Dashboard de proyecto con progreso general.
 - [ ] Asignación de módulos a proyectos.
-- [ ] Asignación de equipos a proyectos.
+- [ ] Asignación de equipos a proyectos (desde el proyecto).
 
 ### 1.5 Gestión de Módulos
 
@@ -161,4 +174,4 @@
 
 ---
 
-*Última actualización: 8 de marzo de 2026*
+*Última actualización: 8 de marzo de 2026 — Setup inicial del proyecto completado*

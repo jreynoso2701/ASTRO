@@ -1,0 +1,23 @@
+{
+  "name": "astro",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000A\u0000S\u0000T\u0000R\u0000O\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jreynoso2701/ASTRO.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jreynoso2701/ASTRO/issues"
+  },
+  "homepage": "https://github.com/jreynoso2701/ASTRO#readme",
+  "dependencies": {
+    "firebase-admin": "^13.7.0"
+  }
+}

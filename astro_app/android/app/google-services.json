@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "124307506572",
+    "project_id": "astro-b97c2",
+    "storage_bucket": "astro-b97c2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:124307506572:android:fa336e636445c325cc42a9",
+        "android_client_info": {
+          "package_name": "com.constelacionr.apps.astro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfYq0VxhpioaApNelKuUY2INj7BB-HLVQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

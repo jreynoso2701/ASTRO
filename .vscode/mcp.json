@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "firebase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "mcp",
+        "--dir",
+        "C:\\Proyectos-Moviles\\ASTRO\\astro_app",
+        "--only",
+        "auth,firestore,storage"
+      ]
+    }
+  }
+}
