@@ -169,9 +169,44 @@
 
 ### 1.9 Documentación del Proyecto
 
-- [ ] Modelo de datos de Documentación en Firestore.
-- [ ] Sección de documentación por proyecto.
-- [ ] Carga y visualización de archivos (Storage).
+- [x] Diseño de esquema Firestore: 3 colecciones (`DocumentosProyecto`, `BitacoraDocumentos`, `CategoriasDocumento`).
+- [x] Modelo `DocumentoProyecto` — documento formal con versionado, folio auto-incremental (EMP-PRJ-DOC-NUM), metadata completa.
+- [x] Modelo `DocumentoVersion` — historial de versiones con url, nombre, tamaño, notas, usuario que subió.
+- [x] Modelo `BitacoraDocumento` — registro de auditoría con 5 acciones (creado, editado, nuevaVersion, eliminado, restaurado).
+- [x] Modelo `CategoriaCustom` — categorías personalizadas por proyecto (Root).
+- [x] Modelo `AdjuntoCompartido` — modelo virtual para agregación de adjuntos de tickets/requerimientos (no almacenado en Firestore).
+- [x] Enums: `DocumentoSeccion` (formal/compartido), `DocumentoCategoria` (7 categorías default), `BitacoraAccion`.
+- [x] `DocumentoRepository` — CRUD de documentos, versionado, bitácora automática, categorías custom, folio auto-incremental.
+- [x] Providers Riverpod: documentos por proyecto, por ID, bitácora por proyecto/documento, categorías (default + custom mergeadas), búsqueda, filtro por categoría, adjuntos compartidos agregados, conteo de formales, permisos por rol.
+- [x] Pantalla **Listado de Documentos** — 2 tabs (Formales / Compartidos), búsqueda, chips de filtro por categoría, tarjetas con folio, versión, categoría, autor.
+- [x] Pantalla **Detalle de Documento** — header con folio, info card, archivo actual con botón abrir, historial de versiones (timeline), sección de bitácora, acciones de edición/eliminación con confirmación.
+- [x] Pantalla **Formulario de Documento** — crear/editar con título, categoría (dropdown defaults + custom), descripción, file picker, notas de versión en edición, upload a Storage (`documentacion/{projectId}/formales/`).
+- [x] Pantalla **Bitácora** — log de auditoría del proyecto con íconos/colores por acción, usuario, rol, timestamp, folio del documento.
+- [x] Pantalla **Categorías** — sección de categorías default (bloqueadas) + categorías custom con agregar/eliminar (solo Root).
+- [x] Tab "Compartidos" — agregación en tiempo real de adjuntos de tickets (`evidenciasIncidente`) y requerimientos (`adjuntos`) como documentación automática.
+  - [x] Modelo `AdjuntoCompartido` enriquecido: autor, módulo, status, prioridad, fecha de creación, `displayName` limpio (sin ruta Firebase Storage).
+  - [x] Providers de filtrado: por origen (Ticket/Requerimiento), por tipo de archivo (imagen, pdf, video, word, excel).
+  - [x] Provider de ordenamiento: más recientes, más antiguos, nombre A–Z, folio.
+  - [x] UI rediseñada: tarjetas ricas con nombre limpio, fecha, badge de origen, folio + título, metadatos (autor, módulo, status, prioridad), chips de filtro y menú de orden.
+- [x] Navegación: `/projects/:id/documents`, `documents/new`, `documents/:docId`, `documents/:docId/edit`, `documents/log`, `documents/categories`.
+- [x] Botón "Ver documentación" en detalle de proyecto con badge de conteo de documentos formales.
+- [x] Permisos por rol: Root/Soporte gestionan documentos; Supervisor solo consulta; Usuario no accede a formales.
+- [x] Versionado formal: cada actualización de archivo crea nueva versión con historial completo.
+- [x] Bitácora automática: toda acción sobre documentos formales queda registrada (quién, qué, cuándo).
+- [x] `StorageService.contentType` — método hecho público para detección de tipo de archivo desde formulario de documentos.
+- [x] Dependencias añadidas: `url_launcher: ^6.3.1`, `intl: ^0.20.2`.
+- [x] **Visor Universal de Archivos** (`FileViewerScreen`) — pantalla full-screen reutilizable en todos los módulos:
+  - [x] **Imágenes** (jpg, png, gif, webp): `InteractiveViewer` con pinch-to-zoom.
+  - [x] **Videos** (mp4, mov): reproductor nativo con `video_player`, controles de play/pause/seek.
+  - [x] **PDFs**: visor scrollable con zoom usando `pdfx`.
+  - [x] **Otros formatos**: ícono + nombre + botones de descargar / abrir externo (`url_launcher`).
+  - [x] **Descarga directa**: imágenes/videos a galería (álbum ASTRO) con `gal`, otros a carpeta de descargas con `dio`.
+  - [x] `DownloadService` — servicio de descarga con detección de categoría de archivo y guardado según tipo.
+  - [x] Integrado en **Tickets** (evidencias — reemplaza el diálogo inline anterior).
+  - [x] Integrado en **Requerimientos** (adjuntos — implementa el TODO pendiente).
+  - [x] Integrado en **Documentación** (documentos formales, historial de versiones, adjuntos compartidos).
+  - [x] Dependencias añadidas: `video_player`, `pdfx`, `dio`, `path_provider`, `gal`, `http`.
+  - [x] `AndroidManifest.xml` — queries para `url_launcher` en Android 11+ (ACTION_VIEW para http/https).
 
 ### 1.10 Interfaces Adaptativas
 

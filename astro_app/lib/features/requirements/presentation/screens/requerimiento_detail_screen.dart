@@ -10,6 +10,7 @@ import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 
 /// Pantalla de detalle de un requerimiento.
 class RequerimientoDetailScreen extends ConsumerStatefulWidget {
@@ -861,7 +862,7 @@ class _AdjuntoChip extends StatelessWidget {
         style: Theme.of(context).textTheme.bodySmall,
       ),
       onPressed: () {
-        // TODO: Preview/download
+        FileViewerScreen.open(context, url: url);
       },
     );
   }

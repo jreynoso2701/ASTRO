@@ -10,6 +10,7 @@ import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 
 /// Pantalla de detalle de un ticket con hilo de comentarios.
 class TicketDetailScreen extends ConsumerStatefulWidget {
@@ -659,32 +660,7 @@ class _TicketInfoSection extends StatelessWidget {
   }
 
   void _showEvidenceDialog(BuildContext context, String url) {
-    final isImg = _isImageUrl(url);
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        child: isImg
-            ? InteractiveViewer(
-                child: Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.broken_image, size: 64),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_fileIcon(url), size: 48),
-                    const SizedBox(height: 16),
-                    Text(_fileName(url)),
-                  ],
-                ),
-              ),
-      ),
-    );
+    FileViewerScreen.open(context, url: url);
   }
 
   static bool _isImageUrl(String url) {

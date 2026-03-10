@@ -10,6 +10,7 @@ import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/documentation/providers/documento_providers.dart';
 
 /// Pantalla de detalle/dashboard de un proyecto.
 class ProjectDetailScreen extends ConsumerWidget {
@@ -76,6 +77,8 @@ class ProjectDetailScreen extends ConsumerWidget {
             onRequirementsTap: () =>
                 context.go('/projects/$projectId/requirements'),
             pendingReqs: ref.watch(pendingReqCountProvider(projectId)),
+            onDocumentsTap: () => context.go('/projects/$projectId/documents'),
+            formalDocCount: ref.watch(formalDocCountProvider(projectId)),
             onNotifSettingsTap: isRoot
                 ? () => context.go('/projects/$projectId/notification-settings')
                 : null,
@@ -151,6 +154,8 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.openTickets,
     required this.onRequirementsTap,
     required this.pendingReqs,
+    required this.onDocumentsTap,
+    required this.formalDocCount,
     this.onNotifSettingsTap,
     this.descripcion,
   });
@@ -168,6 +173,8 @@ class _ProjectInfoSection extends StatelessWidget {
   final int openTickets;
   final VoidCallback onRequirementsTap;
   final int pendingReqs;
+  final VoidCallback onDocumentsTap;
+  final int formalDocCount;
   final VoidCallback? onNotifSettingsTap;
 
   @override
@@ -340,6 +347,22 @@ class _ProjectInfoSection extends StatelessWidget {
               child: const Icon(Icons.assignment_outlined),
             ),
             label: const Text('Ver requerimientos'),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Botón de documentación
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onDocumentsTap,
+            icon: Badge(
+              isLabelVisible: formalDocCount > 0,
+              label: Text('$formalDocCount'),
+              child: const Icon(Icons.folder_outlined),
+            ),
+            label: const Text('Ver documentación'),
           ),
         ),
 

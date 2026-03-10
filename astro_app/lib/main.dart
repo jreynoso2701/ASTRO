@@ -8,10 +8,12 @@ import 'package:astro/core/theme/theme_provider.dart';
 import 'package:astro/core/router/app_router.dart';
 import 'package:astro/core/services/notification_service.dart';
 import 'package:astro/core/services/fcm_initializer.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initializeDateFormatting('es');
 
   // Registrar handler de mensajes en background/terminated.
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

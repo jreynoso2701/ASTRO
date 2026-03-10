@@ -25,6 +25,11 @@ import 'package:astro/features/requirements/presentation/screens/requerimiento_d
 import 'package:astro/features/requirements/presentation/screens/requerimiento_form_screen.dart';
 import 'package:astro/features/notifications/presentation/screens/notification_inbox_screen.dart';
 import 'package:astro/features/notifications/presentation/screens/notification_settings_screen.dart';
+import 'package:astro/features/documentation/presentation/screens/documento_list_screen.dart';
+import 'package:astro/features/documentation/presentation/screens/documento_detail_screen.dart';
+import 'package:astro/features/documentation/presentation/screens/documento_form_screen.dart';
+import 'package:astro/features/documentation/presentation/screens/bitacora_screen.dart';
+import 'package:astro/features/documentation/presentation/screens/categorias_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -55,6 +60,12 @@ abstract final class AppRoutes {
   static const String notifications = '/notifications';
   static const String projectNotifSettings =
       '/projects/:id/notification-settings';
+  static const String projectDocuments = '/projects/:id/documents';
+  static const String documentNew = '/projects/:id/documents/new';
+  static const String documentDetail = '/projects/:id/documents/:docId';
+  static const String documentEdit = '/projects/:id/documents/:docId/edit';
+  static const String documentLog = '/projects/:id/documents/log';
+  static const String documentCategories = '/projects/:id/documents/categories';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -170,6 +181,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.projectNotifSettings,
         builder: (context, state) =>
             NotificationSettingsScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de documentación (más específicas primero)
+      GoRoute(
+        path: AppRoutes.documentNew,
+        builder: (context, state) =>
+            DocumentoFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.documentLog,
+        builder: (context, state) =>
+            BitacoraScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.documentCategories,
+        builder: (context, state) =>
+            CategoriasScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.documentEdit,
+        builder: (context, state) => DocumentoFormScreen(
+          projectId: state.pathParameters['id']!,
+          documentId: state.pathParameters['docId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.documentDetail,
+        builder: (context, state) => DocumentoDetailScreen(
+          projectId: state.pathParameters['id']!,
+          documentId: state.pathParameters['docId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectDocuments,
+        builder: (context, state) =>
+            DocumentoListScreen(projectId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutes.ticketNew,

@@ -20,7 +20,7 @@ class StorageService {
     final ref = _storage.ref('incidentes/$ticketId/evidencias/$name');
 
     final SettableMetadata metadata = SettableMetadata(
-      contentType: _contentType(name),
+      contentType: contentType(name),
     );
 
     if (kIsWeb) {
@@ -53,7 +53,7 @@ class StorageService {
     final ref = _storage.ref('$storagePath/$name');
 
     final SettableMetadata metadata = SettableMetadata(
-      contentType: _contentType(name),
+      contentType: contentType(name),
     );
 
     if (kIsWeb) {
@@ -76,7 +76,7 @@ class StorageService {
     }
   }
 
-  static String _contentType(String filename) {
+  static String contentType(String filename) {
     final ext = filename.split('.').last.toLowerCase();
     return switch (ext) {
       'jpg' || 'jpeg' => 'image/jpeg',
