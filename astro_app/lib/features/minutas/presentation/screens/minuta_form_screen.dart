@@ -138,15 +138,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
         title: Text(_isEditing ? 'EDITAR MINUTA' : 'NUEVA MINUTA'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_isEditing) {
-              context.go(
-                '/projects/${widget.projectId}/minutas/${widget.minutaId}',
-              );
-            } else {
-              context.go('/projects/${widget.projectId}/minutas');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: Form(
@@ -1018,9 +1010,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
         );
 
         if (mounted) {
-          context.go(
-            '/projects/${widget.projectId}/minutas/${widget.minutaId}',
-          );
+          context.pop();
         }
       } else {
         final docId = await repo.create(minuta);
@@ -1043,7 +1033,9 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
         );
 
         if (mounted) {
-          context.go('/projects/${widget.projectId}/minutas/$docId');
+          context.pushReplacement(
+            '/projects/${widget.projectId}/minutas/$docId',
+          );
         }
       }
     } finally {

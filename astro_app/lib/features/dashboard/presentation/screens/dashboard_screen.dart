@@ -154,7 +154,8 @@ class DashboardScreen extends ConsumerWidget {
                   (context, index) => _ProjectCard(
                     proyecto: projects[index],
                     ref: ref,
-                    onTap: () => context.go('/projects/${projects[index].id}'),
+                    onTap: () =>
+                        context.push('/projects/${projects[index].id}'),
                   ),
                   childCount: projects.length,
                 ),
@@ -390,7 +391,7 @@ class _DashboardCitaTile extends StatelessWidget {
         child: InkWell(
           onTap: () => GoRouter.of(
             context,
-          ).go('/projects/${cita.projectId}/citas/${cita.id}'),
+          ).push('/projects/${cita.projectId}/citas/${cita.id}'),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(

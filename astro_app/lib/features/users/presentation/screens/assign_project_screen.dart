@@ -42,7 +42,7 @@ class _AssignProjectScreenState extends ConsumerState<AssignProjectScreen> {
         title: const Text('ASIGNAR A PROYECTO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/users/${widget.userId}'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: SingleChildScrollView(
@@ -229,7 +229,7 @@ class _AssignProjectScreenState extends ConsumerState<AssignProjectScreen> {
         ),
       );
 
-      context.go('/users/${widget.userId}');
+      context.pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

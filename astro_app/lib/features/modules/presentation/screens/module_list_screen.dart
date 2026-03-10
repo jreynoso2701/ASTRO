@@ -47,7 +47,7 @@ class ModuleListScreen extends ConsumerWidget {
             title: Text('MÓDULOS — $projectName'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/projects/$projectId'),
+              onPressed: () => context.pop(),
             ),
             actions: [
               if (canManage)
@@ -55,7 +55,7 @@ class ModuleListScreen extends ConsumerWidget {
                   icon: const Icon(Icons.add),
                   tooltip: 'Nuevo módulo',
                   onPressed: () =>
-                      context.go('/projects/$projectId/modules/new'),
+                      context.push('/projects/$projectId/modules/new'),
                 ),
             ],
           ),
@@ -235,7 +235,7 @@ class _ModuleCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.go('/projects/$projectId/modules/${modulo.id}'),
+        onTap: () => context.push('/projects/$projectId/modules/${modulo.id}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -24,7 +24,7 @@ class BitacoraScreen extends ConsumerWidget {
         title: const Text('BITÁCORA DE DOCUMENTOS'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/$projectId/documents'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: bitacoraAsync.when(

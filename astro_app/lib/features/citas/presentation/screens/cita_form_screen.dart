@@ -105,15 +105,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
         title: Text(_isEditing ? 'EDITAR CITA' : 'NUEVA CITA'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_isEditing) {
-              context.go(
-                '/projects/${widget.projectId}/citas/${widget.citaId}',
-              );
-            } else {
-              context.go('/projects/${widget.projectId}/citas');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: Form(
@@ -481,12 +473,12 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
       if (_isEditing) {
         await repo.update(cita);
         if (mounted) {
-          context.go('/projects/${widget.projectId}/citas/${widget.citaId}');
+          context.pop();
         }
       } else {
         final docId = await repo.create(cita);
         if (mounted) {
-          context.go('/projects/${widget.projectId}/citas/$docId');
+          context.pushReplacement('/projects/${widget.projectId}/citas/$docId');
         }
       }
     } finally {

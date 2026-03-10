@@ -88,7 +88,7 @@ class _DocumentoListBodyState extends ConsumerState<_DocumentoListBody>
         title: Text('DOCUMENTACIÓN — ${widget.projectName}'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/${widget.projectId}'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           if (canManage)
@@ -96,16 +96,16 @@ class _DocumentoListBodyState extends ConsumerState<_DocumentoListBody>
               icon: const Icon(Icons.add),
               tooltip: 'Nuevo documento',
               onPressed: () =>
-                  context.go('/projects/${widget.projectId}/documents/new'),
+                  context.push('/projects/${widget.projectId}/documents/new'),
             ),
           if (isRoot)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               onSelected: (value) {
                 if (value == 'bitacora') {
-                  context.go('/projects/${widget.projectId}/documents/log');
+                  context.push('/projects/${widget.projectId}/documents/log');
                 } else if (value == 'categorias') {
-                  context.go(
+                  context.push(
                     '/projects/${widget.projectId}/documents/categories',
                   );
                 }
@@ -265,7 +265,7 @@ class _FormalesTab extends ConsumerWidget {
                       final doc = filteredDocs[index];
                       return _DocumentCard(
                         documento: doc,
-                        onTap: () => context.go(
+                        onTap: () => context.push(
                           '/projects/$projectId/documents/${doc.id}',
                         ),
                       );

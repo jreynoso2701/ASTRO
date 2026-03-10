@@ -133,17 +133,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
         title: Text(_isEditing ? 'EDITAR TICKET' : 'NUEVO TICKET'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (widget.returnId) {
-              context.pop();
-            } else if (_isEditing) {
-              context.go(
-                '/projects/${widget.projectId}/tickets/${widget.ticketId}',
-              );
-            } else {
-              context.go('/projects/${widget.projectId}/tickets');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: Form(
@@ -703,9 +693,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
         }
 
         if (mounted) {
-          context.go(
-            '/projects/${widget.projectId}/tickets/${widget.ticketId}',
-          );
+          context.pop();
         }
       } else {
         // Crear ticket primero para obtener el ID
@@ -752,7 +740,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           if (widget.returnId) {
             context.pop(ticketId);
           } else {
-            context.go('/projects/${widget.projectId}/tickets');
+            context.pop();
           }
         }
       }

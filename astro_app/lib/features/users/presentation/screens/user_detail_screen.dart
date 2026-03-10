@@ -33,7 +33,7 @@ class UserDetailScreen extends ConsumerWidget {
         title: const Text('DETALLE DE USUARIO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/users'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: userAsync.when(
@@ -61,7 +61,7 @@ class UserDetailScreen extends ConsumerWidget {
             proyectos: proyectosAsync.value ?? [],
             isLoading: assignmentsAsync.isLoading,
             isViewerRoot: isViewerRoot,
-            onAssign: () => context.go('/users/$userId/assign'),
+            onAssign: () => context.push('/users/$userId/assign'),
             onDeactivate: (id) => _deactivateAssignment(ref, id),
           );
 

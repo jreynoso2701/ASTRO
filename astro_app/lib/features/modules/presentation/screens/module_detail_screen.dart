@@ -32,7 +32,7 @@ class ModuleDetailScreen extends ConsumerWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            context.go('/projects/$projectId/modules');
+            context.pop();
           },
         ),
         actions: [
@@ -42,7 +42,7 @@ class ModuleDetailScreen extends ConsumerWidget {
                       ? IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: 'Editar módulo',
-                          onPressed: () => context.go(
+                          onPressed: () => context.push(
                             '/projects/$projectId/modules/${m.id}/edit',
                           ),
                         )

@@ -53,14 +53,14 @@ class DocumentoDetailScreen extends ConsumerWidget {
             title: const Text('DOCUMENTO'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/projects/$projectId/documents'),
+              onPressed: () => context.pop(),
             ),
             actions: [
               if (canEdit)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'Editar documento',
-                  onPressed: () => context.go(
+                  onPressed: () => context.push(
                     '/projects/$projectId/documents/$documentId/edit',
                   ),
                 ),
@@ -152,7 +152,7 @@ class DocumentoDetailScreen extends ConsumerWidget {
     );
 
     if (context.mounted) {
-      context.go('/projects/$projectId/documents');
+      context.pop();
     }
   }
 }

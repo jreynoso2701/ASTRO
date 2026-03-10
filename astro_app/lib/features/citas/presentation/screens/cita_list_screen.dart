@@ -46,13 +46,13 @@ class CitaListScreen extends ConsumerWidget {
             title: Text('CITAS — $projectName'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/projects/$projectId'),
+              onPressed: () => context.pop(),
             ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
                 tooltip: 'Nueva cita',
-                onPressed: () => context.go('/projects/$projectId/citas/new'),
+                onPressed: () => context.push('/projects/$projectId/citas/new'),
               ),
             ],
           ),
@@ -168,7 +168,7 @@ class CitaListScreen extends ConsumerWidget {
                                 final cita = filteredCitas[index];
                                 return _CitaCard(
                                   cita: cita,
-                                  onTap: () => context.go(
+                                  onTap: () => context.push(
                                     '/projects/$projectId/citas/${cita.id}',
                                   ),
                                 );

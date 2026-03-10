@@ -502,7 +502,8 @@ class _CitaCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.go('/projects/${cita.projectId}/citas/${cita.id}'),
+        onTap: () =>
+            context.push('/projects/${cita.projectId}/citas/${cita.id}'),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(

@@ -45,7 +45,7 @@ class MinutaListScreen extends ConsumerWidget {
             title: Text('MINUTAS — $projectName'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/projects/$projectId'),
+              onPressed: () => context.pop(),
             ),
             actions: [
               if (canCreate)
@@ -53,7 +53,7 @@ class MinutaListScreen extends ConsumerWidget {
                   icon: const Icon(Icons.add),
                   tooltip: 'Nueva minuta',
                   onPressed: () =>
-                      context.go('/projects/$projectId/minutas/new'),
+                      context.push('/projects/$projectId/minutas/new'),
                 ),
             ],
           ),
@@ -139,7 +139,7 @@ class MinutaListScreen extends ConsumerWidget {
                                 final minuta = filteredMinutas[index];
                                 return _MinutaCard(
                                   minuta: minuta,
-                                  onTap: () => context.go(
+                                  onTap: () => context.push(
                                     '/projects/$projectId/minutas/${minuta.id}',
                                   ),
                                 );

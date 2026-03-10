@@ -32,7 +32,7 @@ class MinutaDetailScreen extends ConsumerWidget {
         title: const Text('MINUTA'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/$projectId/minutas'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           minutaAsync.whenOrNull(
@@ -54,7 +54,7 @@ class MinutaDetailScreen extends ConsumerWidget {
                             IconButton(
                               icon: const Icon(Icons.edit_outlined),
                               tooltip: 'Editar minuta',
-                              onPressed: () => context.go(
+                              onPressed: () => context.push(
                                 '/projects/$projectId/minutas/$minutaId/edit',
                               ),
                             ),

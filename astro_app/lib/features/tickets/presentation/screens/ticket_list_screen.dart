@@ -48,14 +48,15 @@ class TicketListScreen extends ConsumerWidget {
             title: Text('TICKETS — $projectName'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/projects/$projectId'),
+              onPressed: () => context.pop(),
             ),
             actions: [
               // Cualquier usuario puede crear tickets
               IconButton(
                 icon: const Icon(Icons.add),
                 tooltip: 'Nuevo ticket',
-                onPressed: () => context.go('/projects/$projectId/tickets/new'),
+                onPressed: () =>
+                    context.push('/projects/$projectId/tickets/new'),
               ),
             ],
           ),
@@ -201,7 +202,7 @@ class TicketListScreen extends ConsumerWidget {
                                 final ticket = filteredTickets[index];
                                 return _TicketCard(
                                   ticket: ticket,
-                                  onTap: () => context.go(
+                                  onTap: () => context.push(
                                     '/projects/$projectId/tickets/${ticket.id}',
                                   ),
                                 );

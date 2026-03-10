@@ -86,15 +86,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
         title: Text(widget.isEdit ? 'EDITAR DOCUMENTO' : 'NUEVO DOCUMENTO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (widget.isEdit) {
-              context.go(
-                '/projects/${widget.projectId}/documents/${widget.documentId}',
-              );
-            } else {
-              context.go('/projects/${widget.projectId}/documents');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: proyectoAsync.when(
@@ -314,13 +306,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
       }
 
       if (mounted) {
-        if (widget.isEdit) {
-          context.go(
-            '/projects/${widget.projectId}/documents/${widget.documentId}',
-          );
-        } else {
-          context.go('/projects/${widget.projectId}/documents');
-        }
+        context.pop();
       }
     } catch (e) {
       if (mounted) {

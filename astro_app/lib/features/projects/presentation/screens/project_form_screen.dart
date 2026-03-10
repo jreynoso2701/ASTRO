@@ -84,13 +84,7 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
         title: Text(_isEditing ? 'EDITAR PROYECTO' : 'NUEVO PROYECTO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_isEditing) {
-              context.go('/projects/${widget.projectId}');
-            } else {
-              context.go('/projects');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: AdaptiveBody(
@@ -235,7 +229,7 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Proyecto actualizado')));
-        context.go('/projects/${widget.projectId}');
+        context.pop();
       } else {
         // Crear
         final proyecto = Proyecto(
@@ -255,7 +249,7 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Proyecto creado')));
-        context.go('/projects/$newId');
+        context.pushReplacement('/projects/$newId');
       }
     } catch (e) {
       if (!mounted) return;

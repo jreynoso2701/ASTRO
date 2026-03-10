@@ -52,8 +52,7 @@ class _RequerimientoDetailScreenState
         title: const Text('REQUERIMIENTO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () =>
-              context.go('/projects/${widget.projectId}/requirements'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           if (isManager)
@@ -62,7 +61,7 @@ class _RequerimientoDetailScreenState
                       ? IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: 'Editar',
-                          onPressed: () => context.go(
+                          onPressed: () => context.push(
                             '/projects/${widget.projectId}/requirements/${widget.reqId}/edit',
                           ),
                         )

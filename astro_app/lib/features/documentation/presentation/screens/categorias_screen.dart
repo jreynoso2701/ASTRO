@@ -26,7 +26,7 @@ class CategoriasScreen extends ConsumerWidget {
         title: const Text('CATEGORÍAS'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/$projectId/documents'),
+          onPressed: () => context.pop(),
         ),
       ),
       floatingActionButton: FloatingActionButton(

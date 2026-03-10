@@ -176,9 +176,9 @@ class _NotificationTile extends ConsumerWidget {
 
   void _navigateToRef(BuildContext context, InAppNotification n) {
     if (n.refType == NotificationRefType.ticket) {
-      context.go('/projects/${n.projectId}/tickets/${n.refId}');
+      context.push('/projects/${n.projectId}/tickets/${n.refId}');
     } else if (n.refType == NotificationRefType.requerimiento) {
-      context.go('/projects/${n.projectId}/requirements/${n.refId}');
+      context.push('/projects/${n.projectId}/requirements/${n.refId}');
     }
   }
 

@@ -52,14 +52,14 @@ class RequerimientoListScreen extends ConsumerWidget {
             title: Text('REQUERIMIENTOS — $projectName'),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => context.go('/projects/$projectId'),
+              onPressed: () => context.pop(),
             ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
                 tooltip: 'Nuevo requerimiento',
                 onPressed: () =>
-                    context.go('/projects/$projectId/requirements/new'),
+                    context.push('/projects/$projectId/requirements/new'),
               ),
             ],
           ),
@@ -204,7 +204,7 @@ class RequerimientoListScreen extends ConsumerWidget {
                                 final req = filteredReqs[index];
                                 return _ReqCard(
                                   req: req,
-                                  onTap: () => context.go(
+                                  onTap: () => context.push(
                                     '/projects/$projectId/requirements/${req.id}',
                                   ),
                                 );

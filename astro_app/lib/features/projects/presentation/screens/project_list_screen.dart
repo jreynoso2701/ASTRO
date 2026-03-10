@@ -36,7 +36,7 @@ class ProjectListScreen extends ConsumerWidget {
                     ),
                     if (isRoot)
                       FilledButton.icon(
-                        onPressed: () => context.go('/projects/new'),
+                        onPressed: () => context.push('/projects/new'),
                         icon: const Icon(Icons.add, size: 18),
                         label: const Text('Nuevo'),
                       ),
@@ -165,7 +165,7 @@ class _ProjectCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.go('/projects/${project.id}'),
+        onTap: () => context.push('/projects/${project.id}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

@@ -131,17 +131,7 @@ class _RequerimientoFormScreenState
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (widget.returnId) {
-              context.pop();
-            } else if (_isEditing) {
-              context.go(
-                '/projects/${widget.projectId}/requirements/${widget.reqId}',
-              );
-            } else {
-              context.go('/projects/${widget.projectId}/requirements');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: Form(
@@ -735,9 +725,7 @@ class _RequerimientoFormScreenState
         }
 
         if (mounted) {
-          context.go(
-            '/projects/${widget.projectId}/requirements/${widget.reqId}',
-          );
+          context.pop();
         }
       } else {
         final newReq = Requerimiento(
@@ -782,7 +770,9 @@ class _RequerimientoFormScreenState
           if (widget.returnId) {
             context.pop(docId);
           } else {
-            context.go('/projects/${widget.projectId}/requirements/$docId');
+            context.pushReplacement(
+              '/projects/${widget.projectId}/requirements/$docId',
+            );
           }
         }
       }

@@ -30,7 +30,7 @@ class CitaDetailScreen extends ConsumerWidget {
         title: const Text('CITA'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/$projectId/citas'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           if (canManage || isRoot)
@@ -39,7 +39,7 @@ class CitaDetailScreen extends ConsumerWidget {
                       ? IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: 'Editar cita',
-                          onPressed: () => context.go(
+                          onPressed: () => context.push(
                             '/projects/$projectId/citas/$citaId/edit',
                           ),
                         )

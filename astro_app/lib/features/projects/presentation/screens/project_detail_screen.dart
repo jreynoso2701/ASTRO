@@ -31,7 +31,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         title: const Text('PROYECTO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           if (isRoot)
@@ -41,7 +41,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: 'Editar proyecto',
                           onPressed: () =>
-                              context.go('/projects/$projectId/edit'),
+                              context.push('/projects/$projectId/edit'),
                         )
                       : null,
                 ) ??
@@ -73,22 +73,24 @@ class ProjectDetailScreen extends ConsumerWidget {
             progress: ref.watch(
               projectProgressProvider(proyecto.nombreProyecto),
             ),
-            onModulesTap: () => context.go('/projects/$projectId/modules'),
-            onTicketsTap: () => context.go('/projects/$projectId/tickets'),
+            onModulesTap: () => context.push('/projects/$projectId/modules'),
+            onTicketsTap: () => context.push('/projects/$projectId/tickets'),
             openTickets: ref.watch(openTicketCountProvider(projectId)),
             onRequirementsTap: () =>
-                context.go('/projects/$projectId/requirements'),
+                context.push('/projects/$projectId/requirements'),
             pendingReqs: ref.watch(pendingReqCountProvider(projectId)),
-            onDocumentsTap: () => context.go('/projects/$projectId/documents'),
+            onDocumentsTap: () =>
+                context.push('/projects/$projectId/documents'),
             formalDocCount: ref.watch(formalDocCountProvider(projectId)),
-            onMinutasTap: () => context.go('/projects/$projectId/minutas'),
+            onMinutasTap: () => context.push('/projects/$projectId/minutas'),
             minutaCount: ref.watch(minutaCountProvider(projectId)),
-            onCitasTap: () => context.go('/projects/$projectId/citas'),
+            onCitasTap: () => context.push('/projects/$projectId/citas'),
             citasProgramadas: ref.watch(
               citasProgramadasCountProvider(projectId),
             ),
             onNotifSettingsTap: isRoot
-                ? () => context.go('/projects/$projectId/notification-settings')
+                ? () =>
+                      context.push('/projects/$projectId/notification-settings')
                 : null,
           );
 

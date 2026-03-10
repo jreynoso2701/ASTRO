@@ -79,15 +79,7 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
         title: Text(_isEditing ? 'EDITAR MÓDULO' : 'NUEVO MÓDULO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_isEditing) {
-              context.go(
-                '/projects/${widget.projectId}/modules/${widget.moduleId}',
-              );
-            } else {
-              context.go('/projects/${widget.projectId}/modules');
-            }
-          },
+          onPressed: () => context.pop(),
         ),
       ),
       body: AdaptiveBody(
@@ -221,7 +213,7 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Módulo actualizado')));
-        context.go('/projects/${widget.projectId}/modules/${widget.moduleId}');
+        context.pop();
       } else {
         final modulo = Modulo(
           id: '',
@@ -241,7 +233,7 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Módulo creado')));
-        context.go('/projects/${widget.projectId}/modules/$newId');
+        context.pushReplacement('/projects/${widget.projectId}/modules/$newId');
       }
     } catch (e) {
       if (!mounted) return;

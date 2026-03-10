@@ -49,7 +49,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
         title: const Text('TICKET'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/${widget.projectId}/tickets'),
+          onPressed: () => context.pop(),
         ),
         actions: [
           if (canManage || isRoot)
@@ -58,7 +58,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                       ? IconButton(
                           icon: const Icon(Icons.edit_outlined),
                           tooltip: 'Editar ticket',
-                          onPressed: () => context.go(
+                          onPressed: () => context.push(
                             '/projects/${widget.projectId}/tickets/${widget.ticketId}/edit',
                           ),
                         )

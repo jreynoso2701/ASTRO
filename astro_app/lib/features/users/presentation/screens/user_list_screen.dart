@@ -139,7 +139,7 @@ class _UserCard extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => context.go('/users/${user.uid}'),
+        onTap: () => context.push('/users/${user.uid}'),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

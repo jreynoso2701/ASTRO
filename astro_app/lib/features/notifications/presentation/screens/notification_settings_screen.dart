@@ -62,7 +62,7 @@ class _NotificationSettingsScreenState
         title: const Text('NOTIFICACIONES DEL PROYECTO'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/projects/${widget.projectId}'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: Column(
