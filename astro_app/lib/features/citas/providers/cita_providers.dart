@@ -3,6 +3,7 @@ import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/features/citas/data/cita_repository.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/features/users/providers/user_providers.dart';
 
 // ── Repository ───────────────────────────────────────────
 
@@ -94,4 +95,33 @@ final citasProgramadasCountProvider = Provider.family<int, String>((
   final citas =
       ref.watch(citasByProjectProvider(proyecto.nombreProyecto)).value ?? [];
   return citas.where((c) => c.status == CitaStatus.programada).length;
+});
+
+// ── Providers globales (cross-project, para calendario) ──
+
+/// Todas las citas donde el usuario actual es participante.
+final myCitasProvider = StreamProvider<List<Cita>>((ref) {
+  final uid = ref.watch(currentUserProfileProvider).value?.uid;
+  if (uid == null || uid.isEmpty) return Stream.value([]);
+  return ref.watch(citaRepositoryProvider).watchByParticipantUid(uid);
+});
+
+/// Citas próximas (programadas, con fecha >= hoy), ordenadas cronológicamente.
+final upcomingCitasProvider = Provider<List<Cita>>((ref) {
+  final allCitas = ref.watch(myCitasProvider).value ?? [];
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  return allCitas
+      .where(
+        (c) =>
+            c.status == CitaStatus.programada &&
+            c.fecha != null &&
+            !c.fecha!.isBefore(today),
+      )
+      .toList();
+});
+
+/// Conteo total de citas programadas (próximas) para badge / dashboard.
+final upcomingCitasCountProvider = Provider<int>((ref) {
+  return ref.watch(upcomingCitasProvider).length;
 });

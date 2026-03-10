@@ -36,6 +36,7 @@ import 'package:astro/features/minutas/presentation/screens/minuta_form_screen.d
 import 'package:astro/features/citas/presentation/screens/cita_list_screen.dart';
 import 'package:astro/features/citas/presentation/screens/cita_detail_screen.dart';
 import 'package:astro/features/citas/presentation/screens/cita_form_screen.dart';
+import 'package:astro/features/calendar/presentation/screens/calendar_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -78,6 +79,9 @@ abstract final class AppRoutes {
   static const String minutaNew = '/projects/:id/minutas/new';
   static const String minutaDetail = '/projects/:id/minutas/:minutaId';
   static const String minutaEdit = '/projects/:id/minutas/:minutaId/edit';
+
+  // Calendario global
+  static const String calendar = '/calendar';
 
   // Citas
   static const String projectCitas = '/projects/:id/citas';
@@ -164,6 +168,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.projects,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: ProjectListScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.calendar,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CalendarScreen()),
           ),
           GoRoute(
             path: AppRoutes.notifications,

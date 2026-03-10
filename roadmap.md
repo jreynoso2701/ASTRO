@@ -261,9 +261,15 @@
 - [x] Pantalla **Formulario de Cita** — crear/editar con título, descripción, fecha, horarios, modalidad (videoconferencia/presencial/llamada/híbrida), URL (Zoom/Teams/Meet), dirección física, participantes con diálogo, recordatorios selector (15min/30min/1h/2h/24h), notas.
 - [x] Navegación: `/projects/:id/citas`, `citas/new`, `citas/:citaId`, `citas/:citaId/edit`.
 - [x] Botón "Ver citas" en detalle de proyecto con badge de citas programadas.
+- [x] Campo `participantUids` (List<String>) — UIDs desnormalizados de participantes + createdBy para consultas `array-contains` cross-proyecto.
+- [x] `CitaRepository.watchByParticipantUid` — stream de citas por UID del usuario (cross-proyecto).
+- [x] Providers globales: `myCitasProvider`, `upcomingCitasProvider`, `upcomingCitasCountProvider`.
+- [x] **Calendario global** — pantalla `/calendar` en navegación principal, toggle entre vista mensual (TableCalendar) y agenda (secciones: Vencidas, Hoy, Mañana, Esta Semana, Próximamente, Pasadas).
+- [x] Badge de citas próximas en ícono de Calendario en la navegación.
+- [x] **Dashboard: indicador de citas** — StatCard "Próximas citas" + sección con hasta 3 citas próximas con enlace.
+- [x] **Cloud Function `checkCitaReminders`** — cada 15 min revisa citas programadas y envía push + notificación in-app según `recordatorios` (ventana ±7.5 min).
 - [ ] Integración con **Google Calendar** para programar eventos (Fase posterior).
 - [ ] Generación automática de URL de videoconferencia (Fase posterior).
-- [ ] Notificaciones push de recordatorios de citas (requiere Cloud Functions).
 
 ### 2.2 Módulo de Minutas
 

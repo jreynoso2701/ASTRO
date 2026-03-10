@@ -9,6 +9,10 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/citas/providers/cita_providers.dart';
+import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/models/cita_status.dart';
+import 'package:astro/core/models/minuta_modalidad.dart';
 
 /// Pantalla de Dashboard — vista principal tras login.
 class DashboardScreen extends ConsumerWidget {
@@ -81,11 +85,14 @@ class DashboardScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _StatsSummary(projects: projects, ref: ref),
+              child: _StatsSummary(projects: projects),
             ),
           ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+          // ── Próximas citas ────────────────────────
+          SliverToBoxAdapter(child: _UpcomingCitasSection()),
 
           // ── Mis proyectos ──────────────────────────
           SliverToBoxAdapter(
@@ -163,14 +170,13 @@ class DashboardScreen extends ConsumerWidget {
 
 // ── Stats Summary ────────────────────────────────────────
 
-class _StatsSummary extends StatelessWidget {
-  const _StatsSummary({required this.projects, required this.ref});
+class _StatsSummary extends ConsumerWidget {
+  const _StatsSummary({required this.projects});
 
   final List<Proyecto> projects;
-  final WidgetRef ref;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Calcular stats rápidos
     final activeProjects = projects.where((p) => p.estatusProyecto).length;
 
@@ -191,6 +197,7 @@ class _StatsSummary extends StatelessWidget {
 
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= AppBreakpoints.medium;
+    final upcomingCount = ref.watch(upcomingCitasCountProvider);
 
     return Wrap(
       spacing: 12,
@@ -223,6 +230,15 @@ class _StatsSummary extends StatelessWidget {
             label: 'Progreso general',
             value: '${avgProgress.round()}%',
             color: progressColor(avgProgress),
+          ),
+        ),
+        SizedBox(
+          width: isWide ? null : double.infinity,
+          child: _StatCard(
+            icon: Icons.calendar_today_outlined,
+            label: 'Próximas citas',
+            value: '$upcomingCount',
+            color: const Color(0xFF2196F3),
           ),
         ),
       ],
@@ -285,6 +301,185 @@ class _StatCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Upcoming Citas Section ───────────────────────────────
+
+class _UpcomingCitasSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final upcoming = ref.watch(upcomingCitasProvider);
+
+    if (upcoming.isEmpty) return const SizedBox.shrink();
+
+    // Mostrar máximo 3 citas
+    final citas = upcoming.take(3).toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'PRÓXIMAS CITAS',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => GoRouter.of(context).go('/calendar'),
+                child: Text(
+                  'Ver todas',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...citas.map((cita) => _DashboardCitaTile(cita: cita)),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardCitaTile extends StatelessWidget {
+  const _DashboardCitaTile({required this.cita});
+
+  final Cita cita;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final statusColor = _citaStatusColor(cita.status);
+    final modalIcon = _citaModalidadIcon(cita.modalidad);
+
+    // Formatear fecha
+    final fecha = cita.fecha;
+    if (fecha == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final citaDay = DateTime(fecha.year, fecha.month, fecha.day);
+    final diff = citaDay.difference(today).inDays;
+
+    String dateLabel;
+    if (diff == 0) {
+      dateLabel = 'Hoy';
+    } else if (diff == 1) {
+      dateLabel = 'Mañana';
+    } else {
+      dateLabel =
+          '${fecha.day}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+    }
+
+    final timeStr = cita.horaInicio ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => GoRouter.of(
+            context,
+          ).go('/projects/${cita.projectId}/citas/${cita.id}'),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Status accent bar
+                Container(
+                  width: 4,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  modalIcon,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cita.titulo,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        cita.projectName,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      dateLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: diff == 0
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (timeStr.isNotEmpty)
+                      Text(
+                        timeStr,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Color _citaStatusColor(CitaStatus status) => switch (status) {
+    CitaStatus.programada => const Color(0xFF2196F3),
+    CitaStatus.enCurso => const Color(0xFFFFC107),
+    CitaStatus.completada => const Color(0xFF4CAF50),
+    CitaStatus.cancelada => const Color(0xFFD32F2F),
+  };
+
+  static IconData _citaModalidadIcon(MinutaModalidad modalidad) =>
+      switch (modalidad) {
+        MinutaModalidad.videoconferencia => Icons.videocam_outlined,
+        MinutaModalidad.presencial => Icons.place_outlined,
+        MinutaModalidad.llamada => Icons.phone_outlined,
+        MinutaModalidad.hibrida => Icons.devices_outlined,
+      };
 }
 
 // ── Project Card ─────────────────────────────────────────

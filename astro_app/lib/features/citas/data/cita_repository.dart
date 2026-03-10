@@ -71,12 +71,25 @@ class CitaRepository {
     return firstWord.substring(0, min(3, firstWord.length)).toUpperCase();
   }
 
+  /// Construye la lista desnormalizada de UIDs (participantes + createdBy).
+  static List<String> _buildParticipantUids(Cita cita) {
+    final uids = <String>{};
+    if (cita.createdBy != null && cita.createdBy!.isNotEmpty) {
+      uids.add(cita.createdBy!);
+    }
+    for (final p in cita.participantes) {
+      if (p.uid.isNotEmpty) uids.add(p.uid);
+    }
+    return uids.toList();
+  }
+
   /// Crea una nueva cita.
   Future<String> create(Cita cita) async {
     final folio = await _nextFolio(cita.projectName, cita.empresaName);
 
     final data = cita.toFirestore();
     data['folio'] = folio;
+    data['participantUids'] = _buildParticipantUids(cita);
 
     final doc = await _ref.add(data);
     return doc.id;
@@ -84,7 +97,9 @@ class CitaRepository {
 
   /// Actualiza una cita (merge).
   Future<void> update(Cita cita) async {
-    await _ref.doc(cita.id).set(cita.toFirestore(), SetOptions(merge: true));
+    final data = cita.toFirestore();
+    data['participantUids'] = _buildParticipantUids(cita);
+    await _ref.doc(cita.id).set(data, SetOptions(merge: true));
   }
 
   /// Cambia el estado de una cita.
@@ -112,5 +127,22 @@ class CitaRepository {
       'isActive': true,
       'updatedAt': Timestamp.fromDate(now),
     });
+  }
+
+  /// Stream de citas activas donde el usuario es participante (cross-project).
+  Stream<List<Cita>> watchByParticipantUid(String uid) {
+    return _ref
+        .where('participantUids', arrayContains: uid)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(Cita.fromFirestore).toList();
+          list.sort(
+            (a, b) => (a.fecha ?? DateTime(2099)).compareTo(
+              b.fecha ?? DateTime(2099),
+            ),
+          );
+          return list;
+        });
   }
 }

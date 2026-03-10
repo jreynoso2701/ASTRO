@@ -8,6 +8,7 @@
  */
 
 import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firestore";
+import {onSchedule} from "firebase-functions/v2/scheduler";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
@@ -181,7 +182,7 @@ async function sendNotifications(
     titulo: string;
     cuerpo: string;
     tipo: string;
-    refType: "ticket" | "requerimiento";
+    refType: "ticket" | "requerimiento" | "cita";
     refId: string;
     projectId: string;
     projectName: string;
@@ -611,5 +612,108 @@ export const onReqCommentCreated = onDocumentCreated(
       projectId,
       projectName,
     });
+  }
+);
+
+// ── Scheduled: RECORDATORIO DE CITAS ─────────────────────
+
+/**
+ * Cada 15 minutos revisa las citas programadas próximas.
+ * Si una cita tiene un recordatorio que cae dentro de la ventana actual
+ * (±7.5 min de algún valor de recordatorios[]), envía push + notificación in-app
+ * a los participantes.
+ *
+ * Ejemplo: cita a las 15:00, recordatorios: [15, 60].
+ *  - A las 14:45 (15 min antes) → se envía recordatorio de 15 min.
+ *  - A las 14:00 (60 min antes) → se envía recordatorio de 60 min.
+ */
+export const checkCitaReminders = onSchedule(
+  {
+    schedule: "every 15 minutes",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const now = Date.now();
+    const windowMs = 7.5 * 60 * 1000; // 7.5 minutos en ms
+
+    // Consultar citas programadas activas en los próximos 24h + 1h (para recordatorios largos).
+    const maxAhead = new Date(now + 25 * 60 * 60 * 1000); // 25h adelante
+    const snap = await db
+      .collection("Citas")
+      .where("status", "==", "programada")
+      .where("isActive", "==", true)
+      .where("fecha", "<=", maxAhead)
+      .get();
+
+    if (snap.empty) return;
+
+    const promises: Promise<void>[] = [];
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const citaId = doc.id;
+
+      // Parsear fecha + horaInicio → timestamp exacto
+      const fechaRaw = data.fecha;
+      if (!fechaRaw) continue;
+
+      let citaDate: Date;
+      if (fechaRaw.toDate) {
+        citaDate = fechaRaw.toDate();
+      } else {
+        citaDate = new Date(fechaRaw);
+      }
+
+      const horaInicio = data.horaInicio as string | undefined;
+      if (horaInicio) {
+        const parts = horaInicio.split(":");
+        if (parts.length >= 2) {
+          citaDate.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+        }
+      }
+
+      const citaTimestamp = citaDate.getTime();
+      // Solo citas futuras
+      if (citaTimestamp <= now) continue;
+
+      const recordatorios = (data.recordatorios as number[]) ?? [15, 60];
+      const participantUids = (data.participantUids as string[]) ?? [];
+      if (participantUids.length === 0) continue;
+
+      const projectId = data.projectId as string ?? "";
+      const projectName = data.projectName as string ?? "";
+      const titulo = data.titulo as string ?? "Cita";
+
+      for (const minAntes of recordatorios) {
+        const reminderTime = citaTimestamp - minAntes * 60 * 1000;
+        const diff = Math.abs(reminderTime - now);
+
+        // Si el recordatorio cae dentro de la ventana actual (±7.5 min)
+        if (diff <= windowMs) {
+          let label: string;
+          if (minAntes < 60) {
+            label = `${minAntes} min`;
+          } else {
+            const h = Math.floor(minAntes / 60);
+            const m = minAntes % 60;
+            label = m > 0 ? `${h}h ${m}min` : `${h}h`;
+          }
+
+          promises.push(
+            sendNotifications(participantUids, {
+              titulo: `Recordatorio: ${titulo}`,
+              cuerpo: `En ${label} — ${projectName}`,
+              tipo: "cita_recordatorio",
+              refType: "cita",
+              refId: citaId,
+              projectId,
+              projectName,
+            })
+          );
+        }
+      }
+    }
+
+    await Promise.all(promises);
   }
 );

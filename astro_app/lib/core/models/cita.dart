@@ -70,6 +70,7 @@ class Cita {
     this.refTickets = const [],
     this.refRequerimientos = const [],
     this.refMinuta,
+    this.participantUids = const [],
     this.recordatorios = const [15, 60],
     this.status = CitaStatus.programada,
     this.notas,
@@ -99,6 +100,9 @@ class Cita {
   final List<String> refTickets;
   final List<String> refRequerimientos;
   final String? refMinuta; // Minuta generada tras la reunión
+
+  /// UIDs desnormalizados de participantes + createdBy (para consultas cross-project).
+  final List<String> participantUids;
 
   /// Minutos antes de la cita para enviar recordatorio (ej. [15, 60]).
   final List<int> recordatorios;
@@ -163,6 +167,7 @@ class Cita {
       refTickets: parseStrList(data['refTickets']),
       refRequerimientos: parseStrList(data['refRequerimientos']),
       refMinuta: data['refMinuta'] as String?,
+      participantUids: parseStrList(data['participantUids']),
       recordatorios: parseIntList(data['recordatorios']),
       status: CitaStatus.fromString(data['status'] as String?),
       notas: data['notas'] as String?,
@@ -194,6 +199,7 @@ class Cita {
       if (refTickets.isNotEmpty) 'refTickets': refTickets,
       if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
       if (refMinuta != null) 'refMinuta': refMinuta,
+      'participantUids': participantUids,
       'recordatorios': recordatorios,
       'status': status.name,
       if (notas != null) 'notas': notas,
@@ -222,6 +228,7 @@ class Cita {
     List<String>? refTickets,
     List<String>? refRequerimientos,
     String? refMinuta,
+    List<String>? participantUids,
     List<int>? recordatorios,
     CitaStatus? status,
     String? notas,
@@ -249,6 +256,7 @@ class Cita {
       refTickets: refTickets ?? this.refTickets,
       refRequerimientos: refRequerimientos ?? this.refRequerimientos,
       refMinuta: refMinuta ?? this.refMinuta,
+      participantUids: participantUids ?? this.participantUids,
       recordatorios: recordatorios ?? this.recordatorios,
       status: status ?? this.status,
       notas: notas ?? this.notas,
