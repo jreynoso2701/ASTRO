@@ -203,7 +203,7 @@ class _ImageViewer extends StatelessWidget {
             return Center(
               child: CircularProgressIndicator(
                 value: percent,
-                color: const Color(0xFFD71921),
+                color: Colors.white,
               ),
             );
           },
@@ -291,7 +291,7 @@ class _VideoViewerState extends State<_VideoViewer> {
 
     if (!_initialized) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFD71921)),
+        child: CircularProgressIndicator(color: Colors.white),
       );
     }
 
@@ -359,8 +359,8 @@ class _VideoControlsState extends State<_VideoControls> {
         children: [
           SliderTheme(
             data: SliderThemeData(
-              activeTrackColor: const Color(0xFFD71921),
-              thumbColor: const Color(0xFFD71921),
+              activeTrackColor: Colors.white,
+              thumbColor: Colors.white,
               inactiveTrackColor: Colors.white24,
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
@@ -384,6 +384,7 @@ class _VideoControlsState extends State<_VideoControls> {
               ),
               const Spacer(),
               IconButton(
+                tooltip: _c.value.isPlaying ? 'Pausar' : 'Reproducir',
                 icon: Icon(
                   _c.value.isPlaying ? Icons.pause : Icons.play_arrow,
                   color: Colors.white,
@@ -457,7 +458,7 @@ class _PdfViewerState extends State<_PdfViewer> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFD71921)),
+        child: CircularProgressIndicator(color: Colors.white),
       );
     }
 
@@ -483,12 +484,10 @@ class _PdfViewerState extends State<_PdfViewer> {
       scrollDirection: Axis.vertical,
       builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
         options: const DefaultBuilderOptions(),
-        documentLoaderBuilder: (_) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFD71921)),
-        ),
-        pageLoaderBuilder: (_) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFD71921)),
-        ),
+        documentLoaderBuilder: (_) =>
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
+        pageLoaderBuilder: (_) =>
+            const Center(child: CircularProgressIndicator(color: Colors.white)),
         errorBuilder: (_, error) => Center(
           child: Text(
             error.toString(),
@@ -580,8 +579,8 @@ class _OtherFileViewer extends StatelessWidget {
                       : const Icon(Icons.download),
                   label: const Text('Descargar'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFD71921),
-                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
                   ),
                 ),
                 const SizedBox(width: 12),

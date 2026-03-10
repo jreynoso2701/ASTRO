@@ -25,13 +25,13 @@ class OnboardingScreen extends ConsumerWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD71921).withValues(alpha: 0.12),
+                  color: Colors.white.withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.rocket_launch_outlined,
                   size: 48,
-                  color: Color(0xFFD71921),
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 32),

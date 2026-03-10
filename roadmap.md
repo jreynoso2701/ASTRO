@@ -210,10 +210,24 @@
 
 ### 1.10 Interfaces Adaptativas
 
-- [ ] Layouts adaptativos: móvil, tablet/fold, web/desktop.
-- [ ] Navegación responsiva (bottom nav en móvil, sidebar en tablet/web).
-- [ ] Componentes optimizados para touch y mouse/teclado.
-- [ ] Breakpoints definidos y consistentes.
+- [x] Layouts adaptativos: móvil, tablet/fold, web/desktop.
+  - `AdaptiveBody` widget: max-width constraint (720px forms, 960px lists) en pantallas anchas.
+  - `adaptiveGridColumns()` helper centralizado (1/2/3 columnas según breakpoint).
+  - Formularios (5): ticket, project, requerimiento, documento, module — envueltos con AdaptiveBody.
+  - Listas: ticket, requerimiento, documento (2 tabs), bitácora — envueltas con AdaptiveBody(960).
+  - Grids: dashboard, project list, user list — usan adaptiveGridColumns().
+  - Module list ya usaba maxCrossAxisExtent auto-adaptativo.
+- [x] Navegación responsiva (bottom nav en móvil, sidebar en tablet/web).
+  - AppShell: NavigationBar (< compact) / NavigationRail (≥ compact) / extended rail (≥ medium).
+- [x] Componentes optimizados para touch y mouse/teclado.
+  - Tooltips agregados a: FAB, botones send (chat), calendar picker, clear, remove, delete, play/pause.
+  - AppBar actions ya tenían tooltips.
+- [x] Breakpoints definidos y consistentes.
+  - AppBreakpoints: compact=600, medium=840, expanded=1200, large=1600.
+- [x] Refinamiento visual Nothing X: rojo solo para atención/crítico, paleta neutra blanca/gris.
+  - Theme: NavigationBar/Rail indicadores blancos, ElevatedButton/FilledButton gris.
+  - Folios, badges, avatares decorativos → onSurface neutral.
+  - progressColor(): rojo <25%, interpolación amber 25-49%, verde 50-100%.
 - [ ] Testing visual en múltiples tamaños de pantalla.
 
 ### 1.11 Testing y QA

@@ -8,6 +8,7 @@ import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
@@ -133,151 +134,13 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ── Datos básicos ─────────────────────────
-            Text(
-              'INFORMACIÓN GENERAL',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                letterSpacing: 1,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            // Proyecto (read-only)
-            TextFormField(
-              initialValue: projectName,
-              decoration: const InputDecoration(
-                labelText: 'Proyecto',
-                prefixIcon: Icon(Icons.folder_outlined),
-              ),
-              readOnly: true,
-              enabled: false,
-            ),
-            const SizedBox(height: 16),
-
-            // Empresa (read-only, auto del proyecto)
-            if (empresaName.isNotEmpty) ...[
-              TextFormField(
-                initialValue: empresaName,
-                decoration: const InputDecoration(
-                  labelText: 'Empresa',
-                  prefixIcon: Icon(Icons.business_outlined),
-                ),
-                readOnly: true,
-                enabled: false,
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Módulo (obligatorio)
-            DropdownButtonFormField<String>(
-              initialValue: _selectedModuleId,
-              decoration: const InputDecoration(
-                labelText: 'Módulo *',
-                prefixIcon: Icon(Icons.view_module_outlined),
-              ),
-              items: modules.map((m) {
-                return DropdownMenuItem<String>(
-                  value: m.id,
-                  child: Text(m.nombreModulo),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedModuleId = value;
-                  _selectedModuleName = modules
-                      .firstWhere((m) => m.id == value)
-                      .nombreModulo;
-                });
-              },
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Selecciona un módulo';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Título
-            TextFormField(
-              controller: _tituloController,
-              decoration: const InputDecoration(
-                labelText: 'Título *',
-                prefixIcon: Icon(Icons.title),
-              ),
-              textCapitalization: TextCapitalization.sentences,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'El título es obligatorio';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Descripción
-            TextFormField(
-              controller: _descripcionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción *',
-                prefixIcon: Icon(Icons.description_outlined),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 5,
-              textCapitalization: TextCapitalization.sentences,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'La descripción es obligatoria';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // Prioridad
-            DropdownButtonFormField<TicketPriority>(
-              initialValue: _priority,
-              decoration: const InputDecoration(
-                labelText: 'Prioridad',
-                prefixIcon: Icon(Icons.flag_outlined),
-              ),
-              items: TicketPriority.values.map((p) {
-                return DropdownMenuItem<TicketPriority>(
-                  value: p,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: _priorityColor(p),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(p.label),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _priority = value);
-                }
-              },
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Campos avanzados (Root / Soporte) ──────
-            if (isManager) ...[
+        child: AdaptiveBody(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // ── Datos básicos ─────────────────────────
               Text(
-                'GESTIÓN (ROOT / SOPORTE)',
+                'INFORMACIÓN GENERAL',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   letterSpacing: 1,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -286,228 +149,370 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
               const Divider(),
               const SizedBox(height: 8),
 
-              // Porcentaje de avance
-              Row(
-                children: [
-                  Icon(
-                    Icons.percent,
-                    size: 20,
-                    color: progressColor(_porcentajeAvance),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Porcentaje de avance: ${_porcentajeAvance.round()}%',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          value: _porcentajeAvance / 100,
-                          strokeWidth: 4,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          color: progressColor(_porcentajeAvance),
-                        ),
-                        Text(
-                          '${_porcentajeAvance.round()}',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: progressColor(_porcentajeAvance),
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Slider(
-                value: _porcentajeAvance,
-                min: 0,
-                max: 100,
-                divisions: 20,
-                label: '${_porcentajeAvance.round()}%',
-                activeColor: progressColor(_porcentajeAvance),
-                onChanged: (v) => setState(() => _porcentajeAvance = v),
+              // Proyecto (read-only)
+              TextFormField(
+                initialValue: projectName,
+                decoration: const InputDecoration(
+                  labelText: 'Proyecto',
+                  prefixIcon: Icon(Icons.folder_outlined),
+                ),
+                readOnly: true,
+                enabled: false,
               ),
               const SizedBox(height: 16),
 
-              // Impacto (1-10)
-              DropdownButtonFormField<int>(
-                initialValue: _impacto,
-                decoration: const InputDecoration(
-                  labelText: 'Impacto (1-10)',
-                  prefixIcon: Icon(Icons.trending_up),
+              // Empresa (read-only, auto del proyecto)
+              if (empresaName.isNotEmpty) ...[
+                TextFormField(
+                  initialValue: empresaName,
+                  decoration: const InputDecoration(
+                    labelText: 'Empresa',
+                    prefixIcon: Icon(Icons.business_outlined),
+                  ),
+                  readOnly: true,
+                  enabled: false,
                 ),
-                items: List.generate(10, (i) => i + 1).map((n) {
-                  return DropdownMenuItem<int>(
-                    value: n,
-                    child: Text(
-                      '$n${n <= 3
-                          ? '  (Bajo)'
-                          : n <= 6
-                          ? '  (Medio)'
-                          : n <= 9
-                          ? '  (Alto)'
-                          : '  (Crítico)'}',
+                const SizedBox(height: 16),
+              ],
+
+              // Módulo (obligatorio)
+              DropdownButtonFormField<String>(
+                initialValue: _selectedModuleId,
+                decoration: const InputDecoration(
+                  labelText: 'Módulo *',
+                  prefixIcon: Icon(Icons.view_module_outlined),
+                ),
+                items: modules.map((m) {
+                  return DropdownMenuItem<String>(
+                    value: m.id,
+                    child: Text(m.nombreModulo),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedModuleId = value;
+                    _selectedModuleName = modules
+                        .firstWhere((m) => m.id == value)
+                        .nombreModulo;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Selecciona un módulo';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Título
+              TextFormField(
+                controller: _tituloController,
+                decoration: const InputDecoration(
+                  labelText: 'Título *',
+                  prefixIcon: Icon(Icons.title),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'El título es obligatorio';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Descripción
+              TextFormField(
+                controller: _descripcionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción *',
+                  prefixIcon: Icon(Icons.description_outlined),
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 5,
+                textCapitalization: TextCapitalization.sentences,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'La descripción es obligatoria';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Prioridad
+              DropdownButtonFormField<TicketPriority>(
+                initialValue: _priority,
+                decoration: const InputDecoration(
+                  labelText: 'Prioridad',
+                  prefixIcon: Icon(Icons.flag_outlined),
+                ),
+                items: TicketPriority.values.map((p) {
+                  return DropdownMenuItem<TicketPriority>(
+                    value: p,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: _priorityColor(p),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(p.label),
+                      ],
                     ),
                   );
                 }).toList(),
-                onChanged: (v) => setState(() => _impacto = v),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _priority = value);
+                  }
+                },
               ),
-              const SizedBox(height: 16),
 
-              // Cobertura
-              DropdownButtonFormField<String>(
-                initialValue: _cobertura,
-                decoration: const InputDecoration(
-                  labelText: 'Cobertura',
-                  prefixIcon: Icon(Icons.shield_outlined),
-                ),
-                items: _coberturas.map((c) {
-                  return DropdownMenuItem<String>(value: c, child: Text(c));
-                }).toList(),
-                onChanged: (v) => setState(() => _cobertura = v),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // Fecha de solución programada
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event_outlined),
-                title: Text(
-                  _solucionProgramada != null
-                      ? 'Solución programada: ${_formatDate(_solucionProgramada!)}'
-                      : 'Fecha de solución programada',
+              // ── Campos avanzados (Root / Soporte) ──────
+              if (isManager) ...[
+                Text(
+                  'GESTIÓN (ROOT / SOPORTE)',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-                subtitle: _solucionProgramada == null
-                    ? const Text('Sin definir')
-                    : null,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+                const Divider(),
+                const SizedBox(height: 8),
+
+                // Porcentaje de avance
+                Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.calendar_today),
-                      onPressed: _pickSolucionDate,
+                    Icon(
+                      Icons.percent,
+                      size: 20,
+                      color: progressColor(_porcentajeAvance),
                     ),
-                    if (_solucionProgramada != null)
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Porcentaje de avance: ${_porcentajeAvance.round()}%',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: _porcentajeAvance / 100,
+                            strokeWidth: 4,
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            color: progressColor(_porcentajeAvance),
+                          ),
+                          Text(
+                            '${_porcentajeAvance.round()}',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: progressColor(_porcentajeAvance),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _porcentajeAvance,
+                  min: 0,
+                  max: 100,
+                  divisions: 20,
+                  label: '${_porcentajeAvance.round()}%',
+                  activeColor: progressColor(_porcentajeAvance),
+                  onChanged: (v) => setState(() => _porcentajeAvance = v),
+                ),
+                const SizedBox(height: 16),
+
+                // Impacto (1-10)
+                DropdownButtonFormField<int>(
+                  initialValue: _impacto,
+                  decoration: const InputDecoration(
+                    labelText: 'Impacto (1-10)',
+                    prefixIcon: Icon(Icons.trending_up),
+                  ),
+                  items: List.generate(10, (i) => i + 1).map((n) {
+                    return DropdownMenuItem<int>(
+                      value: n,
+                      child: Text(
+                        '$n${n <= 3
+                            ? '  (Bajo)'
+                            : n <= 6
+                            ? '  (Medio)'
+                            : n <= 9
+                            ? '  (Alto)'
+                            : '  (Crítico)'}',
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setState(() => _impacto = v),
+                ),
+                const SizedBox(height: 16),
+
+                // Cobertura
+                DropdownButtonFormField<String>(
+                  initialValue: _cobertura,
+                  decoration: const InputDecoration(
+                    labelText: 'Cobertura',
+                    prefixIcon: Icon(Icons.shield_outlined),
+                  ),
+                  items: _coberturas.map((c) {
+                    return DropdownMenuItem<String>(value: c, child: Text(c));
+                  }).toList(),
+                  onChanged: (v) => setState(() => _cobertura = v),
+                ),
+                const SizedBox(height: 16),
+
+                // Fecha de solución programada
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_outlined),
+                  title: Text(
+                    _solucionProgramada != null
+                        ? 'Solución programada: ${_formatDate(_solucionProgramada!)}'
+                        : 'Fecha de solución programada',
+                  ),
+                  subtitle: _solucionProgramada == null
+                      ? const Text('Sin definir')
+                      : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () =>
-                            setState(() => _solucionProgramada = null),
+                        tooltip: 'Seleccionar fecha',
+                        icon: const Icon(Icons.calendar_today),
+                        onPressed: _pickSolucionDate,
+                      ),
+                      if (_solucionProgramada != null)
+                        IconButton(
+                          tooltip: 'Limpiar fecha',
+                          icon: const Icon(Icons.clear),
+                          onPressed: () =>
+                              setState(() => _solucionProgramada = null),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+
+              const SizedBox(height: 8),
+
+              // ── Evidencias ─────────────────────────────
+              Text(
+                'EVIDENCIAS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // Evidencias existentes (URLs)
+              if (_existingEvidencias.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (int i = 0; i < _existingEvidencias.length; i++)
+                      _EvidenceChip(
+                        url: _existingEvidencias[i],
+                        onDelete: () {
+                          setState(() => _existingEvidencias.removeAt(i));
+                        },
                       ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            const SizedBox(height: 8),
-
-            // ── Evidencias ─────────────────────────────
-            Text(
-              'EVIDENCIAS',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                letterSpacing: 1,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            // Evidencias existentes (URLs)
-            if (_existingEvidencias.isNotEmpty) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (int i = 0; i < _existingEvidencias.length; i++)
-                    _EvidenceChip(
-                      url: _existingEvidencias[i],
-                      onDelete: () {
-                        setState(() => _existingEvidencias.removeAt(i));
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // Nuevos archivos seleccionados
-            if (_newFiles.isNotEmpty) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (int i = 0; i < _newFiles.length; i++)
-                    Chip(
-                      avatar: Icon(_fileIcon(_newFiles[i].name), size: 18),
-                      label: Text(
-                        _newFiles[i].name.length > 20
-                            ? '${_newFiles[i].name.substring(0, 20)}...'
-                            : _newFiles[i].name,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      onDeleted: () {
-                        setState(() => _newFiles.removeAt(i));
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // Botones de adjuntar
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickImages,
-                    icon: const Icon(Icons.image_outlined, size: 18),
-                    label: const Text('Imagen'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickFromCamera,
-                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                    label: const Text('Cámara'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickDocuments,
-                    icon: const Icon(Icons.attach_file, size: 18),
-                    label: const Text('Archivo'),
-                  ),
-                ),
+                const SizedBox(height: 8),
               ],
-            ),
 
-            const SizedBox(height: 32),
+              // Nuevos archivos seleccionados
+              if (_newFiles.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (int i = 0; i < _newFiles.length; i++)
+                      Chip(
+                        avatar: Icon(_fileIcon(_newFiles[i].name), size: 18),
+                        label: Text(
+                          _newFiles[i].name.length > 20
+                              ? '${_newFiles[i].name.substring(0, 20)}...'
+                              : _newFiles[i].name,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        onDeleted: () {
+                          setState(() => _newFiles.removeAt(i));
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
 
-            // Botón guardar
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _save,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save),
-              label: Text(_isEditing ? 'Guardar cambios' : 'Crear ticket'),
-            ),
-          ],
+              // Botones de adjuntar
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickImages,
+                      icon: const Icon(Icons.image_outlined, size: 18),
+                      label: const Text('Imagen'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickFromCamera,
+                      icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                      label: const Text('Cámara'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickDocuments,
+                      icon: const Icon(Icons.attach_file, size: 18),
+                      label: const Text('Archivo'),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 32),
+
+              // Botón guardar
+              FilledButton.icon(
+                onPressed: _isSaving ? null : _save,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_isEditing ? 'Guardar cambios' : 'Crear ticket'),
+              ),
+            ],
+          ),
         ),
       ),
     );

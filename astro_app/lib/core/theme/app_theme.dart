@@ -46,18 +46,21 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,
-        indicatorColor: AppColors.nothingRed.withValues(alpha: 0.15),
-        labelTextStyle: WidgetStatePropertyAll(
-          AppTypography.labelMedium.copyWith(color: AppColors.grey400),
-        ),
+        indicatorColor: AppColors.white.withValues(alpha: 0.12),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppTypography.labelMedium.copyWith(color: AppColors.white);
+          }
+          return AppTypography.labelMedium.copyWith(color: AppColors.grey600);
+        }),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: AppColors.darkSurface,
-        indicatorColor: AppColors.nothingRed.withValues(alpha: 0.15),
-        selectedIconTheme: const IconThemeData(color: AppColors.nothingRed),
+        indicatorColor: AppColors.white.withValues(alpha: 0.12),
+        selectedIconTheme: const IconThemeData(color: AppColors.white),
         unselectedIconTheme: const IconThemeData(color: AppColors.grey600),
         selectedLabelTextStyle: AppTypography.labelMedium.copyWith(
-          color: AppColors.nothingRed,
+          color: AppColors.white,
         ),
         unselectedLabelTextStyle: AppTypography.labelMedium.copyWith(
           color: AppColors.grey600,
@@ -83,9 +86,20 @@ abstract final class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.nothingRed,
+          backgroundColor: AppColors.darkElevated,
           foregroundColor: AppColors.white,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.labelLarge,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.darkElevated,
+          foregroundColor: AppColors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -176,21 +190,24 @@ abstract final class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.lightSurface,
-        indicatorColor: AppColors.nothingRed.withValues(alpha: 0.12),
-        labelTextStyle: WidgetStatePropertyAll(
-          AppTypography.labelMedium.copyWith(color: AppColors.grey600),
-        ),
+        indicatorColor: AppColors.black.withValues(alpha: 0.08),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppTypography.labelMedium.copyWith(color: AppColors.black);
+          }
+          return AppTypography.labelMedium.copyWith(color: AppColors.grey400);
+        }),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: AppColors.lightSurface,
-        indicatorColor: AppColors.nothingRed.withValues(alpha: 0.12),
-        selectedIconTheme: const IconThemeData(color: AppColors.nothingRed),
-        unselectedIconTheme: const IconThemeData(color: AppColors.grey600),
+        indicatorColor: AppColors.black.withValues(alpha: 0.08),
+        selectedIconTheme: const IconThemeData(color: AppColors.black),
+        unselectedIconTheme: const IconThemeData(color: AppColors.grey400),
         selectedLabelTextStyle: AppTypography.labelMedium.copyWith(
-          color: AppColors.nothingRed,
+          color: AppColors.black,
         ),
         unselectedLabelTextStyle: AppTypography.labelMedium.copyWith(
-          color: AppColors.grey600,
+          color: AppColors.grey400,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -213,9 +230,20 @@ abstract final class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.nothingRed,
-          foregroundColor: AppColors.white,
+          backgroundColor: AppColors.lightElevated,
+          foregroundColor: AppColors.black,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.labelLarge,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.lightElevated,
+          foregroundColor: AppColors.black,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

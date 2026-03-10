@@ -30,6 +30,7 @@ class CategoriasScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'Nueva categoría',
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),
       ),
@@ -111,6 +112,7 @@ class CategoriasScreen extends ConsumerWidget {
                           style: theme.textTheme.bodySmall,
                         ),
                         trailing: IconButton(
+                          tooltip: 'Eliminar categoría',
                           icon: Icon(
                             Icons.delete_outline,
                             color: theme.colorScheme.error,

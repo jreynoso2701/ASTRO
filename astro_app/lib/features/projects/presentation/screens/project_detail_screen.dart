@@ -190,15 +190,15 @@ class _ProjectInfoSection extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 40,
-                backgroundColor: const Color(
-                  0xFFD71921,
-                ).withValues(alpha: 0.15),
+                backgroundColor: theme.colorScheme.onSurface.withValues(
+                  alpha: 0.08,
+                ),
                 child: Text(
                   folio.isNotEmpty
                       ? folio.substring(0, folio.length.clamp(0, 3))
                       : '?',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: const Color(0xFFD71921),
+                    color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -212,13 +212,13 @@ class _ProjectInfoSection extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD71921).withValues(alpha: 0.15),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   folio,
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: const Color(0xFFD71921),
+                    color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1,
                   ),
@@ -279,9 +279,7 @@ class _ProjectInfoSection extends StatelessWidget {
                     Text(
                       '${progress.clamp(0, 100).toStringAsFixed(0)}%',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: progress >= 100
-                            ? Colors.green
-                            : const Color(0xFFD71921),
+                        color: progressColor(progress),
                         fontWeight: FontWeight.bold,
                       ),
                     ),

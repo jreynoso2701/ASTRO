@@ -75,9 +75,9 @@ class ModuleDetailScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundColor: const Color(
-                        0xFFD71921,
-                      ).withValues(alpha: 0.15),
+                      backgroundColor: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.08,
+                      ),
                       child: Text(
                         modulo.folioModulo.isNotEmpty
                             ? modulo.folioModulo.substring(
@@ -86,7 +86,7 @@ class ModuleDetailScreen extends ConsumerWidget {
                               )
                             : '?',
                         style: theme.textTheme.titleMedium?.copyWith(
-                          color: const Color(0xFFD71921),
+                          color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -104,13 +104,15 @@ class ModuleDetailScreen extends ConsumerWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFD71921).withValues(alpha: 0.15),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.08,
+                        ),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         modulo.folioModulo,
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: const Color(0xFFD71921),
+                          color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
                         ),
@@ -502,7 +504,7 @@ class _FuncionalidadTile extends ConsumerWidget {
                           val ?? false,
                         )
                       : null,
-                  activeColor: const Color(0xFFD71921),
+                  activeColor: theme.colorScheme.onSurface,
                 ),
                 // Nombre + descripción
                 Expanded(

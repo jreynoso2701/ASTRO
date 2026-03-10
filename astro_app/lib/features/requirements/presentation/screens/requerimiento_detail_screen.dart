@@ -1060,6 +1060,7 @@ class _CommentInput extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: 'Enviar comentario',
             icon: sending
                 ? const SizedBox(
                     width: 20,

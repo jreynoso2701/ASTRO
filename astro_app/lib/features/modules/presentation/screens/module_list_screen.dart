@@ -250,13 +250,15 @@ class _ModuleCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD71921).withValues(alpha: 0.15),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.08,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       modulo.folioModulo,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFFD71921),
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),

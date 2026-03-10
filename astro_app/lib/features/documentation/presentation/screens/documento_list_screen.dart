@@ -8,6 +8,7 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 
 /// Pantalla de documentación de un proyecto con dos tabs:
 /// - Formales: documentos gestionados (memorias, contratos, etc.)
@@ -190,85 +191,89 @@ class _FormalesTab extends ConsumerWidget {
     final categoriaFilter = ref.watch(docCategoriaFilterProvider);
     final allCategorias = ref.watch(allCategoriasProvider(projectId));
 
-    return Column(
-      children: [
-        // Filtro de categoría
-        SizedBox(
-          height: 40,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            children: [
-              _FilterChip(
-                label: 'Todas',
-                selected: categoriaFilter == null,
-                onSelected: (_) =>
-                    ref.read(docCategoriaFilterProvider.notifier).clear(),
-              ),
-              for (final cat in allCategorias)
-                Padding(
-                  padding: const EdgeInsets.only(left: 6),
-                  child: _FilterChip(
-                    label: cat,
-                    selected: categoriaFilter == cat,
-                    onSelected: (_) =>
-                        ref.read(docCategoriaFilterProvider.notifier).set(cat),
-                  ),
+    return AdaptiveBody(
+      maxWidth: 960,
+      child: Column(
+        children: [
+          // Filtro de categoría
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                _FilterChip(
+                  label: 'Todas',
+                  selected: categoriaFilter == null,
+                  onSelected: (_) =>
+                      ref.read(docCategoriaFilterProvider.notifier).clear(),
                 ),
-            ],
+                for (final cat in allCategorias)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: _FilterChip(
+                      label: cat,
+                      selected: categoriaFilter == cat,
+                      onSelected: (_) => ref
+                          .read(docCategoriaFilterProvider.notifier)
+                          .set(cat),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
 
-        // Contador
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Row(
-            children: [
-              Text(
-                '${filteredDocs.length} documento${filteredDocs.length == 1 ? '' : 's'}',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
+          // Contador
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                Text(
+                  '${filteredDocs.length} documento${filteredDocs.length == 1 ? '' : 's'}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
-        ),
 
-        // Lista
-        Expanded(
-          child: filteredDocs.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.folder_outlined,
-                        size: 64,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Sin documentos formales',
-                        style: theme.textTheme.bodyLarge?.copyWith(
+          // Lista
+          Expanded(
+            child: filteredDocs.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.folder_outlined,
+                          size: 64,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        Text(
+                          'Sin documentos formales',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredDocs.length,
+                    itemBuilder: (context, index) {
+                      final doc = filteredDocs[index];
+                      return _DocumentCard(
+                        documento: doc,
+                        onTap: () => context.go(
+                          '/projects/$projectId/documents/${doc.id}',
+                        ),
+                      );
+                    },
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: filteredDocs.length,
-                  itemBuilder: (context, index) {
-                    final doc = filteredDocs[index];
-                    return _DocumentCard(
-                      documento: doc,
-                      onTap: () => context.go(
-                        '/projects/$projectId/documents/${doc.id}',
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -288,150 +293,155 @@ class _CompartidosTab extends ConsumerWidget {
     final tipoFilter = ref.watch(adjuntoTipoFilterProvider);
     final sortMode = ref.watch(adjuntoSortProvider);
 
-    return Column(
-      children: [
-        // ── Filtros ──────────────────────────────────────
-        SizedBox(
-          height: 40,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            children: [
-              // Origen
-              _FilterChip(
-                label: 'Todos',
-                selected: origenFilter == null,
-                onSelected: (_) =>
-                    ref.read(adjuntoOrigenFilterProvider.notifier).clear(),
-              ),
-              const SizedBox(width: 6),
-              _FilterChip(
-                label: 'Tickets',
-                selected: origenFilter == 'ticket',
-                onSelected: (_) => ref
-                    .read(adjuntoOrigenFilterProvider.notifier)
-                    .set(origenFilter == 'ticket' ? null : 'ticket'),
-              ),
-              const SizedBox(width: 6),
-              _FilterChip(
-                label: 'Requerimientos',
-                selected: origenFilter == 'requerimiento',
-                onSelected: (_) => ref
-                    .read(adjuntoOrigenFilterProvider.notifier)
-                    .set(
-                      origenFilter == 'requerimiento' ? null : 'requerimiento',
-                    ),
-              ),
-              const SizedBox(width: 12),
-              // Separador vertical.
-              Container(
-                width: 1,
-                height: 24,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                color: theme.colorScheme.outlineVariant,
-              ),
-              const SizedBox(width: 12),
-              // Tipo de archivo
-              for (final tipo in const [
-                'imagen',
-                'pdf',
-                'video',
-                'word',
-                'excel',
-              ]) ...[
+    return AdaptiveBody(
+      maxWidth: 960,
+      child: Column(
+        children: [
+          // ── Filtros ──────────────────────────────────────
+          SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                // Origen
                 _FilterChip(
-                  label: _tipoLabel(tipo),
-                  selected: tipoFilter == tipo,
-                  onSelected: (_) => ref
-                      .read(adjuntoTipoFilterProvider.notifier)
-                      .set(tipoFilter == tipo ? null : tipo),
+                  label: 'Todos',
+                  selected: origenFilter == null,
+                  onSelected: (_) =>
+                      ref.read(adjuntoOrigenFilterProvider.notifier).clear(),
                 ),
                 const SizedBox(width: 6),
-              ],
-            ],
-          ),
-        ),
-
-        // ── Contador + ordenamiento ──────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Row(
-            children: [
-              Text(
-                '${adjuntos.length} archivo${adjuntos.length == 1 ? '' : 's'}',
-                style: theme.textTheme.bodySmall,
-              ),
-              const Spacer(),
-              PopupMenuButton<AdjuntoSortMode>(
-                tooltip: 'Ordenar',
-                icon: Icon(
-                  Icons.sort,
-                  size: 20,
-                  color: theme.colorScheme.onSurfaceVariant,
+                _FilterChip(
+                  label: 'Tickets',
+                  selected: origenFilter == 'ticket',
+                  onSelected: (_) => ref
+                      .read(adjuntoOrigenFilterProvider.notifier)
+                      .set(origenFilter == 'ticket' ? null : 'ticket'),
                 ),
-                onSelected: (mode) =>
-                    ref.read(adjuntoSortProvider.notifier).set(mode),
-                itemBuilder: (_) => [
-                  for (final mode in AdjuntoSortMode.values)
-                    PopupMenuItem(
-                      value: mode,
-                      child: Row(
-                        children: [
-                          if (sortMode == mode)
-                            const Icon(Icons.check, size: 18)
-                          else
-                            const SizedBox(width: 18),
-                          const SizedBox(width: 8),
-                          Text(_sortLabel(mode)),
-                        ],
+                const SizedBox(width: 6),
+                _FilterChip(
+                  label: 'Requerimientos',
+                  selected: origenFilter == 'requerimiento',
+                  onSelected: (_) => ref
+                      .read(adjuntoOrigenFilterProvider.notifier)
+                      .set(
+                        origenFilter == 'requerimiento'
+                            ? null
+                            : 'requerimiento',
                       ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        // ── Lista ────────────────────────────────────────
-        Expanded(
-          child: adjuntos.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.attach_file,
-                        size: 64,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Sin archivos compartidos',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Los adjuntos de tickets y requerimientos\naparecerán aquí automáticamente',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                ),
+                const SizedBox(width: 12),
+                // Separador vertical.
+                Container(
+                  width: 1,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  color: theme.colorScheme.outlineVariant,
+                ),
+                const SizedBox(width: 12),
+                // Tipo de archivo
+                for (final tipo in const [
+                  'imagen',
+                  'pdf',
+                  'video',
+                  'word',
+                  'excel',
+                ]) ...[
+                  _FilterChip(
+                    label: _tipoLabel(tipo),
+                    selected: tipoFilter == tipo,
+                    onSelected: (_) => ref
+                        .read(adjuntoTipoFilterProvider.notifier)
+                        .set(tipoFilter == tipo ? null : tipo),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: adjuntos.length,
-                  itemBuilder: (context, index) {
-                    final adjunto = adjuntos[index];
-                    return _AdjuntoCard(adjunto: adjunto);
-                  },
+                  const SizedBox(width: 6),
+                ],
+              ],
+            ),
+          ),
+
+          // ── Contador + ordenamiento ──────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              children: [
+                Text(
+                  '${adjuntos.length} archivo${adjuntos.length == 1 ? '' : 's'}',
+                  style: theme.textTheme.bodySmall,
                 ),
-        ),
-      ],
+                const Spacer(),
+                PopupMenuButton<AdjuntoSortMode>(
+                  tooltip: 'Ordenar',
+                  icon: Icon(
+                    Icons.sort,
+                    size: 20,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  onSelected: (mode) =>
+                      ref.read(adjuntoSortProvider.notifier).set(mode),
+                  itemBuilder: (_) => [
+                    for (final mode in AdjuntoSortMode.values)
+                      PopupMenuItem(
+                        value: mode,
+                        child: Row(
+                          children: [
+                            if (sortMode == mode)
+                              const Icon(Icons.check, size: 18)
+                            else
+                              const SizedBox(width: 18),
+                            const SizedBox(width: 8),
+                            Text(_sortLabel(mode)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── Lista ────────────────────────────────────────
+          Expanded(
+            child: adjuntos.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.attach_file,
+                          size: 64,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Sin archivos compartidos',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Los adjuntos de tickets y requerimientos\naparecerán aquí automáticamente',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: adjuntos.length,
+                    itemBuilder: (context, index) {
+                      final adjunto = adjuntos[index];
+                      return _AdjuntoCard(adjunto: adjunto);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -495,13 +505,15 @@ class _DocumentCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD71921).withValues(alpha: 0.15),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.08,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       documento.categoria,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFFD71921),
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -606,7 +618,7 @@ class _AdjuntoCard extends StatelessWidget {
 
   final AdjuntoCompartido adjunto;
 
-  static const _accent = Color(0xFFD71921);
+  static const _accent = Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -842,7 +854,7 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final ValueChanged<bool> onSelected;
 
-  static const _accent = Color(0xFFD71921);
+  static const _accent = Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -850,9 +862,9 @@ class _FilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: onSelected,
-      selectedColor: _accent.withValues(alpha: 0.2),
+      selectedColor: _accent.withValues(alpha: 0.12),
       checkmarkColor: _accent,
-      side: selected ? const BorderSide(color: _accent) : null,
+      side: selected ? BorderSide(color: _accent.withValues(alpha: 0.3)) : null,
       labelStyle: TextStyle(fontSize: 12, color: selected ? _accent : null),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       visualDensity: VisualDensity.compact,

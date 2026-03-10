@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/app_user.dart';
 import 'package:astro/core/models/user_role.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de gestión de usuarios — accesible solo para Root.
@@ -99,7 +100,7 @@ class _UserListContent extends StatelessWidget {
 
     // En pantallas amplias usar grid de 2-3 columnas
     if (width >= AppBreakpoints.medium) {
-      final crossAxisCount = width >= AppBreakpoints.expanded ? 3 : 2;
+      final crossAxisCount = adaptiveGridColumns(width);
       return GridView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

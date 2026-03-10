@@ -7,6 +7,7 @@ import 'package:astro/core/models/ticket_priority.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 
 /// Pantalla de listado de tickets de un proyecto.
 class TicketListScreen extends ConsumerWidget {
@@ -62,148 +63,153 @@ class TicketListScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (_) {
-              return Column(
-                children: [
-                  // Barra de búsqueda
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Buscar ticket...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => ref
-                                    .read(ticketSearchProvider.notifier)
-                                    .clear(),
-                              )
-                            : null,
-                        isDense: true,
+              return AdaptiveBody(
+                maxWidth: 960,
+                child: Column(
+                  children: [
+                    // Barra de búsqueda
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar ticket...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () => ref
+                                      .read(ticketSearchProvider.notifier)
+                                      .clear(),
+                                )
+                              : null,
+                          isDense: true,
+                        ),
+                        onChanged: (v) =>
+                            ref.read(ticketSearchProvider.notifier).setQuery(v),
                       ),
-                      onChanged: (v) =>
-                          ref.read(ticketSearchProvider.notifier).setQuery(v),
                     ),
-                  ),
 
-                  // Filtros de estado
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Todos',
-                          selected: statusFilter == null,
-                          onSelected: (_) => ref
-                              .read(ticketStatusFilterProvider.notifier)
-                              .clear(),
-                        ),
-                        for (final s in TicketStatus.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: s.label,
-                              selected: statusFilter == s,
-                              onSelected: (_) => ref
-                                  .read(ticketStatusFilterProvider.notifier)
-                                  .set(s),
-                              color: _statusColor(s),
-                            ),
+                    // Filtros de estado
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          _FilterChip(
+                            label: 'Todos',
+                            selected: statusFilter == null,
+                            onSelected: (_) => ref
+                                .read(ticketStatusFilterProvider.notifier)
+                                .clear(),
                           ),
-                      ],
-                    ),
-                  ),
-
-                  // Filtro de prioridad
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Prioridad: Todas',
-                          selected: priorityFilter == null,
-                          onSelected: (_) => ref
-                              .read(ticketPriorityFilterNotifier.notifier)
-                              .clear(),
-                        ),
-                        for (final p in TicketPriority.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: p.label,
-                              selected: priorityFilter == p,
-                              onSelected: (_) => ref
-                                  .read(ticketPriorityFilterNotifier.notifier)
-                                  .set(p),
-                              color: _priorityColor(p),
+                          for (final s in TicketStatus.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _FilterChip(
+                                label: s.label,
+                                selected: statusFilter == s,
+                                onSelected: (_) => ref
+                                    .read(ticketStatusFilterProvider.notifier)
+                                    .set(s),
+                                color: _statusColor(s),
+                              ),
                             ),
+                        ],
+                      ),
+                    ),
+
+                    // Filtro de prioridad
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          _FilterChip(
+                            label: 'Prioridad: Todas',
+                            selected: priorityFilter == null,
+                            onSelected: (_) => ref
+                                .read(ticketPriorityFilterNotifier.notifier)
+                                .clear(),
                           ),
-                      ],
-                    ),
-                  ),
-
-                  // Contador
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${filteredTickets.length} ticket${filteredTickets.length == 1 ? '' : 's'}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Lista
-                  Expanded(
-                    child: filteredTickets.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.confirmation_num_outlined,
-                                  size: 64,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Sin tickets',
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
+                          for (final p in TicketPriority.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _FilterChip(
+                                label: p.label,
+                                selected: priorityFilter == p,
+                                onSelected: (_) => ref
+                                    .read(ticketPriorityFilterNotifier.notifier)
+                                    .set(p),
+                                color: _priorityColor(p),
+                              ),
                             ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: filteredTickets.length,
-                            itemBuilder: (context, index) {
-                              final ticket = filteredTickets[index];
-                              return _TicketCard(
-                                ticket: ticket,
-                                onTap: () => context.go(
-                                  '/projects/$projectId/tickets/${ticket.id}',
-                                ),
-                              );
-                            },
+                        ],
+                      ),
+                    ),
+
+                    // Contador
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${filteredTickets.length} ticket${filteredTickets.length == 1 ? '' : 's'}',
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
-                  ),
-                ],
+                        ],
+                      ),
+                    ),
+
+                    // Lista
+                    Expanded(
+                      child: filteredTickets.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.confirmation_num_outlined,
+                                    size: 64,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Sin tickets',
+                                    style: Theme.of(context).textTheme.bodyLarge
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: filteredTickets.length,
+                              itemBuilder: (context, index) {
+                                final ticket = filteredTickets[index];
+                                return _TicketCard(
+                                  ticket: ticket,
+                                  onTap: () => context.go(
+                                    '/projects/$projectId/tickets/${ticket.id}',
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -532,8 +538,8 @@ class _FilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: onSelected,
-      selectedColor: (color ?? const Color(0xFFD71921)).withValues(alpha: 0.2),
-      checkmarkColor: color ?? const Color(0xFFD71921),
+      selectedColor: (color ?? Colors.white).withValues(alpha: 0.12),
+      checkmarkColor: color ?? Colors.white,
       visualDensity: VisualDensity.compact,
     );
   }

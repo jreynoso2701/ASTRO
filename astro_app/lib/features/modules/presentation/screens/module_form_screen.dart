@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/modulo.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 
 /// Pantalla de creación / edición de módulo (Root y Soporte).
 class ModuleFormScreen extends ConsumerStatefulWidget {
@@ -89,96 +90,99 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
           },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Proyecto (solo lectura) ──
-              Text('Proyecto:', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+      body: AdaptiveBody(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Proyecto (solo lectura) ──
+                Text('Proyecto:', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  child: Text(projectName, style: theme.textTheme.bodyLarge),
                 ),
-                child: Text(projectName, style: theme.textTheme.bodyLarge),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // ── Folio ──
-              Text('Folio:', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _folioController,
-                decoration: const InputDecoration(
-                  hintText: 'Ej: GLU-ERP-COT, CON-AST-AUTH...',
-                  prefixIcon: Icon(Icons.tag),
+                // ── Folio ──
+                Text('Folio:', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _folioController,
+                  decoration: const InputDecoration(
+                    hintText: 'Ej: GLU-ERP-COT, CON-AST-AUTH...',
+                    prefixIcon: Icon(Icons.tag),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Ingresa un folio'
+                      : null,
                 ),
-                textCapitalization: TextCapitalization.characters,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Ingresa un folio' : null,
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // ── Nombre ──
-              Text('Nombre del módulo:', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  hintText: 'Nombre del módulo...',
-                  prefixIcon: Icon(Icons.view_module_outlined),
+                // ── Nombre ──
+                Text('Nombre del módulo:', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nombreController,
+                  decoration: const InputDecoration(
+                    hintText: 'Nombre del módulo...',
+                    prefixIcon: Icon(Icons.view_module_outlined),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Ingresa un nombre'
+                      : null,
                 ),
-                textCapitalization: TextCapitalization.characters,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingresa un nombre'
-                    : null,
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // ── Descripción ──
-              Text(
-                'Descripción (opcional):',
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  hintText: 'Breve descripción del módulo...',
-                  prefixIcon: Icon(Icons.description_outlined),
+                // ── Descripción ──
+                Text(
+                  'Descripción (opcional):',
+                  style: theme.textTheme.labelLarge,
                 ),
-                maxLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Botón ──
-              FilledButton.icon(
-                onPressed: _isSaving ? null : _save,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(_isEditing ? Icons.save : Icons.add),
-                label: Text(_isEditing ? 'Guardar cambios' : 'Crear módulo'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _descripcionController,
+                  decoration: const InputDecoration(
+                    hintText: 'Breve descripción del módulo...',
+                    prefixIcon: Icon(Icons.description_outlined),
+                  ),
+                  maxLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 32),
+
+                // ── Botón ──
+                FilledButton.icon(
+                  onPressed: _isSaving ? null : _save,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(_isEditing ? Icons.save : Icons.add),
+                  label: Text(_isEditing ? 'Guardar cambios' : 'Crear módulo'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -8,6 +8,7 @@ import 'package:astro/core/models/requerimiento_status.dart';
 import 'package:astro/core/models/requerimiento_tipo.dart';
 import 'package:astro/core/models/requerimiento_fase.dart';
 import 'package:astro/core/models/ticket_priority.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
@@ -136,236 +137,244 @@ class _RequerimientoFormScreenState
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ── Título ──
-            TextFormField(
-              controller: _tituloController,
-              decoration: const InputDecoration(
-                labelText: 'Título *',
-                prefixIcon: Icon(Icons.title),
-              ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // ── Descripción ──
-            TextFormField(
-              controller: _descripcionController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción *',
-                prefixIcon: Icon(Icons.description_outlined),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 4,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // ── Tipo ──
-            DropdownButtonFormField<RequerimientoTipo>(
-              initialValue: _tipo,
-              decoration: const InputDecoration(
-                labelText: 'Tipo *',
-                prefixIcon: Icon(Icons.category_outlined),
-              ),
-              items: RequerimientoTipo.values
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _tipo = v);
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // ── Prioridad ──
-            DropdownButtonFormField<TicketPriority>(
-              initialValue: _prioridad,
-              decoration: const InputDecoration(
-                labelText: 'Prioridad *',
-                prefixIcon: Icon(Icons.priority_high),
-              ),
-              items: TicketPriority.values
-                  .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _prioridad = v);
-              },
-            ),
-            const SizedBox(height: 16),
-
-            // ── Módulo ──
-            SwitchListTile(
-              title: const Text('¿Módulo nuevo / propuesto?'),
-              subtitle: const Text('Activar si el módulo aún no existe'),
-              value: _usarModuloPropuesto,
-              onChanged: (v) => setState(() {
-                _usarModuloPropuesto = v;
-                if (v) {
-                  _selectedModuleId = null;
-                  _selectedModuleName = '';
-                } else {
-                  _moduloPropuestoController.clear();
-                }
-              }),
-            ),
-            const SizedBox(height: 8),
-
-            if (!_usarModuloPropuesto) ...[
-              DropdownButtonFormField<String>(
-                initialValue:
-                    _selectedModuleId != null && _selectedModuleId!.isNotEmpty
-                    ? _selectedModuleId
-                    : null,
+        child: AdaptiveBody(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // ── Título ──
+              TextFormField(
+                controller: _tituloController,
                 decoration: const InputDecoration(
-                  labelText: 'Módulo existente',
-                  prefixIcon: Icon(Icons.view_module_outlined),
+                  labelText: 'Título *',
+                  prefixIcon: Icon(Icons.title),
                 ),
-                items: modules
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // ── Descripción ──
+              TextFormField(
+                controller: _descripcionController,
+                decoration: const InputDecoration(
+                  labelText: 'Descripción *',
+                  prefixIcon: Icon(Icons.description_outlined),
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 4,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // ── Tipo ──
+              DropdownButtonFormField<RequerimientoTipo>(
+                initialValue: _tipo,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo *',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: RequerimientoTipo.values
                     .map(
-                      (m) => DropdownMenuItem(
-                        value: m.id,
-                        child: Text(m.nombreModulo),
-                      ),
+                      (t) => DropdownMenuItem(value: t, child: Text(t.label)),
                     )
                     .toList(),
                 onChanged: (v) {
-                  final mod = modules.firstWhere((m) => m.id == v);
-                  setState(() {
-                    _selectedModuleId = v;
-                    _selectedModuleName = mod.nombreModulo;
-                  });
+                  if (v != null) setState(() => _tipo = v);
                 },
               ),
-            ] else ...[
-              TextFormField(
-                controller: _moduloPropuestoController,
+              const SizedBox(height: 16),
+
+              // ── Prioridad ──
+              DropdownButtonFormField<TicketPriority>(
+                initialValue: _prioridad,
                 decoration: const InputDecoration(
-                  labelText: 'Nombre del módulo propuesto',
-                  prefixIcon: Icon(Icons.add_box_outlined),
+                  labelText: 'Prioridad *',
+                  prefixIcon: Icon(Icons.priority_high),
                 ),
+                items: TicketPriority.values
+                    .map(
+                      (p) => DropdownMenuItem(value: p, child: Text(p.label)),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _prioridad = v);
+                },
               ),
-            ],
-            const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-            // ── Criterios de Aceptación ──
-            _buildCriteriosSection(),
-            const SizedBox(height: 24),
-
-            // ── Adjuntos ──
-            _buildAdjuntosSection(),
-            const SizedBox(height: 24),
-
-            // ── Campos Root/Soporte ──
-            if (isManager) ...[
-              const Divider(),
-              Text(
-                'GESTIÓN (Root/Soporte)',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  letterSpacing: 1,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Porcentaje manual
+              // ── Módulo ──
               SwitchListTile(
-                title: const Text('Porcentaje manual'),
-                subtitle: Text(
-                  _porcentajeManual
-                      ? 'Ajustar manualmente'
-                      : 'Auto-cálculo desde criterios',
-                ),
-                value: _porcentajeManual,
-                onChanged: (v) => setState(() => _porcentajeManual = v),
+                title: const Text('¿Módulo nuevo / propuesto?'),
+                subtitle: const Text('Activar si el módulo aún no existe'),
+                value: _usarModuloPropuesto,
+                onChanged: (v) => setState(() {
+                  _usarModuloPropuesto = v;
+                  if (v) {
+                    _selectedModuleId = null;
+                    _selectedModuleName = '';
+                  } else {
+                    _moduloPropuestoController.clear();
+                  }
+                }),
               ),
-              if (_porcentajeManual) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Slider(
-                        value: _porcentajeAvance,
-                        min: 0,
-                        max: 100,
-                        divisions: 20,
-                        label: '${_porcentajeAvance.toInt()}%',
-                        onChanged: (v) => setState(() => _porcentajeAvance = v),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        '${_porcentajeAvance.toInt()}%',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: progressColor(_porcentajeAvance),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-              // Fase asignada (solo Root)
-              if (isRoot)
-                DropdownButtonFormField<RequerimientoFase>(
-                  initialValue: _faseAsignada,
+              if (!_usarModuloPropuesto) ...[
+                DropdownButtonFormField<String>(
+                  initialValue:
+                      _selectedModuleId != null && _selectedModuleId!.isNotEmpty
+                      ? _selectedModuleId
+                      : null,
                   decoration: const InputDecoration(
-                    labelText: 'Fase asignada',
-                    prefixIcon: Icon(Icons.timeline),
+                    labelText: 'Módulo existente',
+                    prefixIcon: Icon(Icons.view_module_outlined),
                   ),
-                  items: RequerimientoFase.values
+                  items: modules
                       .map(
-                        (f) => DropdownMenuItem(value: f, child: Text(f.label)),
+                        (m) => DropdownMenuItem(
+                          value: m.id,
+                          child: Text(m.nombreModulo),
+                        ),
                       )
                       .toList(),
-                  onChanged: (v) => setState(() => _faseAsignada = v),
+                  onChanged: (v) {
+                    final mod = modules.firstWhere((m) => m.id == v);
+                    setState(() {
+                      _selectedModuleId = v;
+                      _selectedModuleName = mod.nombreModulo;
+                    });
+                  },
                 ),
-              const SizedBox(height: 12),
-
-              // Observaciones internas
-              if (isRoot)
+              ] else ...[
                 TextFormField(
-                  controller: _observacionesController,
+                  controller: _moduloPropuestoController,
                   decoration: const InputDecoration(
-                    labelText: 'Observaciones internas (Root)',
-                    prefixIcon: Icon(Icons.lock_outline),
-                    alignLabelWithHint: true,
+                    labelText: 'Nombre del módulo propuesto',
+                    prefixIcon: Icon(Icons.add_box_outlined),
                   ),
-                  maxLines: 3,
                 ),
-              const SizedBox(height: 16),
-            ],
+              ],
+              const SizedBox(height: 24),
 
-            // Botón guardar
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: _isSaving
-                    ? null
-                    : () => _save(projectName, empresaName),
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+              // ── Criterios de Aceptación ──
+              _buildCriteriosSection(),
+              const SizedBox(height: 24),
+
+              // ── Adjuntos ──
+              _buildAdjuntosSection(),
+              const SizedBox(height: 24),
+
+              // ── Campos Root/Soporte ──
+              if (isManager) ...[
+                const Divider(),
+                Text(
+                  'GESTIÓN (Root/Soporte)',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Porcentaje manual
+                SwitchListTile(
+                  title: const Text('Porcentaje manual'),
+                  subtitle: Text(
+                    _porcentajeManual
+                        ? 'Ajustar manualmente'
+                        : 'Auto-cálculo desde criterios',
+                  ),
+                  value: _porcentajeManual,
+                  onChanged: (v) => setState(() => _porcentajeManual = v),
+                ),
+                if (_porcentajeManual) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: _porcentajeAvance,
+                          min: 0,
+                          max: 100,
+                          divisions: 20,
+                          label: '${_porcentajeAvance.toInt()}%',
+                          onChanged: (v) =>
+                              setState(() => _porcentajeAvance = v),
                         ),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(
-                  _isEditing ? 'Guardar cambios' : 'Crear requerimiento',
+                      ),
+                      SizedBox(
+                        width: 50,
+                        child: Text(
+                          '${_porcentajeAvance.toInt()}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: progressColor(_porcentajeAvance),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 12),
+
+                // Fase asignada (solo Root)
+                if (isRoot)
+                  DropdownButtonFormField<RequerimientoFase>(
+                    initialValue: _faseAsignada,
+                    decoration: const InputDecoration(
+                      labelText: 'Fase asignada',
+                      prefixIcon: Icon(Icons.timeline),
+                    ),
+                    items: RequerimientoFase.values
+                        .map(
+                          (f) =>
+                              DropdownMenuItem(value: f, child: Text(f.label)),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _faseAsignada = v),
+                  ),
+                const SizedBox(height: 12),
+
+                // Observaciones internas
+                if (isRoot)
+                  TextFormField(
+                    controller: _observacionesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Observaciones internas (Root)',
+                      prefixIcon: Icon(Icons.lock_outline),
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 3,
+                  ),
+                const SizedBox(height: 16),
+              ],
+
+              // Botón guardar
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: _isSaving
+                      ? null
+                      : () => _save(projectName, empresaName),
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(
+                    _isEditing ? 'Guardar cambios' : 'Crear requerimiento',
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-          ],
+              const SizedBox(height: 32),
+            ],
+          ),
         ),
       ),
     );
@@ -431,6 +440,7 @@ class _RequerimientoFormScreenState
                   ),
                 ),
                 IconButton(
+                  tooltip: 'Eliminar criterio',
                   icon: const Icon(Icons.remove_circle_outline, size: 20),
                   onPressed: () {
                     setState(() {

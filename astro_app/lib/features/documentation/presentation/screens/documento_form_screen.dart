@@ -8,6 +8,7 @@ import 'package:astro/core/models/documento_seccion.dart';
 import 'package:astro/core/models/documento_version.dart';
 import 'package:astro/core/models/bitacora_documento.dart';
 import 'package:astro/core/services/storage_service.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/documentation/data/documento_repository.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
@@ -104,146 +105,154 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
             return const Center(child: Text('Proyecto no encontrado'));
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Título
-                  TextFormField(
-                    controller: _tituloCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Título del documento *',
-                      hintText: 'Ej: Memoria Técnica v1.0',
+          return AdaptiveBody(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Título
+                    TextFormField(
+                      controller: _tituloCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Título del documento *',
+                        hintText: 'Ej: Memoria Técnica v1.0',
+                      ),
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Obligatorio' : null,
                     ),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Obligatorio' : null,
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  // Categoría
-                  DropdownButtonFormField<String>(
-                    initialValue: allCategorias.contains(_selectedCategoria)
-                        ? _selectedCategoria
-                        : null,
-                    decoration: const InputDecoration(labelText: 'Categoría *'),
-                    items: allCategorias
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (v) => setState(() => _selectedCategoria = v),
-                    validator: (v) => v == null ? 'Selecciona categoría' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Descripción
-                  TextFormField(
-                    controller: _descripcionCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Descripción (opcional)',
-                      hintText: 'Descripción del contenido del documento...',
+                    // Categoría
+                    DropdownButtonFormField<String>(
+                      initialValue: allCategorias.contains(_selectedCategoria)
+                          ? _selectedCategoria
+                          : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Categoría *',
+                      ),
+                      items: allCategorias
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _selectedCategoria = v),
+                      validator: (v) =>
+                          v == null ? 'Selecciona categoría' : null,
                     ),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-                  // Archivo
-                  Text(
-                    widget.isEdit ? 'NUEVA VERSIÓN' : 'ARCHIVO',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      letterSpacing: 1,
-                      color: theme.colorScheme.onSurfaceVariant,
+                    // Descripción
+                    TextFormField(
+                      controller: _descripcionCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción (opcional)',
+                        hintText: 'Descripción del contenido del documento...',
+                      ),
+                      maxLines: 3,
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                    const SizedBox(height: 24),
 
-                  if (widget.isEdit && existingDoc != null) ...[
+                    // Archivo
                     Text(
-                      'Archivo actual: ${existingDoc.archivoNombre ?? "Sin archivo"} (v${existingDoc.versionActual})',
-                      style: theme.textTheme.bodySmall?.copyWith(
+                      widget.isEdit ? 'NUEVA VERSIÓN' : 'ARCHIVO',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        letterSpacing: 1,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 8),
-                  ],
 
-                  // File picker
-                  OutlinedButton.icon(
-                    onPressed: _pickFile,
-                    icon: const Icon(Icons.upload_file),
-                    label: Text(
-                      _selectedFileName ??
-                          (widget.isEdit
-                              ? 'Subir nueva versión (opcional)'
-                              : 'Seleccionar archivo *'),
-                    ),
-                  ),
-
-                  if (_selectedFileName != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.green,
-                          size: 18,
+                    if (widget.isEdit && existingDoc != null) ...[
+                      Text(
+                        'Archivo actual: ${existingDoc.archivoNombre ?? "Sin archivo"} (v${existingDoc.versionActual})',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            _selectedFileName!,
-                            style: theme.textTheme.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () => setState(() {
-                            _selectedFile = null;
-                            _selectedFileName = null;
-                          }),
-                        ),
-                      ],
-                    ),
-                  ],
-
-                  if (widget.isEdit && _selectedFile != null) ...[
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _versionNotasCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Notas de la versión (opcional)',
-                        hintText: 'Ej: Correcciones menores en sección 3',
                       ),
-                      maxLines: 2,
+                      const SizedBox(height: 8),
+                    ],
+
+                    // File picker
+                    OutlinedButton.icon(
+                      onPressed: _pickFile,
+                      icon: const Icon(Icons.upload_file),
+                      label: Text(
+                        _selectedFileName ??
+                            (widget.isEdit
+                                ? 'Subir nueva versión (opcional)'
+                                : 'Seleccionar archivo *'),
+                      ),
+                    ),
+
+                    if (_selectedFileName != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _selectedFileName!,
+                              style: theme.textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Quitar archivo',
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () => setState(() {
+                              _selectedFile = null;
+                              _selectedFileName = null;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    if (widget.isEdit && _selectedFile != null) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _versionNotasCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Notas de la versión (opcional)',
+                          hintText: 'Ej: Correcciones menores en sección 3',
+                        ),
+                        maxLines: 2,
+                      ),
+                    ],
+
+                    const SizedBox(height: 32),
+
+                    // Botón guardar
+                    SizedBox(
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: _saving ? null : _save,
+                        child: _saving
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                widget.isEdit
+                                    ? 'Guardar cambios'
+                                    : 'Crear documento',
+                              ),
+                      ),
                     ),
                   ],
-
-                  const SizedBox(height: 32),
-
-                  // Botón guardar
-                  SizedBox(
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: _saving ? null : _save,
-                      child: _saving
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              widget.isEdit
-                                  ? 'Guardar cambios'
-                                  : 'Crear documento',
-                            ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );

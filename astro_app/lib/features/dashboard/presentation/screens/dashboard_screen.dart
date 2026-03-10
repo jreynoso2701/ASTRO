@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
@@ -20,7 +21,6 @@ class DashboardScreen extends ConsumerWidget {
     final isRoot = ref.watch(isCurrentUserRootProvider);
     final profile = ref.watch(currentUserProfileProvider).value;
     final width = MediaQuery.sizeOf(context).width;
-    final isWide = width >= AppBreakpoints.medium;
 
     return SafeArea(
       child: CustomScrollView(
@@ -138,7 +138,7 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               sliver: SliverGrid(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: isWide ? 2 : 1,
+                  crossAxisCount: adaptiveGridColumns(width),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   mainAxisExtent: 180,
@@ -323,9 +323,9 @@ class _ProjectCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: const Color(
-                      0xFFD71921,
-                    ).withValues(alpha: 0.12),
+                    backgroundColor: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.08,
+                    ),
                     child: Text(
                       proyecto.folioProyecto.isNotEmpty
                           ? proyecto.folioProyecto.substring(
@@ -334,7 +334,7 @@ class _ProjectCard extends StatelessWidget {
                             )
                           : '?',
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: const Color(0xFFD71921),
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

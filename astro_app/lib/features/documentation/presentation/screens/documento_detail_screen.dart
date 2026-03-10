@@ -173,11 +173,13 @@ class _DocumentHeader extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: const Color(0xFFD71921).withValues(alpha: 0.15),
+            backgroundColor: theme.colorScheme.onSurface.withValues(
+              alpha: 0.08,
+            ),
             child: Icon(
               Icons.description_outlined,
               size: 36,
-              color: const Color(0xFFD71921),
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 12),
@@ -190,13 +192,13 @@ class _DocumentHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFD71921).withValues(alpha: 0.15),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               documento.folio,
               style: theme.textTheme.labelMedium?.copyWith(
-                color: const Color(0xFFD71921),
+                color: theme.colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
               ),
@@ -314,12 +316,12 @@ class _CurrentFile extends StatelessWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: const Color(
-                  0xFFD71921,
-                ).withValues(alpha: 0.15),
+                backgroundColor: theme.colorScheme.onSurface.withValues(
+                  alpha: 0.08,
+                ),
                 child: Icon(
                   _fileIcon(documento.archivoTipo),
-                  color: const Color(0xFFD71921),
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               title: Text(

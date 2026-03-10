@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
@@ -129,7 +130,7 @@ class _ProjectListContent extends StatelessWidget {
     final width = MediaQuery.sizeOf(context).width;
 
     if (width >= AppBreakpoints.medium) {
-      final crossAxisCount = width >= AppBreakpoints.expanded ? 3 : 2;
+      final crossAxisCount = adaptiveGridColumns(width);
       return GridView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -179,16 +180,20 @@ class _ProjectCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFD71921).withValues(alpha: 0.15),
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.08,
+                      ),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: const Color(0xFFD71921).withValues(alpha: 0.3),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.15,
+                        ),
                       ),
                     ),
                     child: Text(
                       project.folioProyecto,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFFD71921),
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),

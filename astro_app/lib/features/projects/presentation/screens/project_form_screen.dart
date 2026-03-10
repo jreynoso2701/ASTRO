@@ -5,6 +5,7 @@ import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/models/empresa.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 
 /// Pantalla de creación / edición de proyecto (solo Root).
 class ProjectFormScreen extends ConsumerStatefulWidget {
@@ -92,108 +93,114 @@ class _ProjectFormScreenState extends ConsumerState<ProjectFormScreen> {
           },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Empresa ──
-              Text('Empresa:', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              empresasAsync.when(
-                data: (empresas) => DropdownButtonFormField<Empresa>(
-                  initialValue: _selectedEmpresa,
-                  decoration: const InputDecoration(
-                    hintText: 'Seleccionar empresa...',
+      body: AdaptiveBody(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Empresa ──
+                Text('Empresa:', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                empresasAsync.when(
+                  data: (empresas) => DropdownButtonFormField<Empresa>(
+                    initialValue: _selectedEmpresa,
+                    decoration: const InputDecoration(
+                      hintText: 'Seleccionar empresa...',
+                    ),
+                    items: empresas
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e.nombreEmpresa),
+                          ),
+                        )
+                        .toList(),
+                    validator: (v) =>
+                        v == null ? 'Selecciona una empresa' : null,
+                    onChanged: (empresa) {
+                      setState(() => _selectedEmpresa = empresa);
+                    },
                   ),
-                  items: empresas
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e.nombreEmpresa),
-                        ),
-                      )
-                      .toList(),
-                  validator: (v) => v == null ? 'Selecciona una empresa' : null,
-                  onChanged: (empresa) {
-                    setState(() => _selectedEmpresa = empresa);
-                  },
+                  loading: () => const LinearProgressIndicator(),
+                  error: (e, _) => Text('Error: $e'),
                 ),
-                loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('Error: $e'),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // ── Folio ──
-              Text('Folio:', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _folioController,
-                decoration: const InputDecoration(
-                  hintText: 'Ej: GLU-ERP, CON-AST...',
-                  prefixIcon: Icon(Icons.tag),
+                // ── Folio ──
+                Text('Folio:', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _folioController,
+                  decoration: const InputDecoration(
+                    hintText: 'Ej: GLU-ERP, CON-AST...',
+                    prefixIcon: Icon(Icons.tag),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Ingresa un folio'
+                      : null,
                 ),
-                textCapitalization: TextCapitalization.characters,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Ingresa un folio' : null,
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // ── Nombre ──
-              Text('Nombre del proyecto:', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  hintText: 'Nombre del proyecto...',
-                  prefixIcon: Icon(Icons.folder_outlined),
+                // ── Nombre ──
+                Text('Nombre del proyecto:', style: theme.textTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nombreController,
+                  decoration: const InputDecoration(
+                    hintText: 'Nombre del proyecto...',
+                    prefixIcon: Icon(Icons.folder_outlined),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Ingresa un nombre'
+                      : null,
                 ),
-                textCapitalization: TextCapitalization.characters,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Ingresa un nombre'
-                    : null,
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // ── Descripción ──
-              Text(
-                'Descripción (opcional):',
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  hintText: 'Breve descripción del proyecto...',
-                  prefixIcon: Icon(Icons.description_outlined),
+                // ── Descripción ──
+                Text(
+                  'Descripción (opcional):',
+                  style: theme.textTheme.labelLarge,
                 ),
-                maxLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-
-              const SizedBox(height: 32),
-
-              // ── Botón ──
-              FilledButton.icon(
-                onPressed: _isSaving ? null : _save,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(_isEditing ? Icons.save : Icons.add),
-                label: Text(_isEditing ? 'Guardar cambios' : 'Crear proyecto'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _descripcionController,
+                  decoration: const InputDecoration(
+                    hintText: 'Breve descripción del proyecto...',
+                    prefixIcon: Icon(Icons.description_outlined),
+                  ),
+                  maxLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 32),
+
+                // ── Botón ──
+                FilledButton.icon(
+                  onPressed: _isSaving ? null : _save,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(_isEditing ? Icons.save : Icons.add),
+                  label: Text(
+                    _isEditing ? 'Guardar cambios' : 'Crear proyecto',
+                  ),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

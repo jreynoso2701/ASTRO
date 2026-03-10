@@ -7,6 +7,7 @@ import 'package:astro/core/models/requerimiento_tipo.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 
 /// Pantalla de listado de requerimientos de un proyecto.
 class RequerimientoListScreen extends ConsumerWidget {
@@ -66,146 +67,152 @@ class RequerimientoListScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (_) {
-              return Column(
-                children: [
-                  // Búsqueda
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Buscar requerimiento...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => ref
-                                    .read(reqSearchProvider.notifier)
-                                    .clear(),
-                              )
-                            : null,
-                        isDense: true,
+              return AdaptiveBody(
+                maxWidth: 960,
+                child: Column(
+                  children: [
+                    // Búsqueda
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar requerimiento...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () => ref
+                                      .read(reqSearchProvider.notifier)
+                                      .clear(),
+                                )
+                              : null,
+                          isDense: true,
+                        ),
+                        onChanged: (v) =>
+                            ref.read(reqSearchProvider.notifier).setQuery(v),
                       ),
-                      onChanged: (v) =>
-                          ref.read(reqSearchProvider.notifier).setQuery(v),
                     ),
-                  ),
 
-                  // Filtros de estado
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Todos',
-                          selected: statusFilter == null,
-                          onSelected: (_) => ref
-                              .read(reqStatusFilterProvider.notifier)
-                              .clear(),
-                        ),
-                        for (final s in RequerimientoStatus.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: s.label,
-                              selected: statusFilter == s,
-                              onSelected: (_) => ref
-                                  .read(reqStatusFilterProvider.notifier)
-                                  .set(s),
-                              color: _statusColor(s),
-                            ),
+                    // Filtros de estado
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          _FilterChip(
+                            label: 'Todos',
+                            selected: statusFilter == null,
+                            onSelected: (_) => ref
+                                .read(reqStatusFilterProvider.notifier)
+                                .clear(),
                           ),
-                      ],
-                    ),
-                  ),
-
-                  // Filtros de tipo
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Tipo: Todos',
-                          selected: tipoFilter == null,
-                          onSelected: (_) =>
-                              ref.read(reqTipoFilterProvider.notifier).clear(),
-                        ),
-                        for (final t in RequerimientoTipo.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: t.label,
-                              selected: tipoFilter == t,
-                              onSelected: (_) => ref
-                                  .read(reqTipoFilterProvider.notifier)
-                                  .set(t),
+                          for (final s in RequerimientoStatus.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _FilterChip(
+                                label: s.label,
+                                selected: statusFilter == s,
+                                onSelected: (_) => ref
+                                    .read(reqStatusFilterProvider.notifier)
+                                    .set(s),
+                                color: _statusColor(s),
+                              ),
                             ),
+                        ],
+                      ),
+                    ),
+
+                    // Filtros de tipo
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          _FilterChip(
+                            label: 'Tipo: Todos',
+                            selected: tipoFilter == null,
+                            onSelected: (_) => ref
+                                .read(reqTipoFilterProvider.notifier)
+                                .clear(),
                           ),
-                      ],
-                    ),
-                  ),
-
-                  // Contador
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${filteredReqs.length} requerimiento${filteredReqs.length == 1 ? '' : 's'}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Lista
-                  Expanded(
-                    child: filteredReqs.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.assignment_outlined,
-                                  size: 64,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Sin requerimientos',
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                              ],
+                          for (final t in RequerimientoTipo.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _FilterChip(
+                                label: t.label,
+                                selected: tipoFilter == t,
+                                onSelected: (_) => ref
+                                    .read(reqTipoFilterProvider.notifier)
+                                    .set(t),
+                              ),
                             ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: filteredReqs.length,
-                            itemBuilder: (context, index) {
-                              final req = filteredReqs[index];
-                              return _ReqCard(
-                                req: req,
-                                onTap: () => context.go(
-                                  '/projects/$projectId/requirements/${req.id}',
-                                ),
-                              );
-                            },
+                        ],
+                      ),
+                    ),
+
+                    // Contador
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${filteredReqs.length} requerimiento${filteredReqs.length == 1 ? '' : 's'}',
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
-                  ),
-                ],
+                        ],
+                      ),
+                    ),
+
+                    // Lista
+                    Expanded(
+                      child: filteredReqs.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.assignment_outlined,
+                                    size: 64,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Sin requerimientos',
+                                    style: Theme.of(context).textTheme.bodyLarge
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              itemCount: filteredReqs.length,
+                              itemBuilder: (context, index) {
+                                final req = filteredReqs[index];
+                                return _ReqCard(
+                                  req: req,
+                                  onTap: () => context.go(
+                                    '/projects/$projectId/requirements/${req.id}',
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               );
             },
           ),

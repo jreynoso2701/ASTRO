@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/bitacora_documento.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
 import 'package:intl/intl.dart';
+import 'package:astro/core/widgets/adaptive_body.dart';
 
 /// Pantalla de bitácora de documentos formales del proyecto.
 /// Solo accesible para Root.
@@ -52,61 +53,63 @@ class BitacoraScreen extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: entries.length,
-            itemBuilder: (context, index) {
-              final entry = entries[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: _accionColor(
-                      entry.accion,
-                    ).withValues(alpha: 0.15),
-                    child: Icon(
-                      _accionIcon(entry.accion),
-                      size: 18,
-                      color: _accionColor(entry.accion),
+          return AdaptiveBody(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: entries.length,
+              itemBuilder: (context, index) {
+                final entry = entries[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: _accionColor(
+                        entry.accion,
+                      ).withValues(alpha: 0.15),
+                      child: Icon(
+                        _accionIcon(entry.accion),
+                        size: 18,
+                        color: _accionColor(entry.accion),
+                      ),
                     ),
-                  ),
-                  title: Text(
-                    entry.descripcion,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 2),
-                      Text(
-                        '${entry.userName} (${entry.userRole})',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        entry.createdAt != null
-                            ? df.format(entry.createdAt!)
-                            : '',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      if (entry.documentFolio.isNotEmpty)
+                    title: Text(
+                      entry.descripcion,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 2),
                         Text(
-                          entry.documentFolio,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: const Color(0xFFD71921),
-                            letterSpacing: 0.5,
+                          '${entry.userName} (${entry.userRole})',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                    ],
+                        Text(
+                          entry.createdAt != null
+                              ? df.format(entry.createdAt!)
+                              : '',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (entry.documentFolio.isNotEmpty)
+                          Text(
+                            entry.documentFolio,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                      ],
+                    ),
+                    isThreeLine: true,
                   ),
-                  isThreeLine: true,
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
