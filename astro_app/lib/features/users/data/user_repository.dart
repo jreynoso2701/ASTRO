@@ -89,16 +89,18 @@ class UserRepository {
     return snapshot.docs.map(AppUser.fromFirestore).toList();
   }
 
-  /// Actualiza nombre y/o teléfono de un usuario.
+  /// Actualiza nombre, teléfono y/o foto de un usuario.
   Future<void> updateProfile(
     String uid, {
     String? displayName,
     String? phoneNumber,
+    String? photoUrl,
   }) async {
-    if (displayName == null && phoneNumber == null) return;
+    if (displayName == null && phoneNumber == null && photoUrl == null) return;
     final fields = <String, dynamic>{'updatedAt': Timestamp.now()};
     if (displayName != null) fields['displayName'] = displayName;
     if (phoneNumber != null) fields['phoneNumber'] = phoneNumber;
+    if (photoUrl != null) fields['photoUrl'] = photoUrl;
     await _usersRef.doc(uid).update(fields);
   }
 }

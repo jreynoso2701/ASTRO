@@ -53,6 +53,45 @@ class AuthRepository {
     await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 
+  /// Verifica si el usuario actual usa email/password (no Google).
+  bool get isPasswordUser {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return false;
+    return user.providerData.any((info) => info.providerId == 'password');
+  }
+
+  /// Actualiza el perfil de Firebase Auth (displayName y/o photoURL).
+  Future<void> updateAuthProfile({
+    String? displayName,
+    String? photoURL,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return;
+    if (displayName != null) await user.updateDisplayName(displayName);
+    if (photoURL != null) await user.updatePhotoURL(photoURL);
+  }
+
+  /// Re-autentica al usuario con email y contraseña (necesario antes de cambiar password).
+  Future<void> reauthenticateWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw StateError('No hay usuario autenticado.');
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  /// Cambia la contraseña del usuario actual.
+  Future<void> updatePassword(String newPassword) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw StateError('No hay usuario autenticado.');
+    await user.updatePassword(newPassword);
+  }
+
   /// Cerrar sesión.
   Future<void> signOut() async {
     await Future.wait([

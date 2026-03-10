@@ -37,6 +37,7 @@ import 'package:astro/features/citas/presentation/screens/cita_list_screen.dart'
 import 'package:astro/features/citas/presentation/screens/cita_detail_screen.dart';
 import 'package:astro/features/citas/presentation/screens/cita_form_screen.dart';
 import 'package:astro/features/calendar/presentation/screens/calendar_screen.dart';
+import 'package:astro/features/profile/presentation/screens/profile_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -88,6 +89,9 @@ abstract final class AppRoutes {
   static const String citaNew = '/projects/:id/citas/new';
   static const String citaDetail = '/projects/:id/citas/:citaId';
   static const String citaEdit = '/projects/:id/citas/:citaId/edit';
+
+  // Perfil
+  static const String profile = '/profile';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -111,7 +115,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && isAuthRoute) return AppRoutes.dashboard;
 
       // Onboarding: usuario sin asignaciones (excepto Root).
-      if (isLoggedIn && state.uri.path != AppRoutes.onboarding) {
+      if (isLoggedIn &&
+          state.uri.path != AppRoutes.onboarding &&
+          state.uri.path != AppRoutes.profile) {
         final hasAssignments = ref.read(hasProjectAssignmentsProvider);
         if (hasAssignments == false) return AppRoutes.onboarding;
       }
@@ -148,6 +154,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+
+      // ── Perfil (sin shell — tiene su propio AppBar)
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (context, state) => const ProfileScreen(),
       ),
 
       // ── Rutas protegidas (con shell adaptativo)

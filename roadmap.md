@@ -243,6 +243,19 @@
 - [ ] Deploy web en Railway.
 - [ ] Optimización ASO (App Store Optimization).
 
+### 1.13 Gestión de Cuenta y Perfil
+
+- [x] **Avatar de usuario** en el AppBar del Dashboard — ícono/foto que abre la pantalla de perfil.
+- [x] Foto de perfil: se carga automáticamente desde Google al registrarse; si no viene de Google, se permite definirla manualmente. Siempre editable.
+- [x] Pantalla **Perfil / Mi Cuenta** (`/profile`) con las siguientes secciones:
+  - [x] **Ver perfil**: nombre, email, foto, rol actual.
+  - [x] **Editar nombre y foto de perfil**: cambiar displayName y subir/cambiar foto (Firebase Storage).
+  - [x] **Cambiar contraseña**: formulario de cambio de contraseña (solo usuarios con email/password, no Google).
+  - [x] **Tema (Dark / Light)**: SegmentedButton para cambiar el tema de la app. Persistido en SharedPreferences.
+  - [ ] **Configurar notificaciones generales**: activar/desactivar push, ajustes globales de notificaciones.
+  - [x] **Información de la app**: versión, build, paquete, descripción y © Constelación R.
+  - [x] **Cerrar sesión**: botón de logout con confirmación.
+
 ---
 
 ## Fase 2 — Funcionalidades Avanzadas
@@ -323,14 +336,14 @@
 - [ ] UI de selección/vinculación de citas desde ticket (picker en formulario de ticket).
 - [ ] Navegación cruzada entre tickets y minutas/citas vinculadas (tap para ir al detalle).
 
-### 2.4 Auto-generación de PDF de Minuta como Documento Formal
+### 2.5 Auto-generación de PDF de Minuta como Documento Formal
 
 - [x] Categoría `minuta` añadida a `DocumentoCategoria` enum.
 - [x] `StorageService.uploadBytes` — método para subir bytes crudos (PDF) a Firebase Storage.
 - [x] Al guardar minuta (crear o editar), se genera automáticamente el PDF, se sube a Storage y se crea un `DocumentoProyecto` formal con categoría "Minuta" y sección "Formal".
 - [x] Generación best-effort: si falla el PDF no se bloquea el guardado de la minuta.
 
-### 2.4 Módulo de Agente de IA
+### 2.6 Módulo de Agente de IA
 
 - [ ] Agente conversacional para consultar avances del proyecto asignado.
 - [ ] Consultas sobre: minutas, tickets, incidentes, avances y todo lo relacionado.
@@ -351,4 +364,4 @@
 
 ---
 
-*Última actualización: 15 de julio de 2025 — Fase 2.2 Minutas rebuild completo (Places autocomplete, asistentes proyecto/externos, adjuntos, refs tickets/reqs, PDF/print/share, visibilidad por rol, permisos). Fase 2.3 Vinculación parcial (minutas→tickets/reqs con búsqueda + creación rápida).*
+*Última actualización: 10 de marzo de 2026 — Sección 1.13 Gestión de Cuenta y Perfil implementada: avatar en Dashboard, pantalla de perfil (/profile), editar nombre/foto, cambiar contraseña, tema Dark/Light persistido con SharedPreferences, info de la app (package_info_plus), cerrar sesión con confirmación. AuthRepository ampliado con updateAuthProfile, reauthenticate, updatePassword, isPasswordUser.*

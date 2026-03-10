@@ -53,26 +53,46 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       const Spacer(),
                       if (isRoot)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFFD71921,
-                            ).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            'ROOT',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: const Color(0xFFD71921),
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFD71921,
+                              ).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'ROOT',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: const Color(0xFFD71921),
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
                         ),
+                      GestureDetector(
+                        onTap: () => context.push('/profile'),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundImage: profile?.photoUrl != null
+                              ? NetworkImage(profile!.photoUrl!)
+                              : null,
+                          child: profile?.photoUrl == null
+                              ? Text(
+                                  profile?.displayName.isNotEmpty == true
+                                      ? profile!.displayName[0].toUpperCase()
+                                      : '?',
+                                  style: theme.textTheme.labelLarge,
+                                )
+                              : null,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:astro/firebase_options.dart';
 import 'package:astro/core/theme/app_theme.dart';
 import 'package:astro/core/theme/theme_provider.dart';
@@ -15,10 +16,18 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await initializeDateFormatting('es');
 
+  // Inicializar SharedPreferences antes de runApp.
+  final prefs = await SharedPreferences.getInstance();
+
   // Registrar handler de mensajes en background/terminated.
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  runApp(const ProviderScope(child: AstroApp()));
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const AstroApp(),
+    ),
+  );
 }
 
 class AstroApp extends ConsumerWidget {
