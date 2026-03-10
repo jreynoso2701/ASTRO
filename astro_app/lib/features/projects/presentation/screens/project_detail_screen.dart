@@ -11,6 +11,8 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
+import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/features/citas/providers/cita_providers.dart';
 
 /// Pantalla de detalle/dashboard de un proyecto.
 class ProjectDetailScreen extends ConsumerWidget {
@@ -79,6 +81,12 @@ class ProjectDetailScreen extends ConsumerWidget {
             pendingReqs: ref.watch(pendingReqCountProvider(projectId)),
             onDocumentsTap: () => context.go('/projects/$projectId/documents'),
             formalDocCount: ref.watch(formalDocCountProvider(projectId)),
+            onMinutasTap: () => context.go('/projects/$projectId/minutas'),
+            minutaCount: ref.watch(minutaCountProvider(projectId)),
+            onCitasTap: () => context.go('/projects/$projectId/citas'),
+            citasProgramadas: ref.watch(
+              citasProgramadasCountProvider(projectId),
+            ),
             onNotifSettingsTap: isRoot
                 ? () => context.go('/projects/$projectId/notification-settings')
                 : null,
@@ -156,6 +164,10 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.pendingReqs,
     required this.onDocumentsTap,
     required this.formalDocCount,
+    required this.onMinutasTap,
+    required this.minutaCount,
+    required this.onCitasTap,
+    required this.citasProgramadas,
     this.onNotifSettingsTap,
     this.descripcion,
   });
@@ -175,6 +187,10 @@ class _ProjectInfoSection extends StatelessWidget {
   final int pendingReqs;
   final VoidCallback onDocumentsTap;
   final int formalDocCount;
+  final VoidCallback onMinutasTap;
+  final int minutaCount;
+  final VoidCallback onCitasTap;
+  final int citasProgramadas;
   final VoidCallback? onNotifSettingsTap;
 
   @override
@@ -361,6 +377,38 @@ class _ProjectInfoSection extends StatelessWidget {
               child: const Icon(Icons.folder_outlined),
             ),
             label: const Text('Ver documentación'),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Botón de minutas
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onMinutasTap,
+            icon: Badge(
+              isLabelVisible: minutaCount > 0,
+              label: Text('$minutaCount'),
+              child: const Icon(Icons.description_outlined),
+            ),
+            label: const Text('Ver minutas'),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Botón de citas
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: onCitasTap,
+            icon: Badge(
+              isLabelVisible: citasProgramadas > 0,
+              label: Text('$citasProgramadas'),
+              child: const Icon(Icons.event_outlined),
+            ),
+            label: const Text('Ver citas'),
           ),
         ),
 

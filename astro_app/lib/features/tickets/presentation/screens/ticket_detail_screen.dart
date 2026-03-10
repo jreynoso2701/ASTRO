@@ -595,6 +595,39 @@ class _TicketInfoSection extends StatelessWidget {
           ),
         ],
 
+        // Minutas vinculadas
+        if (ticket.refMinutas.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MINUTAS VINCULADAS (${ticket.refMinutas.length})',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  ...ticket.refMinutas.map(
+                    (id) => ListTile(
+                      leading: const Icon(Icons.description_outlined),
+                      title: Text(
+                        id.length > 20 ? '${id.substring(0, 20)}...' : id,
+                      ),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+
         const SizedBox(height: 16),
 
         // Acciones

@@ -25,6 +25,8 @@ class Ticket {
     this.cobertura,
     this.impacto,
     this.evidencias = const [],
+    this.refMinutas = const [],
+    this.refCitas = const [],
     this.solucionProgramada,
     this.porcentajeAvance = 0,
     this.isActive = true,
@@ -53,6 +55,8 @@ class Ticket {
   final String? cobertura; // V1: fkxCobertura
   final int? impacto; // V1: impacto
   final List<String> evidencias; // V1: evidenciasIncidente
+  final List<String> refMinutas; // IDs de minutas vinculadas
+  final List<String> refCitas; // IDs de citas vinculadas
   final String? solucionProgramada; // V1: fhCompromisoSol
   final double porcentajeAvance; // V1: porcentajeAvance (0-100)
   final bool isActive;
@@ -120,6 +124,8 @@ class Ticket {
           ? data['impacto'] as int
           : (data['impacto'] is num ? (data['impacto'] as num).toInt() : null),
       evidencias: parseList(data['evidenciasIncidente']),
+      refMinutas: parseList(data['refMinutas']),
+      refCitas: parseList(data['refCitas']),
       solucionProgramada: data['fhCompromisoSol'] as String?,
       porcentajeAvance: _parseDouble(data['porcentajeAvance']) ?? 0,
       isActive: data['isActive'] as bool? ?? true,
@@ -146,6 +152,8 @@ class Ticket {
       if (cobertura != null) 'fkxCobertura': cobertura,
       if (impacto != null) 'impacto': impacto,
       if (evidencias.isNotEmpty) 'evidenciasIncidente': evidencias,
+      if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
+      if (refCitas.isNotEmpty) 'refCitas': refCitas,
       if (solucionProgramada != null) 'fhCompromisoSol': solucionProgramada,
       'porcentajeAvance': porcentajeAvance,
       'isActive': isActive,
@@ -188,6 +196,8 @@ class Ticket {
     String? cobertura,
     int? impacto,
     List<String>? evidencias,
+    List<String>? refMinutas,
+    List<String>? refCitas,
     String? solucionProgramada,
     double? porcentajeAvance,
     bool? isActive,
@@ -213,6 +223,8 @@ class Ticket {
       cobertura: cobertura ?? this.cobertura,
       impacto: impacto ?? this.impacto,
       evidencias: evidencias ?? this.evidencias,
+      refMinutas: refMinutas ?? this.refMinutas,
+      refCitas: refCitas ?? this.refCitas,
       solucionProgramada: solucionProgramada ?? this.solucionProgramada,
       porcentajeAvance: porcentajeAvance ?? this.porcentajeAvance,
       isActive: isActive ?? this.isActive,

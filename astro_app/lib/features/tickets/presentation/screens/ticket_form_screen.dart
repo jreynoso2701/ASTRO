@@ -13,6 +13,8 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/core/models/minuta.dart';
 
 /// Coberturas V1 disponibles.
 const _coberturas = [
@@ -24,10 +26,16 @@ const _coberturas = [
 
 /// Pantalla de creación / edición de ticket.
 class TicketFormScreen extends ConsumerStatefulWidget {
-  const TicketFormScreen({required this.projectId, this.ticketId, super.key});
+  const TicketFormScreen({
+    required this.projectId,
+    this.ticketId,
+    this.returnId = false,
+    super.key,
+  });
 
   final String projectId;
   final String? ticketId;
+  final bool returnId;
 
   @override
   ConsumerState<TicketFormScreen> createState() => _TicketFormScreenState();
@@ -51,6 +59,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   // Evidencias
   final List<String> _existingEvidencias = []; // URLs ya guardadas
   final List<XFile> _newFiles = []; // Archivos nuevos por subir
+
+  // Minutas vinculadas
+  final List<String> _refMinutas = [];
 
   bool _isSaving = false;
   bool _isLoaded = false;
@@ -103,6 +114,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
               ? DateTime.tryParse(ticket.solucionProgramada!)
               : null;
           _existingEvidencias.addAll(ticket.evidencias);
+          _refMinutas.addAll(ticket.refMinutas);
           _isLoaded = true;
           if (mounted) setState(() {});
         }
@@ -122,7 +134,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            if (_isEditing) {
+            if (widget.returnId) {
+              context.pop();
+            } else if (_isEditing) {
               context.go(
                 '/projects/${widget.projectId}/tickets/${widget.ticketId}',
               );
@@ -499,6 +513,40 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
               const SizedBox(height: 32),
 
+              // ── Minutas vinculadas ─────────────────────
+              Text(
+                'MINUTAS VINCULADAS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              ..._refMinutas.map(
+                (id) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Chip(
+                    avatar: const Icon(Icons.description_outlined, size: 16),
+                    label: Text(
+                      id.length > 12 ? '${id.substring(0, 12)}...' : id,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    onDeleted: () => setState(() => _refMinutas.remove(id)),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                  ),
+                ),
+              ),
+
+              TextButton.icon(
+                onPressed: () => _searchMinutas(projectName),
+                icon: const Icon(Icons.search),
+                label: const Text('Buscar minuta'),
+              ),
+
+              const SizedBox(height: 32),
+
               // Botón guardar
               FilledButton.icon(
                 onPressed: _isSaving ? null : _save,
@@ -526,6 +574,19 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
     if (images.isNotEmpty) {
       setState(() => _newFiles.addAll(images));
     }
+  }
+
+  Future<void> _searchMinutas(String projectName) async {
+    final minutas = ref.read(minutasByProjectProvider(projectName)).value ?? [];
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchMinutaDialog(
+        minutas: minutas.where((m) => !_refMinutas.contains(m.id)).toList(),
+      ),
+    );
+    if (selected != null) setState(() => _refMinutas.add(selected));
   }
 
   Future<void> _pickFromCamera() async {
@@ -631,8 +692,15 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
             cobertura: _cobertura,
             solucionProgramada: solucionStr,
             evidencias: allEvidencias,
+            refMinutas: _refMinutas,
           ),
         );
+
+        // Sincronización bidireccional: cada minuta vinculada debe saber de este ticket
+        final minutaRepo = ref.read(minutaRepositoryProvider);
+        for (final minutaId in _refMinutas) {
+          await minutaRepo.addRefTicket(minutaId, widget.ticketId!);
+        }
 
         if (mounted) {
           context.go(
@@ -659,6 +727,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           impacto: _impacto,
           cobertura: _cobertura,
           solucionProgramada: solucionStr,
+          refMinutas: _refMinutas,
         );
 
         final ticketId = await repo.create(ticket);
@@ -673,8 +742,18 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           await repo.updateEvidencias(ticketId, urls);
         }
 
+        // Sincronización bidireccional
+        final minutaRepo = ref.read(minutaRepositoryProvider);
+        for (final minutaId in _refMinutas) {
+          await minutaRepo.addRefTicket(minutaId, ticketId);
+        }
+
         if (mounted) {
-          context.go('/projects/${widget.projectId}/tickets');
+          if (widget.returnId) {
+            context.pop(ticketId);
+          } else {
+            context.go('/projects/${widget.projectId}/tickets');
+          }
         }
       }
     } finally {
@@ -761,5 +840,81 @@ class _EvidenceChip extends StatelessWidget {
       // ignore
     }
     return 'Archivo';
+  }
+}
+
+// ── Search Minuta Dialog ─────────────────────────────────
+
+class _SearchMinutaDialog extends StatefulWidget {
+  const _SearchMinutaDialog({required this.minutas});
+
+  final List<Minuta> minutas;
+
+  @override
+  State<_SearchMinutaDialog> createState() => _SearchMinutaDialogState();
+}
+
+class _SearchMinutaDialogState extends State<_SearchMinutaDialog> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.minutas.where((m) {
+      if (_query.isEmpty) return true;
+      final upper = _query.toUpperCase();
+      return m.folio.toUpperCase().contains(upper) ||
+          m.objetivo.toUpperCase().contains(upper);
+    }).toList();
+
+    return AlertDialog(
+      title: const Text('Buscar minuta'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar por folio u objetivo...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Sin resultados',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final m = filtered[i];
+                        return ListTile(
+                          title: Text(
+                            '${m.folio} — ${m.objetivo}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => Navigator.pop(ctx, m.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    );
   }
 }

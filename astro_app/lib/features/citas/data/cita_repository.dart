@@ -1,0 +1,116 @@
+import 'dart:math';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/models/cita_status.dart';
+
+/// Repositorio CRUD de Citas en Firestore.
+///
+/// Colección: `Citas/{docId}`.
+class CitaRepository {
+  CitaRepository({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
+
+  CollectionReference<Map<String, dynamic>> get _ref =>
+      _firestore.collection('Citas');
+
+  // ── Citas ──────────────────────────────────────────────
+
+  /// Stream de citas activas de un proyecto (por nombre).
+  Stream<List<Cita>> watchByProject(String projectName) {
+    return _ref
+        .where('projectName', isEqualTo: projectName)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(Cita.fromFirestore).toList();
+          list.sort(
+            (a, b) => (b.fecha ?? DateTime(2000)).compareTo(
+              a.fecha ?? DateTime(2000),
+            ),
+          );
+          return list;
+        });
+  }
+
+  /// Stream de una cita individual.
+  Stream<Cita?> watchCita(String citaId) {
+    return _ref.doc(citaId).snapshots().map((doc) {
+      if (!doc.exists || doc.data() == null) return null;
+      return Cita.fromFirestore(doc);
+    });
+  }
+
+  /// Genera folio: CITA-EMPRESA-PROYECTO-NUM.
+  Future<String> _nextFolio(String projectName, [String? empresaName]) async {
+    final snap = await _ref.where('projectName', isEqualTo: projectName).get();
+
+    int maxNum = 0;
+    for (final doc in snap.docs) {
+      final folio = doc.data()['folio'] as String? ?? '';
+      final parts = folio.split('-');
+      if (parts.isNotEmpty) {
+        final num = int.tryParse(parts.last) ?? 0;
+        if (num > maxNum) maxNum = num;
+      }
+    }
+
+    final empAbbr = _abbreviate(empresaName ?? '');
+    final projAbbr = _abbreviate(projectName);
+    final prefix = empAbbr.isNotEmpty
+        ? 'CITA-$empAbbr-$projAbbr'
+        : 'CITA-$projAbbr';
+    return '$prefix-${maxNum + 1}';
+  }
+
+  static String _abbreviate(String name) {
+    if (name.isEmpty) return '';
+    final firstWord = name.trim().split(RegExp(r'\s+')).first;
+    return firstWord.substring(0, min(3, firstWord.length)).toUpperCase();
+  }
+
+  /// Crea una nueva cita.
+  Future<String> create(Cita cita) async {
+    final folio = await _nextFolio(cita.projectName, cita.empresaName);
+
+    final data = cita.toFirestore();
+    data['folio'] = folio;
+
+    final doc = await _ref.add(data);
+    return doc.id;
+  }
+
+  /// Actualiza una cita (merge).
+  Future<void> update(Cita cita) async {
+    await _ref.doc(cita.id).set(cita.toFirestore(), SetOptions(merge: true));
+  }
+
+  /// Cambia el estado de una cita.
+  Future<void> updateStatus(String citaId, CitaStatus newStatus) async {
+    final now = DateTime.now();
+    await _ref.doc(citaId).update({
+      'status': newStatus.label,
+      'updatedAt': Timestamp.fromDate(now),
+    });
+  }
+
+  /// Desactiva (soft delete) una cita.
+  Future<void> deactivate(String citaId) async {
+    final now = DateTime.now();
+    await _ref.doc(citaId).update({
+      'isActive': false,
+      'updatedAt': Timestamp.fromDate(now),
+    });
+  }
+
+  /// Reactiva una cita.
+  Future<void> activate(String citaId) async {
+    final now = DateTime.now();
+    await _ref.doc(citaId).update({
+      'isActive': true,
+      'updatedAt': Timestamp.fromDate(now),
+    });
+  }
+}

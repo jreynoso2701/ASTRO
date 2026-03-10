@@ -109,6 +109,14 @@ class RequerimientoRepository {
     await _ref.doc(req.id).set(req.toFirestore(), SetOptions(merge: true));
   }
 
+  /// Añade una referencia de minuta a un requerimiento.
+  Future<void> addRefMinuta(String reqId, String minutaId) async {
+    await _ref.doc(reqId).update({
+      'refMinutas': FieldValue.arrayUnion([minutaId]),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
   /// Actualiza el estado.
   Future<void> updateStatus(String id, RequerimientoStatus newStatus) async {
     await _ref.doc(id).update({

@@ -30,6 +30,12 @@ import 'package:astro/features/documentation/presentation/screens/documento_deta
 import 'package:astro/features/documentation/presentation/screens/documento_form_screen.dart';
 import 'package:astro/features/documentation/presentation/screens/bitacora_screen.dart';
 import 'package:astro/features/documentation/presentation/screens/categorias_screen.dart';
+import 'package:astro/features/minutas/presentation/screens/minuta_list_screen.dart';
+import 'package:astro/features/minutas/presentation/screens/minuta_detail_screen.dart';
+import 'package:astro/features/minutas/presentation/screens/minuta_form_screen.dart';
+import 'package:astro/features/citas/presentation/screens/cita_list_screen.dart';
+import 'package:astro/features/citas/presentation/screens/cita_detail_screen.dart';
+import 'package:astro/features/citas/presentation/screens/cita_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -66,6 +72,18 @@ abstract final class AppRoutes {
   static const String documentEdit = '/projects/:id/documents/:docId/edit';
   static const String documentLog = '/projects/:id/documents/log';
   static const String documentCategories = '/projects/:id/documents/categories';
+
+  // Minutas
+  static const String projectMinutas = '/projects/:id/minutas';
+  static const String minutaNew = '/projects/:id/minutas/new';
+  static const String minutaDetail = '/projects/:id/minutas/:minutaId';
+  static const String minutaEdit = '/projects/:id/minutas/:minutaId/edit';
+
+  // Citas
+  static const String projectCitas = '/projects/:id/citas';
+  static const String citaNew = '/projects/:id/citas/new';
+  static const String citaDetail = '/projects/:id/citas/:citaId';
+  static const String citaEdit = '/projects/:id/citas/:citaId/edit';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -220,8 +238,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.ticketNew,
-        builder: (context, state) =>
-            TicketFormScreen(projectId: state.pathParameters['id']!),
+        builder: (context, state) => TicketFormScreen(
+          projectId: state.pathParameters['id']!,
+          returnId:
+              (state.extra as Map<String, dynamic>?)?['returnId'] as bool? ??
+              false,
+        ),
       ),
       GoRoute(
         path: AppRoutes.ticketEdit,
@@ -246,8 +268,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ── Rutas de requerimientos (más específicas primero)
       GoRoute(
         path: AppRoutes.reqNew,
-        builder: (context, state) =>
-            RequerimientoFormScreen(projectId: state.pathParameters['id']!),
+        builder: (context, state) => RequerimientoFormScreen(
+          projectId: state.pathParameters['id']!,
+          returnId:
+              (state.extra as Map<String, dynamic>?)?['returnId'] as bool? ??
+              false,
+        ),
       ),
       GoRoute(
         path: AppRoutes.reqEdit,
@@ -267,6 +293,58 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.projectRequirements,
         builder: (context, state) =>
             RequerimientoListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de minutas (más específicas primero)
+      GoRoute(
+        path: AppRoutes.minutaNew,
+        builder: (context, state) =>
+            MinutaFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.minutaEdit,
+        builder: (context, state) => MinutaFormScreen(
+          projectId: state.pathParameters['id']!,
+          minutaId: state.pathParameters['minutaId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.minutaDetail,
+        builder: (context, state) => MinutaDetailScreen(
+          projectId: state.pathParameters['id']!,
+          minutaId: state.pathParameters['minutaId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectMinutas,
+        builder: (context, state) =>
+            MinutaListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de citas (más específicas primero)
+      GoRoute(
+        path: AppRoutes.citaNew,
+        builder: (context, state) =>
+            CitaFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.citaEdit,
+        builder: (context, state) => CitaFormScreen(
+          projectId: state.pathParameters['id']!,
+          citaId: state.pathParameters['citaId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.citaDetail,
+        builder: (context, state) => CitaDetailScreen(
+          projectId: state.pathParameters['id']!,
+          citaId: state.pathParameters['citaId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectCitas,
+        builder: (context, state) =>
+            CitaListScreen(projectId: state.pathParameters['id']!),
       ),
 
       // ── Rutas de módulos (más específicas primero)

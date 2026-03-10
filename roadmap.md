@@ -125,7 +125,7 @@
 - [x] Navegación: `/projects/:id/requirements`, `requirements/new`, `requirements/:reqId`, `requirements/:reqId/edit`.
 - [x] `StorageService.uploadToPath` — método genérico para subir adjuntos a rutas arbitrarias en Firebase Storage.
 - [x] Visibilidad por rol: Usuario solo ve sus propios requerimientos; Root/Supervisor/Soporte ven todos.
-- [ ] Vinculación con minutas y citas/videoconferencias (Fase 2).
+- [x] Vinculación bidireccional con minutas (modelo ya tenía `refMinutas`/`refCitas`).
 
 ### 1.8 Notificaciones Push
 
@@ -247,30 +247,82 @@
 
 ## Fase 2 — Funcionalidades Avanzadas
 
-**Estado:** 🔲 Pendiente (se desarrollará posterior a Fase 1)
+**Estado:** � En progreso
 
 ### 2.1 Citas y Videoconferencias
 
-- [ ] Módulo de agendar citas/videoconferencias.
-- [ ] Integración con **Google Calendar** para programar eventos.
-- [ ] Generación automática de URL de videoconferencia.
-- [ ] Asociación de citas a requerimientos, incidentes o desarrollo de funcionalidades.
-- [ ] Notificaciones y recordatorios de citas.
+- [x] Modelo de datos `Cita` en Firestore (colección `Citas/{docId}`).
+- [x] Sub-modelo `ParticipanteCita` (uid, nombre, rol, confirmado).
+- [x] Enum `CitaStatus` (programada, enCurso, completada, cancelada).
+- [x] `CitaRepository` — CRUD, folio auto-incremental (CITA-EMP-PRJ-NUM), updateStatus, deactivate/activate.
+- [x] Providers: citas por proyecto, por ID, búsqueda, filtro por status, conteo de programadas.
+- [x] Pantalla **Listado de Citas** — búsqueda, chips de filtro por status (colorizados), tarjetas con folio, status badge, título, fecha/hora, modalidad, participantes.
+- [x] Pantalla **Detalle de Cita** — layout adaptativo (info + acciones), header con status, info card, descripción, participantes con confirmación, recordatorios como chips, notas, botones de cambio de estado.
+- [x] Pantalla **Formulario de Cita** — crear/editar con título, descripción, fecha, horarios, modalidad (videoconferencia/presencial/llamada/híbrida), URL (Zoom/Teams/Meet), dirección física, participantes con diálogo, recordatorios selector (15min/30min/1h/2h/24h), notas.
+- [x] Navegación: `/projects/:id/citas`, `citas/new`, `citas/:citaId`, `citas/:citaId/edit`.
+- [x] Botón "Ver citas" en detalle de proyecto con badge de citas programadas.
+- [ ] Integración con **Google Calendar** para programar eventos (Fase posterior).
+- [ ] Generación automática de URL de videoconferencia (Fase posterior).
+- [ ] Notificaciones push de recordatorios de citas (requiere Cloud Functions).
 
 ### 2.2 Módulo de Minutas
 
-- [ ] Formato de minuta (basado en formato existente del cliente).
-- [ ] Creación y edición de minutas.
-- [ ] Adjuntar archivos: imágenes, documentos, audios, videos.
-- [ ] Campos de minuta: referencias, folio de tickets, participantes, prioridades.
-- [ ] **Resumen de minuta generado por IA** (Firebase AI Logic / Gemini).
-- [ ] Historial de minutas por proyecto.
+- [x] Modelo de datos `Minuta` en Firestore (colección `Minutas/{docId}`).
+- [x] Sub-modelos: `AsistenteMinuta` (uid, nombre, puesto, asistencia, firmaMotivo), `AsuntoTratado` (numero, texto, subitems), `CompromisoMinuta` (numero, tarea, responsable, fechaEntrega, status).
+- [x] Enum `CompromisoStatus` (pendiente, cumplido, vencido), `MinutaModalidad` (videoconferencia, presencial, llamada, híbrida).
+- [x] Campo `participantUids` (List<String>) — UIDs desnormalizados para consultas `array-contains` de visibilidad por rol.
+- [x] Campos `adjuntos` (List<String>), `refTickets` (List<String>), `refRequerimientos` (List<String>) en modelo Minuta.
+- [x] Campo `sistema` eliminado del modelo (no aplica al contexto de minutas).
+- [x] `MinutaRepository` — CRUD, folio auto-incremental (MIN-EMP-PRJ-NUM), deactivate/activate, `watchByParticipant` (array-contains en participantUids).
+- [x] Providers: minutas por proyecto, por participante, visibilidad por rol (`visibleMinutasProvider`), permisos de creación (`canCreateMinutaProvider`), búsqueda, conteo.
+- [x] **Visibilidad por rol**: Root/Supervisor/Soporte ven todas las minutas del proyecto; Usuario solo ve minutas donde participa como asistente o responsable de compromiso.
+- [x] **Permisos de creación**: Solo Root y Soporte pueden crear minutas.
+- [x] Pantalla **Listado de Minutas** — búsqueda, contador, tarjetas con folio, fecha, objetivo, modalidad, badges de compromisos (vencidos/pendientes), asistentes. FAB condicional según permisos.
+- [x] Pantalla **Detalle de Minuta** — layout adaptativo (info izq + compromisos der), header con folio, info card (versión, fecha, hora, modalidad, lugar, empresa), objetivo, asistentes con asistencia, asuntos tratados numerados con sub-ítems, compromisos con toggle pendiente↔cumplido, observaciones, resumen IA, secciones de adjuntos / tickets vinculados / requerimientos vinculados.
+- [x] **Generación de PDF** — `MinutaPdfService.generate(Minuta)` crea PDF profesional multi-página (header, info, asistentes, asuntos, compromisos con colores de status, observaciones, paginación).
+- [x] **Imprimir PDF** — botón en detalle de minuta, usa `Printing.layoutPdf` del paquete `printing`.
+- [x] **Compartir PDF** — botón en detalle de minuta, usa `Printing.sharePdf`.
+- [x] Pantalla **Formulario de Minuta** — crear/editar con versión, objetivo, fecha, horarios, modalidad condicional:
+  - [x] **Videoconferencia**: solo URL de videoconferencia.
+  - [x] **Presencial**: dirección con autocompletado Google Places + lugar (referencia textual).
+  - [x] **Llamada**: sin campos adicionales de ubicación.
+  - [x] **Híbrida**: URL + dirección con autocompletado + lugar.
+- [x] **Google Maps Places Autocomplete** — `PlacesService` con API HTTP de Google Places para autocompletado de direcciones en modalidad presencial/híbrida.
+- [x] **Asistentes desde proyecto** — diálogo multi-select `_ProjectMembersDialog` que muestra miembros del proyecto con nombre y rol.
+- [x] **Asistentes externos** — diálogo manual para agregar personas no registradas en el proyecto (sin UID).
+- [x] **Adjuntos** — upload de archivos (FilePicker) e imágenes (ImagePicker) a Firebase Storage (`minutas/{projectId}/`). Se muestran en formulario y detalle.
+- [x] **Tickets vinculados** — búsqueda de tickets existentes del proyecto + diálogo de creación rápida de ticket (título, descripción, módulo 'General').
+- [x] **Requerimientos vinculados** — búsqueda de requerimientos existentes del proyecto + diálogo de creación rápida de requerimiento (título, descripción).
+- [x] Navegación: `/projects/:id/minutas`, `minutas/new`, `minutas/:minutaId`, `minutas/:minutaId/edit`.
+- [x] Botón "Ver minutas" en detalle de proyecto con badge de conteo.
+- [x] Dependencias añadidas: `pdf: ^3.11.3`, `printing: ^5.14.2`, `share_plus: ^12.0.1`.
+- [ ] **Resumen de minuta generado por IA** (Firebase AI Logic / Gemini — Fase posterior).
 
-### 2.3 Vinculación Tickets ↔ Minutas
+### 2.3 Vinculación Tickets ↔ Minutas ↔ Requerimientos
 
-- [ ] Adjuntar a los tickets la referencia de una o varias minutas.
-- [ ] Navegación cruzada entre tickets y minutas vinculadas.
-- [ ] Seguimiento preciso de decisiones tomadas en minutas reflejadas en tickets.
+- [x] Campos `refMinutas` y `refCitas` añadidos al modelo `Ticket` (constructor, fromFirestore, toFirestore, copyWith).
+- [x] Campos `refTickets` y `refRequerimientos` añadidos al modelo `Minuta` (vinculación bidireccional).
+- [x] UI de búsqueda y vinculación de tickets desde formulario de minuta (picker con búsqueda).
+- [x] UI de búsqueda y vinculación de requerimientos desde formulario de minuta (picker con búsqueda).
+- [x] Creación de tickets desde formulario de minuta — navega al formulario completo con `returnId`, regresa con referencia vinculada.
+- [x] Creación de requerimientos desde formulario de minuta — navega al formulario completo con `returnId`, regresa con referencia vinculada.
+- [x] Visualización de tickets y requerimientos vinculados en detalle de minuta.
+- [x] UI de selección/vinculación de minutas desde formulario de ticket (picker con búsqueda por folio/objetivo).
+- [x] Visualización de minutas vinculadas en detalle de ticket.
+- [x] UI de selección/vinculación de minutas desde formulario de requerimiento (picker con búsqueda por folio/objetivo).
+- [x] Visualización de minutas vinculadas en detalle de requerimiento.
+- [x] Sincronización bidireccional: al vincular minuta↔ticket o minuta↔requerimiento se actualizan ambos documentos (`FieldValue.arrayUnion`).
+- [x] Métodos de repositorio: `TicketRepository.addRefMinuta/removeRefMinuta`, `MinutaRepository.addRefTicket/addRefRequerimiento`, `RequerimientoRepository.addRefMinuta`.
+- [x] Router actualizado: rutas de ticket/new y requirements/new aceptan `extra: {'returnId': true}` para flujo de creación y retorno.
+- [ ] UI de selección/vinculación de citas desde ticket (picker en formulario de ticket).
+- [ ] Navegación cruzada entre tickets y minutas/citas vinculadas (tap para ir al detalle).
+
+### 2.4 Auto-generación de PDF de Minuta como Documento Formal
+
+- [x] Categoría `minuta` añadida a `DocumentoCategoria` enum.
+- [x] `StorageService.uploadBytes` — método para subir bytes crudos (PDF) a Firebase Storage.
+- [x] Al guardar minuta (crear o editar), se genera automáticamente el PDF, se sube a Storage y se crea un `DocumentoProyecto` formal con categoría "Minuta" y sección "Formal".
+- [x] Generación best-effort: si falla el PDF no se bloquea el guardado de la minuta.
 
 ### 2.4 Módulo de Agente de IA
 
@@ -293,4 +345,4 @@
 
 ---
 
-*Última actualización: 9 de marzo de 2026 — Fase 1.8 Notificaciones Push completada (FCM, Cloud Functions, bandeja in-app, config por usuario/proyecto, badge en shell)*
+*Última actualización: 15 de julio de 2025 — Fase 2.2 Minutas rebuild completo (Places autocomplete, asistentes proyecto/externos, adjuntos, refs tickets/reqs, PDF/print/share, visibilidad por rol, permisos). Fase 2.3 Vinculación parcial (minutas→tickets/reqs con búsqueda + creación rápida).*

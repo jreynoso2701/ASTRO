@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -63,6 +64,21 @@ class StorageService {
       await ref.putFile(File(file.path), metadata);
     }
 
+    return ref.getDownloadURL();
+  }
+
+  /// Sube bytes crudos a una ruta y retorna la URL de descarga.
+  Future<String> uploadBytes(
+    String storagePath,
+    Uint8List bytes,
+    String fileName, {
+    String? mimeType,
+  }) async {
+    final ref = _storage.ref('$storagePath/$fileName');
+    final metadata = SettableMetadata(
+      contentType: mimeType ?? contentType(fileName),
+    );
+    await ref.putData(bytes, metadata);
     return ref.getDownloadURL();
   }
 

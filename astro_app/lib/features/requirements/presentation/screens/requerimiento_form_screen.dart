@@ -15,6 +15,8 @@ import 'package:astro/features/requirements/providers/requerimiento_providers.da
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/core/models/minuta.dart';
 
 /// Genera un ID corto para cada criterio de aceptación.
 String _shortId() => DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -24,11 +26,13 @@ class RequerimientoFormScreen extends ConsumerStatefulWidget {
   const RequerimientoFormScreen({
     required this.projectId,
     this.reqId,
+    this.returnId = false,
     super.key,
   });
 
   final String projectId;
   final String? reqId;
+  final bool returnId;
 
   @override
   ConsumerState<RequerimientoFormScreen> createState() =>
@@ -57,6 +61,9 @@ class _RequerimientoFormScreenState
   // Adjuntos
   final List<String> _existingAdjuntos = [];
   final List<XFile> _newFiles = [];
+
+  // Minutas vinculadas
+  final List<String> _refMinutas = [];
 
   // Porcentaje manual
   double _porcentajeAvance = 0;
@@ -125,7 +132,9 @@ class _RequerimientoFormScreenState
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            if (_isEditing) {
+            if (widget.returnId) {
+              context.pop();
+            } else if (_isEditing) {
               context.go(
                 '/projects/${widget.projectId}/requirements/${widget.reqId}',
               );
@@ -263,6 +272,10 @@ class _RequerimientoFormScreenState
 
               // ── Adjuntos ──
               _buildAdjuntosSection(),
+              const SizedBox(height: 24),
+
+              // ── Minutas vinculadas ──
+              _buildMinutasSection(projectName),
               const SizedBox(height: 24),
 
               // ── Campos Root/Soporte ──
@@ -527,6 +540,58 @@ class _RequerimientoFormScreenState
     );
   }
 
+  // ── Minutas Section ────────────────────────────────────
+
+  Widget _buildMinutasSection(String projectName) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'MINUTAS VINCULADAS',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            letterSpacing: 1,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        ..._refMinutas.map(
+          (id) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Chip(
+              avatar: const Icon(Icons.description_outlined, size: 16),
+              label: Text(
+                id.length > 12 ? '${id.substring(0, 12)}...' : id,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              onDeleted: () => setState(() => _refMinutas.remove(id)),
+              deleteIcon: const Icon(Icons.close, size: 16),
+            ),
+          ),
+        ),
+
+        TextButton.icon(
+          onPressed: () => _searchMinutas(projectName),
+          icon: const Icon(Icons.search),
+          label: const Text('Buscar minuta'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _searchMinutas(String projectName) async {
+    final minutas = ref.read(minutasByProjectProvider(projectName)).value ?? [];
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchMinutaDialog(
+        minutas: minutas.where((m) => !_refMinutas.contains(m.id)).toList(),
+      ),
+    );
+    if (selected != null) setState(() => _refMinutas.add(selected));
+  }
+
   // ── File Picking ───────────────────────────────────────
 
   Future<void> _pickFromGallery() async {
@@ -568,6 +633,7 @@ class _RequerimientoFormScreenState
     _porcentajeManual = req.porcentajeManual;
     _observacionesController.text = req.observacionesRoot ?? '';
     _existingAdjuntos.addAll(req.adjuntos);
+    _refMinutas.addAll(req.refMinutas);
 
     for (final c in req.criteriosAceptacion) {
       _criterios.add(
@@ -653,6 +719,7 @@ class _RequerimientoFormScreenState
             faseAsignada: _faseAsignada,
             criteriosAceptacion: criterios,
             adjuntos: allAdjuntos,
+            refMinutas: _refMinutas,
             porcentajeAvance: pct,
             porcentajeManual: _porcentajeManual,
             observacionesRoot: _observacionesController.text.trim().isNotEmpty
@@ -660,6 +727,12 @@ class _RequerimientoFormScreenState
                 : null,
           ),
         );
+
+        // Sincronización bidireccional
+        final minutaRepo = ref.read(minutaRepositoryProvider);
+        for (final minutaId in _refMinutas) {
+          await minutaRepo.addRefRequerimiento(minutaId, widget.reqId!);
+        }
 
         if (mounted) {
           context.go(
@@ -688,6 +761,7 @@ class _RequerimientoFormScreenState
           faseAsignada: _faseAsignada,
           criteriosAceptacion: criterios,
           adjuntos: allAdjuntos,
+          refMinutas: _refMinutas,
           porcentajeAvance: pct,
           porcentajeManual: _porcentajeManual,
           observacionesRoot: _observacionesController.text.trim().isNotEmpty
@@ -698,8 +772,18 @@ class _RequerimientoFormScreenState
 
         final docId = await repo.create(newReq);
 
+        // Sincronización bidireccional
+        final minutaRepo = ref.read(minutaRepositoryProvider);
+        for (final minutaId in _refMinutas) {
+          await minutaRepo.addRefRequerimiento(minutaId, docId);
+        }
+
         if (mounted) {
-          context.go('/projects/${widget.projectId}/requirements/$docId');
+          if (widget.returnId) {
+            context.pop(docId);
+          } else {
+            context.go('/projects/${widget.projectId}/requirements/$docId');
+          }
         }
       }
     } finally {
@@ -719,4 +803,78 @@ class _CriterioEntry {
   final String id;
   final TextEditingController controller;
   final bool completado;
+}
+
+class _SearchMinutaDialog extends StatefulWidget {
+  const _SearchMinutaDialog({required this.minutas});
+
+  final List<Minuta> minutas;
+
+  @override
+  State<_SearchMinutaDialog> createState() => _SearchMinutaDialogState();
+}
+
+class _SearchMinutaDialogState extends State<_SearchMinutaDialog> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.minutas.where((m) {
+      if (_query.isEmpty) return true;
+      final upper = _query.toUpperCase();
+      return m.folio.toUpperCase().contains(upper) ||
+          m.objetivo.toUpperCase().contains(upper);
+    }).toList();
+
+    return AlertDialog(
+      title: const Text('Buscar minuta'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar por folio u objetivo...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Sin resultados',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final m = filtered[i];
+                        return ListTile(
+                          title: Text(
+                            '${m.folio} — ${m.objetivo}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => Navigator.pop(ctx, m.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    );
+  }
 }

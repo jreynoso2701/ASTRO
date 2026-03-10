@@ -6,6 +6,7 @@ enum DocumentoCategoria {
   relacionUsuarios('Relación de Usuarios'),
   manualUsuario('Manual de Usuario'),
   actaEntrega('Acta de Entrega'),
+  minuta('Minuta'),
   otro('Otro');
 
   const DocumentoCategoria(this.label);

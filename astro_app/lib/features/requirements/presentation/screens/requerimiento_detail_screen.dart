@@ -554,6 +554,39 @@ class _InfoSection extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
+        // Minutas vinculadas
+        if (req.refMinutas.isNotEmpty) ...[
+          Text(
+            'MINUTAS VINCULADAS (${req.refMinutas.length})',
+            style: theme.textTheme.labelLarge?.copyWith(
+              letterSpacing: 1,
+              color: muted,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: req.refMinutas
+                    .map(
+                      (id) => ListTile(
+                        leading: const Icon(Icons.description_outlined),
+                        title: Text(
+                          id.length > 20 ? '${id.substring(0, 20)}...' : id,
+                        ),
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Observaciones Root (solo visible para Root/Soporte)
         if (isManager &&
             req.observacionesRoot != null &&
