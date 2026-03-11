@@ -83,6 +83,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                 const SizedBox(height: 24),
 
+                // ── Sección: Notificaciones ────────────
+                _SectionTitle(label: 'NOTIFICACIONES'),
+                const SizedBox(height: 8),
+                _NotificationToggleTile(
+                  enabled: profile.pushGlobalEnabled,
+                  onChanged: (value) async {
+                    await ref.read(userRepositoryProvider).updateUserFields(
+                      profile.uid,
+                      {'pushGlobalEnabled': value},
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
                 // ── Sección: Información ───────────────
                 _SectionTitle(label: 'INFORMACIÓN'),
                 const SizedBox(height: 8),
@@ -617,6 +632,38 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NotificationToggleTile extends StatelessWidget {
+  const _NotificationToggleTile({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: SwitchListTile(
+        secondary: Icon(
+          enabled
+              ? Icons.notifications_active_outlined
+              : Icons.notifications_off_outlined,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Notificaciones push'),
+        subtitle: Text(
+          enabled ? 'Activadas' : 'Desactivadas',
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        value: enabled,
+        onChanged: onChanged,
       ),
     );
   }

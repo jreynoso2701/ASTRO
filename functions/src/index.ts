@@ -86,11 +86,14 @@ async function getNotifConfig(
 
 /**
  * Obtiene los FCM tokens de un usuario.
+ * Retorna vacío si el usuario tiene pushGlobalEnabled=false.
  */
 async function getFcmTokens(userId: string): Promise<string[]> {
   const doc = await db.collection("users").doc(userId).get();
   if (!doc.exists) return [];
-  return (doc.data()?.fcmTokens as string[]) ?? [];
+  const data = doc.data()!;
+  if (data.pushGlobalEnabled === false) return [];
+  return (data.fcmTokens as string[]) ?? [];
 }
 
 /**

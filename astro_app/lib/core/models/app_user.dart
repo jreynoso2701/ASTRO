@@ -17,6 +17,7 @@ class AppUser {
     this.photoUrl,
     this.defaultEmpresaId,
     this.fcmTokens = const [],
+    this.pushGlobalEnabled = true,
     // Campos legacy V1 para compatibilidad de lectura
     this.legacyDeEmpresa,
     this.legacyRolUsuario,
@@ -32,6 +33,7 @@ class AppUser {
   final bool isRoot;
   final String? defaultEmpresaId;
   final List<String> fcmTokens;
+  final bool pushGlobalEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -80,6 +82,7 @@ class AppUser {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      pushGlobalEnabled: data['pushGlobalEnabled'] as bool? ?? true,
       createdAt: parseDate(data['createdAt'] ?? data['created_time']),
       updatedAt: parseDate(
         data['updatedAt'] ?? data['createdAt'] ?? data['created_time'],
@@ -104,6 +107,7 @@ class AppUser {
       'isRoot': isRoot,
       if (defaultEmpresaId != null) 'defaultEmpresaId': defaultEmpresaId,
       'fcmTokens': fcmTokens,
+      'pushGlobalEnabled': pushGlobalEnabled,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -119,6 +123,7 @@ class AppUser {
     bool? isRoot,
     String? defaultEmpresaId,
     List<String>? fcmTokens,
+    bool? pushGlobalEnabled,
     DateTime? updatedAt,
   }) {
     return AppUser(
@@ -131,6 +136,7 @@ class AppUser {
       isRoot: isRoot ?? this.isRoot,
       defaultEmpresaId: defaultEmpresaId ?? this.defaultEmpresaId,
       fcmTokens: fcmTokens ?? this.fcmTokens,
+      pushGlobalEnabled: pushGlobalEnabled ?? this.pushGlobalEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       legacyDeEmpresa: legacyDeEmpresa,

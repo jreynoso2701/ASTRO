@@ -252,7 +252,7 @@
   - [x] **Editar nombre y foto de perfil**: cambiar displayName y subir/cambiar foto (Firebase Storage).
   - [x] **Cambiar contraseña**: formulario de cambio de contraseña (solo usuarios con email/password, no Google).
   - [x] **Tema (Dark / Light)**: SegmentedButton para cambiar el tema de la app. Persistido en SharedPreferences.
-  - [ ] **Configurar notificaciones generales**: activar/desactivar push, ajustes globales de notificaciones.
+  - [x] **Configurar notificaciones generales**: master toggle push ON/OFF global (`pushGlobalEnabled` en `AppUser`). Cloud Functions respeta el flag — si está desactivado no envía push pero sí crea notificación in-app.
   - [x] **Información de la app**: versión, build, paquete, descripción y © Constelación R.
   - [x] **Cerrar sesión**: botón de logout con confirmación.
 
@@ -383,4 +383,4 @@
 
 ---
 
-*Última actualización: 10 de marzo de 2026 — Sección 1.14 actualizada: cascada de desactivación/reactivación de empresa → proyectos + asignaciones, detalle de empresa muestra todos los proyectos, botones de proyecto inactivo deshabilitados con banner.*
+*Última actualización: 10 de marzo de 2026 — Sección 1.13 completada: master toggle push global ON/OFF en perfil. Sección 2.3 completada: vinculación de citas en tickets y navegación cruzada completa entre tickets ↔ minutas ↔ citas ↔ requerimientos.*
