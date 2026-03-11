@@ -349,8 +349,11 @@
 - [x] Sincronización bidireccional: al vincular minuta↔ticket o minuta↔requerimiento se actualizan ambos documentos (`FieldValue.arrayUnion`).
 - [x] Métodos de repositorio: `TicketRepository.addRefMinuta/removeRefMinuta`, `MinutaRepository.addRefTicket/addRefRequerimiento`, `RequerimientoRepository.addRefMinuta`.
 - [x] Router actualizado: rutas de ticket/new y requirements/new aceptan `extra: {'returnId': true}` para flujo de creación y retorno.
-- [ ] UI de selección/vinculación de citas desde ticket (picker en formulario de ticket).
-- [ ] Navegación cruzada entre tickets y minutas/citas vinculadas (tap para ir al detalle).
+- [x] UI de selección/vinculación de citas desde ticket (picker en formulario de ticket con búsqueda por folio/titulo).
+- [x] Métodos `TicketRepository.addRefCita/removeRefCita` para sincronización de citas vinculadas.
+- [x] Navegación cruzada entre tickets ↔ minutas/citas (tap desde detalle de ticket navega a minuta o cita).
+- [x] Navegación cruzada entre minutas ↔ tickets/requerimientos (tap desde detalle de minuta navega a ticket o requerimiento).
+- [x] Navegación cruzada entre requerimientos ↔ minutas (tap desde detalle de requerimiento navega a minuta).
 
 ### 2.5 Auto-generación de PDF de Minuta como Documento Formal
 

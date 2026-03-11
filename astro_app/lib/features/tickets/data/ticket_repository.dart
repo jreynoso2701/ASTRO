@@ -131,6 +131,22 @@ class TicketRepository {
     });
   }
 
+  /// Añade una referencia de cita a un ticket.
+  Future<void> addRefCita(String ticketId, String citaId) async {
+    await _ref.doc(ticketId).update({
+      'refCitas': FieldValue.arrayUnion([citaId]),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
+  /// Elimina una referencia de cita de un ticket.
+  Future<void> removeRefCita(String ticketId, String citaId) async {
+    await _ref.doc(ticketId).update({
+      'refCitas': FieldValue.arrayRemove([citaId]),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
   /// Cambia el estado de un ticket.
   Future<void> updateStatus(String ticketId, TicketStatus newStatus) async {
     final now = DateTime.now();

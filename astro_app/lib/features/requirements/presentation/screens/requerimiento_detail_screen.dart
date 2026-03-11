@@ -84,6 +84,7 @@ class _RequerimientoDetailScreenState
 
           final infoSection = _InfoSection(
             req: req,
+            projectId: widget.projectId,
             isRoot: isRoot,
             isManager: isManager,
             onStatusChange: (s) => _changeStatus(req, s),
@@ -346,6 +347,7 @@ class _RequerimientoDetailScreenState
 class _InfoSection extends StatelessWidget {
   const _InfoSection({
     required this.req,
+    required this.projectId,
     required this.isRoot,
     required this.isManager,
     required this.onStatusChange,
@@ -355,6 +357,7 @@ class _InfoSection extends StatelessWidget {
   });
 
   final Requerimiento req;
+  final String projectId;
   final bool isRoot;
   final bool isManager;
   final ValueChanged<RequerimientoStatus> onStatusChange;
@@ -575,8 +578,11 @@ class _InfoSection extends StatelessWidget {
                         title: Text(
                           id.length > 20 ? '${id.substring(0, 20)}...' : id,
                         ),
+                        trailing: const Icon(Icons.chevron_right, size: 20),
                         dense: true,
                         contentPadding: EdgeInsets.zero,
+                        onTap: () =>
+                            context.push('/projects/$projectId/minutas/$id'),
                       ),
                     )
                     .toList(),

@@ -81,6 +81,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
           final infoSection = _TicketInfoSection(
             ticket: ticket,
+            projectId: widget.projectId,
             canManage: canManage || isRoot,
             onStatusChange: (status) => _changeStatus(ticket, status),
             onAssign: canManage || isRoot
@@ -280,12 +281,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 class _TicketInfoSection extends StatelessWidget {
   const _TicketInfoSection({
     required this.ticket,
+    required this.projectId,
     required this.canManage,
     required this.onStatusChange,
     this.onAssign,
   });
 
   final Ticket ticket;
+  final String projectId;
   final bool canManage;
   final ValueChanged<TicketStatus> onStatusChange;
   final VoidCallback? onAssign;
@@ -618,8 +621,47 @@ class _TicketInfoSection extends StatelessWidget {
                       title: Text(
                         id.length > 20 ? '${id.substring(0, 20)}...' : id,
                       ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
+                      onTap: () =>
+                          context.push('/projects/$projectId/minutas/$id'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        // Citas vinculadas
+        if (ticket.refCitas.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CITAS VINCULADAS (${ticket.refCitas.length})',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  ...ticket.refCitas.map(
+                    (id) => ListTile(
+                      leading: const Icon(Icons.event_outlined),
+                      title: Text(
+                        id.length > 20 ? '${id.substring(0, 20)}...' : id,
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () =>
+                          context.push('/projects/$projectId/citas/$id'),
                     ),
                   ),
                 ],

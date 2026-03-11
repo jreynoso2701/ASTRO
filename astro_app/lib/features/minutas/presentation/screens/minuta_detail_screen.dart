@@ -76,7 +76,10 @@ class MinutaDetailScreen extends ConsumerWidget {
           final width = MediaQuery.sizeOf(context).width;
           final isWide = width >= AppBreakpoints.medium;
 
-          final infoSection = _MinutaInfoSection(minuta: minuta);
+          final infoSection = _MinutaInfoSection(
+            minuta: minuta,
+            projectId: projectId,
+          );
           final compromisosSection = _CompromisosSection(
             minuta: minuta,
             canManage: canManage || isRoot,
@@ -160,9 +163,10 @@ class MinutaDetailScreen extends ConsumerWidget {
 // ── Info Section ─────────────────────────────────────────
 
 class _MinutaInfoSection extends StatelessWidget {
-  const _MinutaInfoSection({required this.minuta});
+  const _MinutaInfoSection({required this.minuta, required this.projectId});
 
   final Minuta minuta;
+  final String projectId;
 
   @override
   Widget build(BuildContext context) {
@@ -498,25 +502,22 @@ class _MinutaInfoSection extends StatelessWidget {
                   ),
                   const Divider(height: 24),
                   ...minuta.refTickets.map(
-                    (id) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.confirmation_num_outlined,
-                            size: 18,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              id,
-                              style: theme.textTheme.bodyMedium,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    (id) => ListTile(
+                      leading: Icon(
+                        Icons.confirmation_num_outlined,
+                        size: 18,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
+                      title: Text(
+                        id,
+                        style: theme.textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () =>
+                          context.push('/projects/$projectId/tickets/$id'),
                     ),
                   ),
                 ],
@@ -543,25 +544,22 @@ class _MinutaInfoSection extends StatelessWidget {
                   ),
                   const Divider(height: 24),
                   ...minuta.refRequerimientos.map(
-                    (id) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.assignment_outlined,
-                            size: 18,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              id,
-                              style: theme.textTheme.bodyMedium,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    (id) => ListTile(
+                      leading: Icon(
+                        Icons.assignment_outlined,
+                        size: 18,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
+                      title: Text(
+                        id,
+                        style: theme.textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () =>
+                          context.push('/projects/$projectId/requirements/$id'),
                     ),
                   ),
                 ],
