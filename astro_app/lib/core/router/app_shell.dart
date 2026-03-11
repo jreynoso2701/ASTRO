@@ -53,6 +53,12 @@ const List<AppDestination> _allDestinations = [
     selectedIcon: Icons.people,
     path: '/users',
   ),
+  AppDestination(
+    label: 'Empresas',
+    icon: Icons.business_outlined,
+    selectedIcon: Icons.business,
+    path: '/empresas',
+  ),
 ];
 
 /// Shell adaptativo: NavigationBar (móvil) / NavigationRail (tablet/web).
@@ -69,6 +75,7 @@ class AppShell extends ConsumerWidget {
       _allDestinations[2], // Calendario — siempre visible
       _allDestinations[3], // Notificaciones — siempre visible
       if (isRoot) _allDestinations[4], // Usuarios — solo Root
+      if (isRoot) _allDestinations[5], // Empresas — solo Root
     ];
   }
 

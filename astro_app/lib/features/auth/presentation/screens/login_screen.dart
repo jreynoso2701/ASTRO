@@ -68,15 +68,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _mapAuthError(Exception e) {
     final msg = e.toString().toLowerCase();
-    if (msg.contains('user-not-found'))
+    if (msg.contains('user-not-found')) {
       return 'No se encontró una cuenta con ese correo.';
+    }
     if (msg.contains('wrong-password') || msg.contains('invalid-credential')) {
       return 'Correo o contraseña incorrectos.';
     }
-    if (msg.contains('too-many-requests'))
+    if (msg.contains('too-many-requests')) {
       return 'Demasiados intentos. Intenta más tarde.';
-    if (msg.contains('network'))
+    }
+    if (msg.contains('network')) {
       return 'Error de conexión. Verifica tu internet.';
+    }
     if (msg.contains('cancelled')) return 'Inicio de sesión cancelado.';
     return 'Ocurrió un error. Intenta de nuevo.';
   }

@@ -80,8 +80,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     if (msg.contains('weak-password')) return 'La contraseña es muy débil.';
     if (msg.contains('invalid-email')) return 'El correo no es válido.';
-    if (msg.contains('network'))
+    if (msg.contains('network')) {
       return 'Error de conexión. Verifica tu internet.';
+    }
     if (msg.contains('cancelled')) return 'Registro cancelado.';
     return 'Ocurrió un error. Intenta de nuevo.';
   }

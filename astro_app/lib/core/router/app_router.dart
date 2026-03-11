@@ -38,6 +38,9 @@ import 'package:astro/features/citas/presentation/screens/cita_detail_screen.dar
 import 'package:astro/features/citas/presentation/screens/cita_form_screen.dart';
 import 'package:astro/features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:astro/features/profile/presentation/screens/profile_screen.dart';
+import 'package:astro/features/empresas/presentation/screens/empresa_list_screen.dart';
+import 'package:astro/features/empresas/presentation/screens/empresa_detail_screen.dart';
+import 'package:astro/features/empresas/presentation/screens/empresa_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -92,6 +95,12 @@ abstract final class AppRoutes {
 
   // Perfil
   static const String profile = '/profile';
+
+  // Empresas
+  static const String empresas = '/empresas';
+  static const String empresaNew = '/empresas/new';
+  static const String empresaDetail = '/empresas/:empresaId';
+  static const String empresaEdit = '/empresas/:empresaId/edit';
 }
 
 /// Provider del router — depende del estado de autenticación.
@@ -130,6 +139,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Guardia de rol: /users solo para Root.
       if (isLoggedIn && state.uri.path.startsWith('/users')) {
+        if (!userProfile.isLoading && !(userProfile.value?.isRoot ?? false)) {
+          return AppRoutes.dashboard;
+        }
+      }
+
+      // Guardia de rol: /empresas solo para Root.
+      if (isLoggedIn && state.uri.path.startsWith('/empresas')) {
         if (!userProfile.isLoading && !(userProfile.value?.isRoot ?? false)) {
           return AppRoutes.dashboard;
         }
@@ -177,6 +193,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 const NoTransitionPage(child: UserListScreen()),
           ),
           GoRoute(
+            path: AppRoutes.empresas,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: EmpresaListScreen()),
+          ),
+          GoRoute(
             path: AppRoutes.projects,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: ProjectListScreen()),
@@ -195,6 +216,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Rutas de detalle (sin shell — tienen su propio AppBar)
+
+      // Empresas (más específicas primero)
+      GoRoute(
+        path: AppRoutes.empresaNew,
+        builder: (context, state) => const EmpresaFormScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.empresaEdit,
+        builder: (context, state) =>
+            EmpresaFormScreen(empresaId: state.pathParameters['empresaId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.empresaDetail,
+        builder: (context, state) =>
+            EmpresaDetailScreen(empresaId: state.pathParameters['empresaId']!),
+      ),
+
       GoRoute(
         path: AppRoutes.userDetail,
         builder: (context, state) =>

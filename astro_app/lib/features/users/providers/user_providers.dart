@@ -106,9 +106,24 @@ final activeEmpresasProvider = StreamProvider<List<Empresa>>((ref) {
   return ref.watch(empresaRepositoryProvider).watchActiveEmpresas();
 });
 
+/// Stream de TODAS las empresas (activas + inactivas) — para gestión Root.
+final allEmpresasProvider = StreamProvider<List<Empresa>>((ref) {
+  return ref.watch(empresaRepositoryProvider).watchAllEmpresas();
+});
+
+/// Stream de una empresa por ID.
+final empresaByIdProvider = StreamProvider.family<Empresa?, String>((ref, id) {
+  return ref.watch(empresaRepositoryProvider).watchEmpresa(id);
+});
+
 /// Stream de proyectos activos.
 final activeProyectosProvider = StreamProvider<List<Proyecto>>((ref) {
   return ref.watch(proyectoRepositoryProvider).watchActiveProyectos();
+});
+
+/// Stream de TODOS los proyectos (activos + inactivos) — para gestión Root.
+final allProyectosProvider = StreamProvider<List<Proyecto>>((ref) {
+  return ref.watch(proyectoRepositoryProvider).watchAllProyectos();
 });
 
 // ── Búsqueda de usuarios ─────────────────────────────────

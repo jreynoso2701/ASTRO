@@ -198,6 +198,8 @@ class _ProjectInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Botones de navegación deshabilitados si el proyecto está inactivo.
+    final enabled = estatus;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,11 +326,45 @@ class _ProjectInfoSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
+        // Banner de proyecto inactivo
+        if (!estatus)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.colorScheme.error.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 20,
+                    color: theme.colorScheme.error,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Proyecto inactivo — no se pueden crear nuevos elementos.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
         // Botón de módulos
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onModulesTap,
+            onPressed: enabled ? onModulesTap : null,
             icon: const Icon(Icons.view_module_outlined),
             label: const Text('Ver módulos'),
           ),
@@ -340,7 +376,7 @@ class _ProjectInfoSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onTicketsTap,
+            onPressed: enabled ? onTicketsTap : null,
             icon: Badge(
               isLabelVisible: openTickets > 0,
               label: Text('$openTickets'),
@@ -356,7 +392,7 @@ class _ProjectInfoSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onRequirementsTap,
+            onPressed: enabled ? onRequirementsTap : null,
             icon: Badge(
               isLabelVisible: pendingReqs > 0,
               label: Text('$pendingReqs'),
@@ -372,7 +408,7 @@ class _ProjectInfoSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onDocumentsTap,
+            onPressed: enabled ? onDocumentsTap : null,
             icon: Badge(
               isLabelVisible: formalDocCount > 0,
               label: Text('$formalDocCount'),
@@ -388,7 +424,7 @@ class _ProjectInfoSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onMinutasTap,
+            onPressed: enabled ? onMinutasTap : null,
             icon: Badge(
               isLabelVisible: minutaCount > 0,
               label: Text('$minutaCount'),
@@ -404,7 +440,7 @@ class _ProjectInfoSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
-            onPressed: onCitasTap,
+            onPressed: enabled ? onCitasTap : null,
             icon: Badge(
               isLabelVisible: citasProgramadas > 0,
               label: Text('$citasProgramadas'),

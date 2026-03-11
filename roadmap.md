@@ -256,6 +256,22 @@
   - [x] **Información de la app**: versión, build, paquete, descripción y © Constelación R.
   - [x] **Cerrar sesión**: botón de logout con confirmación.
 
+### 1.14 Gestión de Empresas
+
+- [x] Modelo `Empresa` ampliado con campos V2: logoUrl, dirección, teléfono, contacto, RFC, email, createdAt, updatedAt, copyWith.
+- [x] `EmpresaRepository` — CRUD completo: crear, actualizar, desactivar (soft delete), reactivar, watchAllEmpresas, watchEmpresa.
+- [x] Providers: `allEmpresasProvider` (activas + inactivas), `empresaByIdProvider` (stream por ID).
+- [x] Pestaña **Empresas** en navegación principal — solo visible para Root (como Usuarios).
+- [x] Guardia de rol: `/empresas` protegida para Root.
+- [x] Pantalla **Listado de Empresas** — búsqueda por nombre/RFC/contacto, grid adaptativo, badge activa/inactiva, botón "Nueva".
+- [x] Pantalla **Detalle de Empresa** — header con logo, info (RFC, contacto, email, teléfono, dirección), proyectos asociados con navegación, botón desactivar/reactivar con confirmación.
+- [x] Pantalla **Formulario de Empresa** — crear/editar con logo (upload a Firebase Storage), nombre, RFC, contacto, email, teléfono, dirección.
+- [x] Rutas: `/empresas`, `/empresas/new`, `/empresas/:empresaId`, `/empresas/:empresaId/edit`.
+- [x] **Desactivación en cascada**: al desactivar empresa se desactivan automáticamente proyectos activos + asignaciones asociadas (batch write).
+- [x] **Reactivación en cascada**: al reactivar empresa se ofrece reactivar también proyectos y asignaciones (“Solo empresa” o “Empresa + proyectos”).
+- [x] Detalle de empresa muestra **todos** los proyectos (activos e inactivos con distinción visual).
+- [x] **Protección de proyecto inactivo**: botones de navegación a módulos, tickets, requerimientos, documentación, minutas y citas deshabilitados cuando el proyecto está inactivo, con banner informativo.
+
 ---
 
 ## Fase 2 — Funcionalidades Avanzadas
@@ -364,4 +380,4 @@
 
 ---
 
-*Última actualización: 10 de marzo de 2026 — Sección 1.13 Gestión de Cuenta y Perfil implementada: avatar en Dashboard, pantalla de perfil (/profile), editar nombre/foto, cambiar contraseña, tema Dark/Light persistido con SharedPreferences, info de la app (package_info_plus), cerrar sesión con confirmación. AuthRepository ampliado con updateAuthProfile, reauthenticate, updatePassword, isPasswordUser.*
+*Última actualización: 10 de marzo de 2026 — Sección 1.14 actualizada: cascada de desactivación/reactivación de empresa → proyectos + asignaciones, detalle de empresa muestra todos los proyectos, botones de proyecto inactivo deshabilitados con banner.*
