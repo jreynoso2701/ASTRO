@@ -1,0 +1,12 @@
+# Node
+node_modules/
+
+# Secrets / environment
+*.env
+dart_defines*.env
+.env.*
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db

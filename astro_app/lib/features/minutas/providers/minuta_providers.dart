@@ -16,12 +16,12 @@ final minutaRepositoryProvider = Provider<MinutaRepository>((ref) {
 // ── Places Service ───────────────────────────────────────
 
 final placesServiceProvider = Provider<PlacesService>((ref) {
-  return PlacesService(
-    apiKey: const String.fromEnvironment(
-      'GOOGLE_MAPS_API_KEY',
-      defaultValue: 'AIzaSyBSOJjQT5PeN1CjYKSiXLTRHk355y1FOKo',
-    ),
+  const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+  assert(
+    apiKey.isNotEmpty,
+    'GOOGLE_MAPS_API_KEY no definida. Compila con: --dart-define=GOOGLE_MAPS_API_KEY=tu_key',
   );
+  return PlacesService(apiKey: apiKey);
 });
 
 // ── Minutas por proyecto — con visibilidad por rol ───────
