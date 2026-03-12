@@ -38,6 +38,7 @@ import 'package:astro/features/citas/presentation/screens/cita_detail_screen.dar
 import 'package:astro/features/citas/presentation/screens/cita_form_screen.dart';
 import 'package:astro/features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:astro/features/profile/presentation/screens/profile_screen.dart';
+import 'package:astro/features/profile/presentation/screens/about_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_list_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_detail_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_form_screen.dart';
@@ -96,6 +97,7 @@ abstract final class AppRoutes {
 
   // Perfil
   static const String profile = '/profile';
+  static const String about = '/about';
 
   // Gestión (hub)
   static const String gestion = '/gestion';
@@ -180,6 +182,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.profile,
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        builder: (context, state) => const AboutScreen(),
       ),
 
       // ── Rutas protegidas (con shell adaptativo)

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+
 import 'package:astro/core/theme/theme_provider.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
@@ -104,7 +104,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _SettingsTile(
                   icon: Icons.info_outline,
                   title: 'Acerca de ASTRO',
-                  onTap: () => _showAboutDialog(),
+                  onTap: () => context.push('/about'),
                 ),
 
                 const SizedBox(height: 32),
@@ -318,55 +318,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Future<void> _showAboutDialog() async {
-    final info = await PackageInfo.fromPlatform();
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        final theme = Theme.of(ctx);
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.rocket_launch, color: theme.colorScheme.primary),
-              const SizedBox(width: 12),
-              const Text('ASTRO'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _InfoRow(label: 'Versión', value: info.version),
-              _InfoRow(label: 'Build', value: info.buildNumber),
-              _InfoRow(label: 'Paquete', value: info.packageName),
-              const SizedBox(height: 16),
-              Text(
-                'Gestión y control de progreso de proyectos de desarrollo de software.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '© Constelación R',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -600,38 +551,6 @@ class _ThemeTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
