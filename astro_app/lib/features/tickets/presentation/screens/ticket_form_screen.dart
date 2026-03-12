@@ -13,6 +13,7 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
@@ -116,7 +117,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           _impacto = ticket.impacto;
           _cobertura = ticket.cobertura;
           _solucionProgramada = ticket.solucionProgramada != null
-              ? DateTime.tryParse(ticket.solucionProgramada!)
+              ? parseDeadlineDate(ticket.solucionProgramada!)
               : null;
           _existingEvidencias.addAll(ticket.evidencias);
           _refMinutas.addAll(ticket.refMinutas);

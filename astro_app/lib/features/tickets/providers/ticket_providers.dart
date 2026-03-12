@@ -10,6 +10,8 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/core/models/user_role.dart';
 import 'package:astro/core/models/project_assignment.dart';
+import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart'
+    show parseDeadlineDate;
 
 // ── Repository ───────────────────────────────────────────
 
@@ -336,4 +338,66 @@ final modulePenaltyDetailsProvider =
       // Ordenar de mayor a menor penalización.
       details.sort((a, b) => b.penalty.compareTo(a.penalty));
       return details;
+    });
+
+// ── Semáforo de deadline global ──────────────────────────
+
+/// Zonas del semáforo de fechas de solución programada.
+enum DeadlineZone {
+  red('Vencido', 0xFFD32F2F),
+  orange('Hoy / Mañana', 0xFFFF9800),
+  amber('2–5 días', 0xFFFFC107);
+
+  const DeadlineZone(this.label, this.colorValue);
+  final String label;
+  final int colorValue;
+}
+
+/// Tickets agrupados por zona de deadline → lista de (proyecto, ticket, días).
+/// Solo incluye tickets activos (no resueltos ni archivados) con fecha de
+/// solución programada que caigan en zona roja, naranja o ámbar.
+final globalTicketsByDeadlineProvider =
+    Provider<
+      Map<DeadlineZone, List<({Proyecto project, Ticket ticket, int days})>>
+    >((ref) {
+      final projects = ref.watch(myProjectsProvider);
+      final result =
+          <DeadlineZone, List<({Proyecto project, Ticket ticket, int days})>>{};
+      for (final z in DeadlineZone.values) {
+        result[z] = [];
+      }
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      for (final p in projects) {
+        final tickets =
+            ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
+        for (final t in tickets) {
+          if (!t.status.isKanbanVisible) continue;
+          final target = parseDeadlineDate(t.solucionProgramada);
+          if (target == null) continue;
+
+          final deadline = DateTime(target.year, target.month, target.day);
+          final days = deadline.difference(today).inDays;
+
+          if (days < 0) {
+            result[DeadlineZone.red]!.add((project: p, ticket: t, days: days));
+          } else if (days <= 1) {
+            result[DeadlineZone.orange]!.add((
+              project: p,
+              ticket: t,
+              days: days,
+            ));
+          } else if (days <= 5) {
+            result[DeadlineZone.amber]!.add((
+              project: p,
+              ticket: t,
+              days: days,
+            ));
+          }
+        }
+      }
+
+      return result;
     });

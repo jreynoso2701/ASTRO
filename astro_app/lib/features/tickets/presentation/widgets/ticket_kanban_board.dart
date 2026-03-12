@@ -28,12 +28,14 @@ class TicketKanbanBoard extends StatefulWidget {
     required this.tickets,
     required this.onTicketTap,
     required this.onStatusChange,
+    this.showDeadline = false,
     super.key,
   });
 
   final List<Ticket> tickets;
   final ValueChanged<Ticket> onTicketTap;
   final void Function(Ticket ticket, TicketStatus newStatus) onStatusChange;
+  final bool showDeadline;
 
   @override
   State<TicketKanbanBoard> createState() => _TicketKanbanBoardState();
@@ -161,6 +163,7 @@ class _TicketKanbanBoardState extends State<TicketKanbanBoard> {
                         ),
                         onTicketTap: widget.onTicketTap,
                         onStatusChange: widget.onStatusChange,
+                        showDeadline: widget.showDeadline,
                       ),
                     ),
                 ],
@@ -189,12 +192,14 @@ class _KanbanColumn extends StatelessWidget {
     required this.tickets,
     required this.onTicketTap,
     required this.onStatusChange,
+    this.showDeadline = false,
   });
 
   final TicketStatus status;
   final List<Ticket> tickets;
   final ValueChanged<Ticket> onTicketTap;
   final void Function(Ticket ticket, TicketStatus newStatus) onStatusChange;
+  final bool showDeadline;
 
   @override
   Widget build(BuildContext context) {
@@ -310,16 +315,23 @@ class _KanbanColumn extends StatelessWidget {
                                 child: _KanbanCard(
                                   ticket: ticket,
                                   isDragging: true,
+                                  showDeadline: showDeadline,
                                 ),
                               ),
                             ),
                             childWhenDragging: Opacity(
                               opacity: 0.3,
-                              child: _KanbanCard(ticket: ticket),
+                              child: _KanbanCard(
+                                ticket: ticket,
+                                showDeadline: showDeadline,
+                              ),
                             ),
                             child: GestureDetector(
                               onTap: () => onTicketTap(ticket),
-                              child: _KanbanCard(ticket: ticket),
+                              child: _KanbanCard(
+                                ticket: ticket,
+                                showDeadline: showDeadline,
+                              ),
                             ),
                           );
                         },
@@ -336,10 +348,15 @@ class _KanbanColumn extends StatelessWidget {
 // ── Tarjeta Kanban Compacta ──────────────────────────────
 
 class _KanbanCard extends StatelessWidget {
-  const _KanbanCard({required this.ticket, this.isDragging = false});
+  const _KanbanCard({
+    required this.ticket,
+    this.isDragging = false,
+    this.showDeadline = false,
+  });
 
   final Ticket ticket;
   final bool isDragging;
+  final bool showDeadline;
 
   @override
   Widget build(BuildContext context) {
@@ -439,6 +456,9 @@ class _KanbanCard extends StatelessWidget {
                     ? const Color(0xFFFF9800)
                     : const Color(0xFFF44336),
               ),
+
+            // ── Deadline semaphore (Root / Soporte) ──
+            if (showDeadline) _DeadlineRow(solucion: ticket.solucionProgramada),
 
             const SizedBox(height: 6),
 
@@ -544,5 +564,79 @@ class _CardInfoRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Semáforo de deadline compacto para tarjetas Kanban.
+class _DeadlineRow extends StatelessWidget {
+  const _DeadlineRow({required this.solucion});
+  final String? solucion;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = deadlineInfo(solucion);
+    return _CardInfoRow(
+      icon: Icons.schedule,
+      text: info.label,
+      color: info.color,
+    );
+  }
+}
+
+/// Parsea una fecha almacenada como String en múltiples formatos posibles:
+/// - ISO 8601: "2026-03-15", "2026-03-15T00:00:00.000Z"
+/// - V1 con hora: "2026/3/15 11:12"
+/// - V2 sin hora: "2026/3/15"
+DateTime? parseDeadlineDate(String? solucion) {
+  if (solucion == null || solucion.isEmpty) return null;
+
+  // 1. ISO 8601 directo (con guiones)
+  final iso = DateTime.tryParse(solucion);
+  if (iso != null) return iso;
+
+  // 2. Formato "año/mes/día" o "año/mes/día hora:min"
+  final dateTimeParts = solucion.split(' ');
+  final datePart = dateTimeParts[0];
+  final parts = datePart.split('/');
+  if (parts.length == 3) {
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year != null && month != null && day != null) {
+      return DateTime(year, month, day);
+    }
+  }
+
+  return null;
+}
+
+/// Calcula color y etiqueta del semáforo de deadline.
+({Color color, String label}) deadlineInfo(String? solucion) {
+  if (solucion == null || solucion.isEmpty) {
+    return (color: const Color(0xFF9E9E9E), label: 'Sin fecha límite');
+  }
+
+  final target = parseDeadlineDate(solucion);
+
+  if (target == null) {
+    return (color: const Color(0xFF9E9E9E), label: 'Fecha inválida');
+  }
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final deadline = DateTime(target.year, target.month, target.day);
+  final days = deadline.difference(today).inDays;
+
+  if (days < 0) {
+    return (color: const Color(0xFFD32F2F), label: 'Vencido (${-days}d)');
+  } else if (days <= 1) {
+    return (
+      color: const Color(0xFFFF9800),
+      label: days == 0 ? 'Vence hoy' : 'Vence mañana',
+    );
+  } else if (days <= 5) {
+    return (color: const Color(0xFFFFC107), label: 'Vence en ${days}d');
+  } else {
+    return (color: const Color(0xFF4CAF50), label: 'Vence en ${days}d');
   }
 }

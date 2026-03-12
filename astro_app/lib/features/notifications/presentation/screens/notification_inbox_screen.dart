@@ -200,6 +200,9 @@ class _NotificationTile extends ConsumerWidget {
       NotificationType.reqAsignado => Icons.person_add_alt_1_outlined,
       NotificationType.reqComentario => Icons.chat_outlined,
       NotificationType.reqFaseAsignada => Icons.next_plan_outlined,
+      NotificationType.ticketDeadlineAmber => Icons.schedule,
+      NotificationType.ticketDeadlineOrange => Icons.warning_amber_outlined,
+      NotificationType.ticketDeadlineRed => Icons.error_outline,
     };
   }
 

@@ -238,8 +238,18 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                   // Contenido: Kanban o Lista
                   Expanded(
                     child: kanban
-                        ? _buildKanban(context, filteredTickets, projectId)
-                        : _buildList(context, filteredTickets, projectId),
+                        ? _buildKanban(
+                            context,
+                            filteredTickets,
+                            projectId,
+                            canManage,
+                          )
+                        : _buildList(
+                            context,
+                            filteredTickets,
+                            projectId,
+                            canManage,
+                          ),
                   ),
                 ],
               );
@@ -283,9 +293,11 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     BuildContext context,
     List<Ticket> tickets,
     String projectId,
+    bool canManage,
   ) {
     return TicketKanbanBoard(
       tickets: tickets,
+      showDeadline: canManage,
       onTicketTap: (ticket) =>
           context.push('/projects/$projectId/tickets/${ticket.id}'),
       onStatusChange: (ticket, newStatus) async {
@@ -314,6 +326,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     BuildContext context,
     List<Ticket> tickets,
     String projectId,
+    bool canManage,
   ) {
     if (tickets.isEmpty) {
       return Center(
@@ -346,6 +359,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           final ticket = tickets[index];
           return _TicketCard(
             ticket: ticket,
+            showDeadline: canManage,
             onTap: () =>
                 context.push('/projects/$projectId/tickets/${ticket.id}'),
           );
@@ -358,10 +372,15 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
 // ── Ticket Card (V1 design) ──────────────────────────────
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket, required this.onTap});
+  const _TicketCard({
+    required this.ticket,
+    required this.onTap,
+    this.showDeadline = false,
+  });
 
   final Ticket ticket;
   final VoidCallback onTap;
+  final bool showDeadline;
 
   @override
   Widget build(BuildContext context) {
@@ -383,7 +402,7 @@ class _TicketCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Folio + Estado ──
+              // ── Folio + Estado + Semáforo deadline ──
               Row(
                 children: [
                   Text(
@@ -392,6 +411,8 @@ class _TicketCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (showDeadline)
+                    _DeadlineBadge(solucion: ticket.solucionProgramada),
                   const Spacer(),
                   _StatusBadge(status: ticket.status),
                 ],
@@ -719,6 +740,42 @@ class _StatusBadge extends StatelessWidget {
           fontWeight: FontWeight.bold,
           fontSize: 10,
         ),
+      ),
+    );
+  }
+}
+
+// ── Deadline Badge ───────────────────────────────────────
+
+class _DeadlineBadge extends StatelessWidget {
+  const _DeadlineBadge({required this.solucion});
+  final String? solucion;
+
+  @override
+  Widget build(BuildContext context) {
+    final info = deadlineInfo(solucion);
+    if (solucion == null || solucion!.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: info.color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: info.color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 8, color: info.color),
+          const SizedBox(width: 4),
+          Text(
+            info.label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: info.color,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+        ],
       ),
     );
   }

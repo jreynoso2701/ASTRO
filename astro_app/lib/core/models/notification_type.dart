@@ -12,7 +12,12 @@ enum NotificationType {
   reqStatusCambiado('req_status', 'Estado de requerimiento cambiado'),
   reqAsignado('req_asignado', 'Requerimiento asignado'),
   reqComentario('req_comentario', 'Nuevo comentario en requerimiento'),
-  reqFaseAsignada('req_fase', 'Fase asignada a requerimiento');
+  reqFaseAsignada('req_fase', 'Fase asignada a requerimiento'),
+
+  // Deadline de tickets
+  ticketDeadlineAmber('ticket_deadline_amber', 'Ticket próximo a vencer'),
+  ticketDeadlineOrange('ticket_deadline_orange', 'Ticket vence hoy/mañana'),
+  ticketDeadlineRed('ticket_deadline_red', 'Ticket vencido');
 
   const NotificationType(this.value, this.label);
   final String value;
@@ -29,7 +34,8 @@ enum NotificationType {
 /// Referencia al recurso que originó la notificación.
 enum NotificationRefType {
   ticket('ticket'),
-  requerimiento('requerimiento');
+  requerimiento('requerimiento'),
+  cita('cita');
 
   const NotificationRefType(this.value);
   final String value;

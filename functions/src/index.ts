@@ -720,3 +720,140 @@ export const checkCitaReminders = onSchedule(
     await Promise.all(promises);
   }
 );
+
+// ── Scheduled: SEMÁFORO DE DEADLINE DE TICKETS ───────────
+
+/**
+ * Cada día a las 08:00 (América/México_City) revisa todos los tickets activos
+ * que tienen `fhCompromisoSol` (fecha de solución programada).
+ *
+ * Envía notificaciones a los usuarios ROOT del proyecto cuando:
+ *  - 🟡 Ámbar: faltan entre 2 y 5 días para el vencimiento.
+ *  - 🟠 Naranja: vence hoy o mañana (0‑1 días).
+ *  - 🔴 Rojo: ya venció (overdue).
+ *
+ * Para evitar spam, se usa un campo `_lastDeadlineAlert` en el ticket
+ * que almacena la última "zona" alertada ("amber" | "orange" | "red").
+ * Solo se notifica cuando el ticket entra a una **nueva** zona.
+ */
+export const checkTicketDeadlines = onSchedule(
+  {
+    schedule: "every day 08:00",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    // Obtener todos los tickets activos con fecha de solución programada.
+    const snap = await db
+      .collection("Incidentes")
+      .where("isActive", "==", true)
+      .get();
+
+    if (snap.empty) return;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const promises: Promise<void>[] = [];
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const ticketId = doc.id;
+
+      // Solo tickets con fecha de solución programada
+      const fhRaw = data.fhCompromisoSol;
+      if (!fhRaw) continue;
+
+      // Parsear fecha — soporta: Timestamp, ISO, "año/mes/día", "año/mes/día hora:min"
+      let target: Date | null = null;
+      if (fhRaw.toDate) {
+        target = fhRaw.toDate();
+      } else if (typeof fhRaw === "string" && fhRaw.length > 0) {
+        // Intentar ISO directo
+        const iso = new Date(fhRaw);
+        if (!isNaN(iso.getTime()) && fhRaw.includes("-")) {
+          target = iso;
+        } else {
+          // Formato "año/mes/día" o "año/mes/día hora:min"
+          const dateTimeParts = fhRaw.split(" ");
+          const parts = dateTimeParts[0].split("/");
+          if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+              target = new Date(y, m - 1, d);
+            }
+          }
+        }
+      }
+
+      if (!target) continue;
+
+      const deadline = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+      const diffMs = deadline.getTime() - today.getTime();
+      const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      // Determinar zona del semáforo
+      let zone: "amber" | "orange" | "red" | null = null;
+      let emoji = "";
+      let label = "";
+
+      if (days < 0) {
+        zone = "red";
+        emoji = "🔴";
+        label = `Vencido hace ${-days} día(s)`;
+      } else if (days <= 1) {
+        zone = "orange";
+        emoji = "🟠";
+        label = days === 0 ? "Vence HOY" : "Vence MAÑANA";
+      } else if (days <= 5) {
+        zone = "amber";
+        emoji = "🟡";
+        label = `Vence en ${days} días`;
+      }
+
+      // Si no cae en ninguna zona de alerta, no enviar nada
+      if (!zone) continue;
+
+      // Anti-spam: solo notificar si la zona cambió
+      const lastAlert = data._lastDeadlineAlert as string | undefined;
+      if (lastAlert === zone) continue;
+
+      // Actualizar la zona alertada
+      promises.push(
+        db.collection("Incidentes").doc(ticketId).update({
+          _lastDeadlineAlert: zone,
+        }).then(() => {/* ok */})
+      );
+
+      const projectId = data.projectId as string | undefined;
+      if (!projectId) continue;
+
+      const projectName = data.projectName as string ?? "";
+      const folio = data.folioIncidente as string ?? data.folio ?? "";
+      const titulo = data.tituloIncidente as string ?? data.titulo ?? "";
+
+      // Obtener solo usuarios Root del proyecto
+      const assignments = await getProjectAssignments(projectId);
+      const rootUids = assignments
+        .filter((a) => a.role === "Root")
+        .map((a) => a.userId);
+
+      if (rootUids.length === 0) continue;
+
+      promises.push(
+        sendNotifications(rootUids, {
+          titulo: `${emoji} ${folio} — ${label}`,
+          cuerpo: titulo,
+          tipo: `ticket_deadline_${zone}`,
+          refType: "ticket",
+          refId: ticketId,
+          projectId,
+          projectName,
+        })
+      );
+    }
+
+    await Promise.all(promises);
+  }
+);

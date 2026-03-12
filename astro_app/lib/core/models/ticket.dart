@@ -132,7 +132,7 @@ class Ticket {
       evidencias: parseList(data['evidenciasIncidente']),
       refMinutas: parseList(data['refMinutas']),
       refCitas: parseList(data['refCitas']),
-      solucionProgramada: data['fhCompromisoSol'] as String?,
+      solucionProgramada: _parseDateString(data['fhCompromisoSol']),
       porcentajeAvance: _parseDouble(data['porcentajeAvance']) ?? 0,
       isActive: data['isActive'] as bool? ?? true,
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
@@ -255,6 +255,18 @@ class Ticket {
   static double? _parseDouble(dynamic value) {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  /// Convierte un campo Firestore (Timestamp, String, etc.) a String de fecha.
+  /// Normaliza al formato "año/mes/día" para compatibilidad.
+  static String? _parseDateString(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) {
+      final dt = value.toDate();
+      return '${dt.year}/${dt.month}/${dt.day}';
+    }
+    if (value is String && value.isNotEmpty) return value;
     return null;
   }
 
