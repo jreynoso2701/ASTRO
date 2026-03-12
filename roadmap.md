@@ -183,7 +183,7 @@
   - [x] Escritura dual: push FCM + entrada in-app (Notificaciones).
   - [x] Respeta `NotificationConfig` overrides por usuario/proyecto.
 - [x] Índices Firestore para `Notificaciones` (userId+createdAt, userId+leida+createdAt).
-- [x] Índices Firestore completos desplegados (37 índices: Notificaciones, Tickets, projectAssignments, Modulos, Requerimientos, ComentariosRequerimientos, users, Proyectos, NotificacionesGral, chatAI, chats, etc.).
+- [x] Índices Firestore completos desplegados (37 índices: Notificaciones, Tickets, projectAssignments, Modulos, Requerimientos, ComentariosRequerimientos, users, Proyectos, NotificacionesGral, chatAI, chats, etc.).\n- [x] **`updatedBy` en actualizaciones de tickets** — `updateStatus`, `archiveTicket` y `assign` del `TicketRepository` ahora envían `updatedBy` con el UID del usuario que ejecutó la acción. La Cloud Function `onTicketUpdated` usa este campo para excluir al autor de las notificaciones de su propia acción.
 - [x] `firebase.json` y `.firebaserc` en raíz del repo para deploy de functions.
 - [x] Botón back en pantalla de Notificaciones del Proyecto (soporte iOS/tablet sin botón hardware).
 - [x] Buscador de miembros en pantalla de Notificaciones del Proyecto (filtro por nombre, email, rol).
@@ -260,11 +260,21 @@
 - [ ] Tests de widgets de componentes clave.
 - [ ] Tests de integración de flujos principales.
 
-### 1.12 Publicación
+### 1.12 Publicación y Deploy
 
-- [ ] Build de release para Android.
+- [x] Logotipo oficial integrado como ícono de app y splash screen.
+- [x] `flutter_launcher_icons` configurado — genera íconos Android (adaptive), iOS y Web (PWA + favicon).
+- [x] `flutter_native_splash` configurado — splash nativo negro con logo centrado (Android, iOS, Web, Android 12+).
+- [x] Nombre de app unificado: **ASTRO** en Android (`android:label`), iOS (`CFBundleDisplayName`, `CFBundleName`) y Web (`<title>`, `manifest.json`).
+- [x] Metadata web actualizada: `manifest.json` con colores `#000000`, descripción profesional, nombre ASTRO.
+- [x] `index.html` actualizado: título, descripción, apple-mobile-web-app-title.
+- [x] Splash Android: fondo negro en `launch_background.xml` (values + drawable-v21).
+- [x] Versión bumped a `2.0.0+9`.
+- [ ] Configurar firma de release para Android (keystore).
+- [ ] Build de release para Android (`flutter build appbundle`).
 - [ ] Actualización en Google Play (Closed Testing).
 - [ ] Deploy web en Railway.
+- [ ] Build para iOS / TestFlight.
 - [ ] Optimización ASO (App Store Optimization).
 
 ### 1.13 Gestión de Cuenta y Perfil
@@ -407,4 +417,4 @@
 
 ---
 
-*Última actualización: 11 de marzo de 2026 — Sección 1.10 ampliada: Hub "Gestión" agrupa Proyectos, Usuarios y Empresas en un solo destino de navegación. Menú reducido de 6 a 4 items (Dashboard, Gestión, Calendario, Notificaciones).*
+*Última actualización: 12 de marzo de 2026 — Sección 1.12 ampliada: logotipo oficial integrado, íconos y splash screen configurados para Android/iOS/Web. Nombre unificado a "ASTRO" en todas las plataformas. Fix: `updatedBy` en actualizaciones de tickets para excluir al autor de notificaciones propias. Versión 2.0.0+9.*

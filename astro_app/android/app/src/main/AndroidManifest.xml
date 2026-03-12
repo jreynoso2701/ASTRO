@@ -1,6 +1,30 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ── Permisos requeridos ── -->
+
+    <!-- Red (Firebase, descargas, APIs) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Cámara (capturar fotos/videos para tickets y minutas) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Galería — Android 12 e inferior -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Galería — Android 13+ (media granular) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Guardar archivos descargados (Android 9 e inferior) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- Notificaciones push (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
-        android:label="astro"
+        android:label="ASTRO"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

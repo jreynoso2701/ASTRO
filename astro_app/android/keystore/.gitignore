@@ -1,0 +1,3 @@
+# Keystores are sensitive - never commit them
+*.jks
+*.keystore

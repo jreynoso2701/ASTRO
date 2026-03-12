@@ -1,0 +1,28 @@
+flutter_launcher_icons:
+  # Ícono de la app ASTRO — estrella blanca sobre fondo negro
+  image_path: "assets/images/branding/logo.png"
+
+  # ── Android ──
+  android: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/images/branding/logo.png"
+
+  # ── iOS ──
+  ios: true
+  remove_alpha_ios: true
+
+  # ── Web ──
+  web:
+    generate: true
+    image_path: "assets/images/branding/logo.png"
+    background_color: "#000000"
+    theme_color: "#000000"
+
+  # ── Windows (futuro) ──
+  windows:
+    generate: false
+
+  # ── macOS (futuro) ──
+  macos:
+    generate: false

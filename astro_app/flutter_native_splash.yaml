@@ -1,0 +1,31 @@
+flutter_native_splash:
+  # Splash screen ASTRO — fondo negro con estrella blanca centrada
+  # Consistente con el tema Dark por defecto de la app
+
+  # Imagen del logo centrado
+  image: assets/images/branding/logo.png
+
+  # Fondo negro (tema Dark default de ASTRO)
+  color: "#000000"
+
+  # ── Dark Mode (mismo diseño, sin cambios) ──
+  color_dark: "#000000"
+  image_dark: assets/images/branding/logo.png
+
+  # ── Android ──
+  android: true
+  android_12:
+    image: assets/images/branding/logo.png
+    color: "#000000"
+    image_dark: assets/images/branding/logo.png
+    color_dark: "#000000"
+
+  # ── iOS ──
+  ios: true
+
+  # ── Web ──
+  web: true
+
+  # Preservar el splash hasta que la app lo descarte manualmente
+  # (útil para esperar a que Firebase Auth se inicialice)
+  fullscreen: true
