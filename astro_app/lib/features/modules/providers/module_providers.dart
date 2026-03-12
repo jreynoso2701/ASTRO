@@ -1,6 +1,8 @@
+import 'dart:math' show max;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/modulo.dart';
 import 'package:astro/features/modules/data/modulo_repository.dart';
+import 'package:astro/features/tickets/providers/ticket_providers.dart';
 
 // ── Repository ───────────────────────────────────────────
 
@@ -69,9 +71,60 @@ final filteredModulesProvider = Provider.family<List<Modulo>, String>((
 
 // ── Progreso del proyecto ────────────────────────────────
 
-/// Calcula el porcentaje promedio de completado de los módulos activos
-/// de un proyecto. Retorna 0 si no hay módulos.
+/// Progreso base del módulo (funcionalidades completadas — sin ajuste).
+final moduleBaseProgressProvider =
+    Provider.family<
+      double,
+      ({String id, String projectName, String moduleName})
+    >((ref, params) {
+      final module = ref.watch(moduloByIdProvider(params.id)).value;
+      return module?.porcentCompletaModulo ?? 0;
+    });
+
+/// Progreso ajustado de un módulo = base - penalización de tickets.
+/// Nunca baja de 0%.
+final adjustedModuleProgressProvider =
+    Provider.family<
+      double,
+      ({String id, String projectName, String moduleName})
+    >((ref, params) {
+      final module = ref.watch(moduloByIdProvider(params.id)).value;
+      final base = module?.porcentCompletaModulo ?? 0;
+      final penalty = ref.watch(
+        modulePenaltyProvider((
+          projectName: params.projectName,
+          moduleName: params.moduleName,
+        )),
+      );
+      return max(0, base - penalty).toDouble();
+    });
+
+/// Calcula el porcentaje promedio de completado ajustado (con penalización
+/// de tickets) de los módulos activos de un proyecto. Retorna 0 si no hay módulos.
 final projectProgressProvider = Provider.family<double, String>((
+  ref,
+  projectName,
+) {
+  final modules =
+      ref.watch(activeModulosByProjectProvider(projectName)).value ?? [];
+  if (modules.isEmpty) return 0;
+
+  double total = 0;
+  for (final m in modules) {
+    total += ref.watch(
+      adjustedModuleProgressProvider((
+        id: m.id,
+        projectName: projectName,
+        moduleName: m.nombreModulo,
+      )),
+    );
+  }
+  return total / modules.length;
+});
+
+/// Progreso base del proyecto (sin penalización de tickets). Útil para
+/// mostrar la diferencia entre progreso base y ajustado en dashboards.
+final projectBaseProgressProvider = Provider.family<double, String>((
   ref,
   projectName,
 ) {

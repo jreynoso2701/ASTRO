@@ -61,7 +61,8 @@
 - [x] Providers: proyectos filtrados, búsqueda, miembros de proyecto.
 - [x] Navegación: `/projects`, `/projects/new`, `/projects/:id`, `/projects/:id/edit`.
 - [x] Destino "Proyectos" en el shell de navegación (visible para todos los roles).
-- [x] Dashboard principal con resumen de proyectos, tickets abiertos y progreso.
+- [x] Dashboard principal con resumen de proyectos, progreso y citas.
+- [x] **Dashboard: Resumen de Incidentes** — 6 cards de conteo por estado (Pendiente, En Desarrollo, Pruebas Internas, Pruebas Cliente, Bugs, Resuelto) con íconos y colores + gráfico donut de distribución (`CustomPainter`). Conteo global sumando todos los proyectos del usuario. Layout adaptativo: 2 columnas + donut abajo en móvil, 3 columnas + donut lateral en tablet/web.
 - [x] Asignación de módulos a proyectos (módulos se crean dentro de cada proyecto).
 - [x] Asignación de equipos a proyectos (desde el detalle del proyecto, diálogo de agregar miembro con selector de rol).
 - [x] Progreso del proyecto calculado desde módulos.
@@ -83,18 +84,26 @@
 
 - [x] Modelo de datos de Ticket en Firestore (colección `Incidentes/{docId}` — V1 compat).
 - [x] Modelo de TicketComment (colección top-level `Comentarios/{docId}` con `refIncidente`).
-- [x] Enums: TicketStatus (Abierto, En Progreso, Resuelto, Cerrado), TicketPriority (Baja, Media, Alta, Crítica).
+- [x] Enums: TicketStatus (Pendiente, En Desarrollo, Pruebas Internas, Pruebas Cliente, Bugs, Resuelto, Archivado), TicketPriority (Baja, Media, Alta, Crítica).
 - [x] Repositorio: TicketRepository con CRUD, comentarios, folio auto-incremental V1 (EMPRESA-PROYECTO-MÓDULO-NUM).
-- [x] Providers: tickets por proyecto, por usuario, filtros (estado, prioridad, búsqueda), conteo de abiertos.
+- [x] Providers: tickets por proyecto, por usuario, filtros (estado, prioridad, búsqueda), conteo de activos (excluye Resuelto/Archivado).
 - [x] Creación de tickets (todos los roles) con proyecto + módulo obligatorio.
 - [x] Pantalla de listado de tickets con búsqueda, chips de estado y prioridad, tarjetas informativas estilo V1.
-- [x] Pantalla de detalle de ticket con info, acciones de cambio de estado, asignación a Soporte, hilo de comentarios.
+- [x] Vista Kanban (tablero de 6 columnas por estado, sin Archivado) con drag & drop — toggle lista/kanban en AppBar, responsive (lista en móvil, kanban en pantallas anchas ≥840px).
+- [x] Pantalla de detalle de ticket con info, acciones de cambio de estado (Archivado solo Root), asignación a Soporte, hilo de comentarios.
 - [x] Pantalla de creación / edición de ticket (título, descripción, módulo, prioridad).
 - [x] Historial de cambios / comentarios con tipos (comment, statusChange, assignment, priorityChange).
 - [x] Asignación de tickets a usuarios de Soporte (diálogo con miembros Soporte del proyecto).
 - [x] Badge de tickets abiertos en botón "Ver tickets" de detalle de proyecto.
 - [x] Navegación: `/projects/:id/tickets`, `tickets/new`, `tickets/:ticketId`, `tickets/:ticketId/edit`.
 - [x] Visibilidad por rol: Usuario solo ve sus propios tickets; Root/Supervisor/Soporte ven todos.
+- [x] **Kanban enriquecido**: tarjetas con folio, badge de prioridad, título, módulo, reportó, soporte, fecha, barra de progreso con porcentaje.
+- [x] **Ordenamiento Kanban**: barra global de FilterChips con 7 criterios (reciente, antiguo, prioridad ↑↓, reportó, soporte, % avance) aplicados a todas las columnas.
+- [x] **Gestión de archivados (Root + Soporte)**: botón en AppBar → bottom sheet con búsqueda por folio/título/descripción/nombre, filtros de prioridad, listado de tickets archivados con detalle y acción rápida de desarchivar.
+- [x] **Archivado con justificación**: Root y Soporte pueden archivar desde el detalle del ticket con justificación obligatoria (mín. 10 chars). Campos `archiveReason` y `archivedByName` en modelo. Razón visible en detalle y en bottom sheet de archivados.
+- [x] **Indicadores en tarjetas**: ícono de adjuntos (clip + cantidad) cuando el ticket tiene evidencias, ícono de comentarios (burbuja + cantidad) con contador desnormalizado `commentCount`. Visible en vista lista (móvil) y Kanban (tablet/web/fold).
+- [x] **Auto-progreso por estado**: al cambiar a Resuelto se fija `porcentajeAvance` a 100%, al cambiar a Pendiente se fija a 0%. Aplica también al drag & drop en Kanban.
+- [x] **Bitácora de movimientos**: todos los cambios de estado (incluido drag & drop en Kanban), asignaciones y cambios de prioridad quedan registrados como entradas de historial. Sección dedicada "BITÁCORA" en detalle de ticket con timeline visual (ícono por tipo, color, autor, fecha, descripción), expandible (5 recientes, ver todos).
 - [x] Adjuntar evidencias (imágenes, videos, documentos) con Firebase Storage — upload múltiple desde galería, cámara o archivos.
 - [x] Porcentaje de avance editable (slider 0-100%, solo Root/Soporte) con indicador de progreso con color.
 - [x] Impacto del incidente (selector 1-10, solo Root/Soporte).
@@ -104,6 +113,20 @@
 - [x] Galería de evidencias en detalle de ticket con vista ampliada (tap para zoom interactivo).
 - [x] Tarjeta de "Progreso y Gestión" en detalle: avance circular + lineal, impacto, cobertura, solución programada, última actualización.
 - [x] `StorageService` para gestión de archivos en Firebase Storage (upload, delete, content-type detection).
+- [x] **Sistema de penalización por impacto de tickets en progreso de módulo/proyecto**:
+  - [x] Fórmula combinada: `penalización = prioridad.penaltyWeight × (impacto/10) × (1 - avance/100)`.
+  - [x] `penaltyWeight` en `TicketPriority` (Baja=1.0, Media=3.0, Alta=5.0, Crítica=8.0).
+  - [x] `modulePenaltyProvider` y `modulePenaltyDetailsProvider` — cálculo y desglose de penalización por módulo.
+  - [x] `adjustedModuleProgressProvider` — progreso de módulo menos penalización, piso en 0.
+  - [x] `projectProgressProvider` actualizado a usar progreso ajustado; `projectBaseProgressProvider` para comparar.
+  - [x] `ImpactLevel` enum (Bajo 1-3, Medio 4-6, Alto 7-9, Crítico 10) con filtro en listado y Kanban.
+  - [x] `_ImpactIndicator` en detalle del ticket: barra de color, nivel, penalización calculada.
+  - [x] Impacto visible en tarjetas de lista y Kanban con color por nivel.
+  - [x] Criterio de ordenamiento "Impacto" en Kanban.
+  - [x] Dashboard: stat card "Progreso general" muestra base vs ajustado cuando hay penalización.
+  - [x] Dashboard: `_ProjectCard` con indicador naranja de penalización por tickets.
+  - [x] Migración Cloud Function: 78 tickets Resuelto actualizados de 0% a 100%.
+  - [x] Auto-progreso: Resuelto → 100%, Pendiente → 0% (aplica en cambio de status y drag & drop Kanban).
 - [ ] Notificaciones push al asignar/cambiar estado (Fase 1.8).
 
 ### 1.7 Levantamiento de Requerimientos
@@ -219,6 +242,7 @@
   - Module list ya usaba maxCrossAxisExtent auto-adaptativo.
 - [x] Navegación responsiva (bottom nav en móvil, sidebar en tablet/web).
   - AppShell: NavigationBar (< compact) / NavigationRail (≥ compact) / extended rail (≥ medium).
+  - **Hub "Gestión"** — Proyectos, Usuarios y Empresas agrupados en un solo destino de navegación. Pantalla hub (`GestionScreen`) con tiles de navegación, condicional por rol (Usuarios y Empresas solo Root). Menú reducido de 6 a 4 destinos.
 - [x] Componentes optimizados para touch y mouse/teclado.
   - Tooltips agregados a: FAB, botones send (chat), calendar picker, clear, remove, delete, play/pause.
   - AppBar actions ya tenían tooltips.
@@ -383,4 +407,4 @@
 
 ---
 
-*Última actualización: 10 de marzo de 2026 — Sección 1.13 completada: master toggle push global ON/OFF en perfil. Sección 2.3 completada: vinculación de citas en tickets y navegación cruzada completa entre tickets ↔ minutas ↔ citas ↔ requerimientos.*
+*Última actualización: 11 de marzo de 2026 — Sección 1.10 ampliada: Hub "Gestión" agrupa Proyectos, Usuarios y Empresas en un solo destino de navegación. Menú reducido de 6 a 4 items (Dashboard, Gestión, Calendario, Notificaciones).*

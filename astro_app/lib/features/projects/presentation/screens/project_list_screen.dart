@@ -18,81 +18,93 @@ class ProjectListScreen extends ConsumerWidget {
     final filteredProjects = ref.watch(filteredProjectsProvider);
     final isRoot = ref.watch(isCurrentUserRootProvider);
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // ── Header + Search ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'PROYECTOS',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    if (isRoot)
-                      FilledButton.icon(
-                        onPressed: () => context.push('/projects/new'),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Nuevo'),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/gestion');
+      },
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Header + Search ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 16, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go('/gestion'),
+                        tooltip: 'Volver a Gestión',
                       ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por nombre, folio o empresa...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => ref
-                                .read(projectSearchProvider.notifier)
-                                .clear(),
-                          )
-                        : null,
+                      Expanded(
+                        child: Text(
+                          'PROYECTOS',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                      if (isRoot)
+                        FilledButton.icon(
+                          onPressed: () => context.push('/projects/new'),
+                          icon: const Icon(Icons.add, size: 18),
+                          label: const Text('Nuevo'),
+                        ),
+                    ],
                   ),
-                  onChanged: (v) =>
-                      ref.read(projectSearchProvider.notifier).setQuery(v),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Count ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: proyectosAsync.when(
-                data: (_) => Text(
-                  '${filteredProjects.length} proyecto${filteredProjects.length != 1 ? 's' : ''}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nombre, folio o empresa...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => ref
+                                  .read(projectSearchProvider.notifier)
+                                  .clear(),
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) =>
+                        ref.read(projectSearchProvider.notifier).setQuery(v),
                   ),
-                ),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                ],
               ),
             ),
-          ),
 
-          const SizedBox(height: 8),
-
-          // ── Grid / List ──
-          Expanded(
-            child: proyectosAsync.when(
-              data: (_) => _ProjectListContent(projects: filteredProjects),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('Error al cargar proyectos: $e')),
+            // ── Count ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: proyectosAsync.when(
+                  data: (_) => Text(
+                    '${filteredProjects.length} proyecto${filteredProjects.length != 1 ? 's' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 8),
+
+            // ── Grid / List ──
+            Expanded(
+              child: proyectosAsync.when(
+                data: (_) => _ProjectListContent(projects: filteredProjects),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) =>
+                    Center(child: Text('Error al cargar proyectos: $e')),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

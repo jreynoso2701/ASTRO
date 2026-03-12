@@ -21,19 +21,13 @@ class AppDestination {
   final String path;
 }
 
-/// Todos los destinos posibles. Se filtran según el rol del usuario.
+/// Todos los destinos de navegación.
 const List<AppDestination> _allDestinations = [
   AppDestination(
     label: 'Dashboard',
     icon: Icons.space_dashboard_outlined,
     selectedIcon: Icons.space_dashboard,
     path: '/',
-  ),
-  AppDestination(
-    label: 'Proyectos',
-    icon: Icons.folder_outlined,
-    selectedIcon: Icons.folder,
-    path: '/projects',
   ),
   AppDestination(
     label: 'Calendario',
@@ -48,18 +42,15 @@ const List<AppDestination> _allDestinations = [
     path: '/notifications',
   ),
   AppDestination(
-    label: 'Usuarios',
-    icon: Icons.people_outline,
-    selectedIcon: Icons.people,
-    path: '/users',
-  ),
-  AppDestination(
-    label: 'Empresas',
-    icon: Icons.business_outlined,
-    selectedIcon: Icons.business,
-    path: '/empresas',
+    label: 'Gestión',
+    icon: Icons.widgets_outlined,
+    selectedIcon: Icons.widgets,
+    path: '/gestion',
   ),
 ];
+
+/// Rutas que forman parte del grupo "Gestión" y deben resaltar ese tab.
+const _gestionPaths = ['/gestion', '/projects', '/users', '/empresas'];
 
 /// Shell adaptativo: NavigationBar (móvil) / NavigationRail (tablet/web).
 /// Muestra destinos según el rol del usuario autenticado.
@@ -69,18 +60,20 @@ class AppShell extends ConsumerWidget {
   final Widget child;
 
   List<AppDestination> _visibleDestinations(bool isRoot) {
-    return [
-      _allDestinations[0], // Dashboard — siempre visible
-      _allDestinations[1], // Proyectos — siempre visible
-      _allDestinations[2], // Calendario — siempre visible
-      _allDestinations[3], // Notificaciones — siempre visible
-      if (isRoot) _allDestinations[4], // Usuarios — solo Root
-      if (isRoot) _allDestinations[5], // Empresas — solo Root
-    ];
+    // Todos los destinos son visibles para cualquier rol.
+    return List.unmodifiable(_allDestinations);
   }
 
   int _currentIndex(BuildContext context, List<AppDestination> destinations) {
     final location = GoRouterState.of(context).uri.path;
+
+    // Rutas del grupo Gestión → índice del tab Gestión.
+    final gestionIndex = destinations.indexWhere((d) => d.path == '/gestion');
+    if (gestionIndex >= 0 &&
+        _gestionPaths.any((p) => p != '/' && location.startsWith(p))) {
+      return gestionIndex;
+    }
+
     for (int i = destinations.length - 1; i >= 0; i--) {
       final path = destinations[i].path;
       if (path != '/' && location.startsWith(path)) return i;

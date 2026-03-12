@@ -17,69 +17,84 @@ class UserListScreen extends ConsumerWidget {
     final searchQuery = ref.watch(userSearchProvider);
     final filteredUsers = ref.watch(filteredUsersProvider);
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // ── Header + Search ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'USUARIOS',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por nombre o email...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () =>
-                                ref.read(userSearchProvider.notifier).clear(),
-                          )
-                        : null,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/gestion');
+      },
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Header + Search ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 16, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go('/gestion'),
+                        tooltip: 'Volver a Gestión',
+                      ),
+                      Text(
+                        'USUARIOS',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ],
                   ),
-                  onChanged: (v) =>
-                      ref.read(userSearchProvider.notifier).setQuery(v),
-                ),
-              ],
-            ),
-          ),
-
-          // ── User count ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: usersAsync.when(
-                data: (all) => Text(
-                  '${filteredUsers.length} de ${all.length} usuarios',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nombre o email...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () =>
+                                  ref.read(userSearchProvider.notifier).clear(),
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) =>
+                        ref.read(userSearchProvider.notifier).setQuery(v),
                   ),
-                ),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                ],
               ),
             ),
-          ),
 
-          const SizedBox(height: 8),
-
-          // ── List / Grid ──
-          Expanded(
-            child: usersAsync.when(
-              data: (_) => _UserListContent(users: filteredUsers),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('Error al cargar usuarios: $e')),
+            // ── User count ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: usersAsync.when(
+                  data: (all) => Text(
+                    '${filteredUsers.length} de ${all.length} usuarios',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+              ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 8),
+
+            // ── List / Grid ──
+            Expanded(
+              child: usersAsync.when(
+                data: (_) => _UserListContent(users: filteredUsers),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) =>
+                    Center(child: Text('Error al cargar usuarios: $e')),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

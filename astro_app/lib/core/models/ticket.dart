@@ -30,6 +30,9 @@ class Ticket {
     this.solucionProgramada,
     this.porcentajeAvance = 0,
     this.isActive = true,
+    this.commentCount = 0,
+    this.archiveReason,
+    this.archivedByName,
     this.createdAt,
     this.updatedAt,
     this.closedAt,
@@ -60,6 +63,9 @@ class Ticket {
   final String? solucionProgramada; // V1: fhCompromisoSol
   final double porcentajeAvance; // V1: porcentajeAvance (0-100)
   final bool isActive;
+  final int commentCount; // Contador desnormalizado de comentarios
+  final String? archiveReason; // Justificación de archivado
+  final String? archivedByName; // Quién archivó
   final DateTime? createdAt; // V1: fhRegistro (string)
   final DateTime? updatedAt; // V1: fhActualizacion (string)
   final DateTime? closedAt;
@@ -129,6 +135,9 @@ class Ticket {
       solucionProgramada: data['fhCompromisoSol'] as String?,
       porcentajeAvance: _parseDouble(data['porcentajeAvance']) ?? 0,
       isActive: data['isActive'] as bool? ?? true,
+      commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
+      archiveReason: data['archiveReason'] as String?,
+      archivedByName: data['archivedByName'] as String?,
       createdAt: parseDate(data['fhRegistro'] ?? data['createdAt']),
       updatedAt: parseDate(data['fhActualizacion'] ?? data['updatedAt']),
       closedAt: parseDate(data['closedAt']),
@@ -157,6 +166,9 @@ class Ticket {
       if (solucionProgramada != null) 'fhCompromisoSol': solucionProgramada,
       'porcentajeAvance': porcentajeAvance,
       'isActive': isActive,
+      'commentCount': commentCount,
+      if (archiveReason != null) 'archiveReason': archiveReason,
+      if (archivedByName != null) 'archivedByName': archivedByName,
       'fhRegistro': createdAt != null
           ? _toV1DateString(createdAt!)
           : _toV1DateString(now),
@@ -201,6 +213,9 @@ class Ticket {
     String? solucionProgramada,
     double? porcentajeAvance,
     bool? isActive,
+    int? commentCount,
+    String? archiveReason,
+    String? archivedByName,
     DateTime? updatedAt,
     DateTime? closedAt,
   }) {
@@ -228,6 +243,9 @@ class Ticket {
       solucionProgramada: solucionProgramada ?? this.solucionProgramada,
       porcentajeAvance: porcentajeAvance ?? this.porcentajeAvance,
       isActive: isActive ?? this.isActive,
+      commentCount: commentCount ?? this.commentCount,
+      archiveReason: archiveReason ?? this.archiveReason,
+      archivedByName: archivedByName ?? this.archivedByName,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       closedAt: closedAt ?? this.closedAt,

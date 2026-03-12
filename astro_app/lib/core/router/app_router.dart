@@ -41,6 +41,7 @@ import 'package:astro/features/profile/presentation/screens/profile_screen.dart'
 import 'package:astro/features/empresas/presentation/screens/empresa_list_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_detail_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_form_screen.dart';
+import 'package:astro/features/gestion/presentation/screens/gestion_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -95,6 +96,9 @@ abstract final class AppRoutes {
 
   // Perfil
   static const String profile = '/profile';
+
+  // Gestión (hub)
+  static const String gestion = '/gestion';
 
   // Empresas
   static const String empresas = '/empresas';
@@ -186,6 +190,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.dashboard,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: DashboardScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.gestion,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: GestionScreen()),
           ),
           GoRoute(
             path: AppRoutes.users,

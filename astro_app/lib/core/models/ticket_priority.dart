@@ -1,12 +1,16 @@
 /// Prioridades de un ticket en ASTRO.
 enum TicketPriority {
-  baja('Baja'),
-  media('Media'),
-  alta('Alta'),
-  critica('Crítica');
+  baja('Baja', 1.0),
+  media('Media', 3.0),
+  alta('Alta', 5.0),
+  critica('Crítica', 8.0);
 
-  const TicketPriority(this.label);
+  const TicketPriority(this.label, this.penaltyWeight);
   final String label;
+
+  /// Peso base de penalización al progreso del módulo cuando hay un
+  /// ticket abierto con esta prioridad (se modula por impacto y avance).
+  final double penaltyWeight;
 
   /// V1 label stored in Firestore `prioridadIncidente`.
   String get v1Label => switch (this) {

@@ -22,89 +22,100 @@ class _EmpresaListScreenState extends ConsumerState<EmpresaListScreen> {
     final theme = Theme.of(context);
     final empresasAsync = ref.watch(allEmpresasProvider);
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // ── Header + Search ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'EMPRESAS',
-                        style: theme.textTheme.headlineSmall,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/gestion');
+      },
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Header + Search ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 16, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go('/gestion'),
+                        tooltip: 'Volver a Gestión',
                       ),
-                    ),
-                    FilledButton.icon(
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Nueva'),
-                      onPressed: () => context.push('/empresas/new'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por nombre, RFC o contacto...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _search.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => setState(() => _search = ''),
-                          )
-                        : null,
+                      Expanded(
+                        child: Text(
+                          'EMPRESAS',
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                      ),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Nueva'),
+                        onPressed: () => context.push('/empresas/new'),
+                      ),
+                    ],
                   ),
-                  onChanged: (v) => setState(() => _search = v),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Buscar por nombre, RFC o contacto...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _search.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () => setState(() => _search = ''),
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) => setState(() => _search = v),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          // ── Count ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Align(
-              alignment: Alignment.centerLeft,
+            // ── Count ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: empresasAsync.when(
+                  data: (all) {
+                    final filtered = _filter(all);
+                    return Text(
+                      '${filtered.length} de ${all.length} empresas',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── List / Grid ──
+            Expanded(
               child: empresasAsync.when(
                 data: (all) {
                   final filtered = _filter(all);
-                  return Text(
-                    '${filtered.length} de ${all.length} empresas',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  );
+                  if (filtered.isEmpty) {
+                    return const Center(
+                      child: Text('No se encontraron empresas'),
+                    );
+                  }
+                  return _EmpresaGrid(empresas: filtered);
                 },
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) =>
+                    Center(child: Text('Error al cargar empresas: $e')),
               ),
             ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // ── List / Grid ──
-          Expanded(
-            child: empresasAsync.when(
-              data: (all) {
-                final filtered = _filter(all);
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('No se encontraron empresas'),
-                  );
-                }
-                return _EmpresaGrid(empresas: filtered);
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('Error al cargar empresas: $e')),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:astro/core/models/ticket_priority.dart';
 import 'package:astro/core/models/ticket_comment.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/utils/ticket_colors.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -83,7 +84,12 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             ticket: ticket,
             projectId: widget.projectId,
             canManage: canManage || isRoot,
+            isRoot: isRoot,
+            systemComments: comments
+                .where((c) => c.type != CommentType.comment)
+                .toList(),
             onStatusChange: (status) => _changeStatus(ticket, status),
+            onArchive: () => _showArchiveDialog(ticket),
             onAssign: canManage || isRoot
                 ? () => _showAssignDialog(ticket)
                 : null,
@@ -191,6 +197,103 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     }
   }
 
+  Future<void> _showArchiveDialog(Ticket ticket) async {
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          Icons.inventory_2_outlined,
+          color: ticketStatusColor(TicketStatus.archivado),
+          size: 32,
+        ),
+        title: const Text('Archivar ticket'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Estás a punto de archivar el ticket "${ticket.folio}".',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: reasonController,
+                maxLines: 3,
+                maxLength: 500,
+                decoration: const InputDecoration(
+                  labelText: 'Justificación *',
+                  hintText: 'Explica por qué se archiva este ticket...',
+                  border: OutlineInputBorder(),
+                  alignLabelWithHint: true,
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'La justificación es obligatoria';
+                  }
+                  if (v.trim().length < 10) {
+                    return 'Mínimo 10 caracteres';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(ctx, true);
+              }
+            },
+            child: const Text('Archivar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      reasonController.dispose();
+      return;
+    }
+
+    final reason = reasonController.text.trim();
+    reasonController.dispose();
+
+    final repo = ref.read(ticketRepositoryProvider);
+    final profile = ref.read(currentUserProfileProvider).value;
+    final archivedBy = profile?.displayName ?? 'Desconocido';
+
+    await repo.archiveTicket(
+      ticket.id,
+      reason: reason,
+      archivedByName: archivedBy,
+    );
+
+    // Entrada de historial
+    if (profile != null) {
+      await repo.addComment(
+        ticket.id,
+        TicketComment(
+          id: '',
+          text: 'Archivó el ticket. Justificación: "$reason"',
+          authorId: profile.uid,
+          authorName: profile.displayName,
+          type: CommentType.statusChange,
+        ),
+      );
+    }
+  }
+
   Future<void> _sendComment(String ticketId) async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
@@ -283,14 +386,20 @@ class _TicketInfoSection extends StatelessWidget {
     required this.ticket,
     required this.projectId,
     required this.canManage,
+    required this.isRoot,
+    required this.systemComments,
     required this.onStatusChange,
+    required this.onArchive,
     this.onAssign,
   });
 
   final Ticket ticket;
   final String projectId;
   final bool canManage;
+  final bool isRoot;
+  final List<TicketComment> systemComments;
   final ValueChanged<TicketStatus> onStatusChange;
+  final VoidCallback onArchive;
   final VoidCallback? onAssign;
 
   @override
@@ -485,8 +594,11 @@ class _TicketInfoSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                if (ticket.impacto != null)
-                  _InfoRow(label: 'Impacto', value: '${ticket.impacto}/10'),
+                // ── Impacto visual ──
+                if (ticket.impacto != null) ...[
+                  _ImpactIndicator(ticket: ticket),
+                  const SizedBox(height: 8),
+                ],
                 if (ticket.cobertura != null && ticket.cobertura!.isNotEmpty)
                   _InfoRow(label: 'Cobertura', value: ticket.cobertura!),
                 if (ticket.solucionProgramada != null &&
@@ -504,6 +616,57 @@ class _TicketInfoSection extends StatelessWidget {
             ),
           ),
         ),
+
+        // Razón de archivado (si aplica)
+        if (ticket.status == TicketStatus.archivado &&
+            ticket.archiveReason != null &&
+            ticket.archiveReason!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            color: ticketStatusColor(
+              TicketStatus.archivado,
+            ).withValues(alpha: 0.06),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 18,
+                        color: ticketStatusColor(TicketStatus.archivado),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'RAZÓN DE ARCHIVADO',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          letterSpacing: 1,
+                          color: ticketStatusColor(TicketStatus.archivado),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  Text(
+                    ticket.archiveReason!,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  if (ticket.archivedByName != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Archivado por: ${ticket.archivedByName}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
 
         // Evidencias
         if (ticket.evidencias.isNotEmpty) ...[
@@ -672,6 +835,11 @@ class _TicketInfoSection extends StatelessWidget {
 
         const SizedBox(height: 16),
 
+        // Bitácora de movimientos
+        _BitacoraCard(entries: systemComments),
+
+        const SizedBox(height: 16),
+
         // Acciones
         if (canManage) ...[
           // Cambiar estado
@@ -694,17 +862,39 @@ class _TicketInfoSection extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       for (final s in TicketStatus.values)
-                        if (s != ticket.status)
+                        if (s != ticket.status && s != TicketStatus.archivado)
                           OutlinedButton(
                             onPressed: () => onStatusChange(s),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: _statusColor(s),
+                              foregroundColor: ticketStatusColor(s),
                               side: BorderSide(
-                                color: _statusColor(s).withValues(alpha: 0.5),
+                                color: ticketStatusColor(
+                                  s,
+                                ).withValues(alpha: 0.5),
                               ),
                             ),
                             child: Text(s.label),
                           ),
+                      // Botón Archivar separado (Root + Soporte)
+                      if (ticket.status != TicketStatus.archivado)
+                        OutlinedButton.icon(
+                          onPressed: onArchive,
+                          icon: const Icon(
+                            Icons.inventory_2_outlined,
+                            size: 16,
+                          ),
+                          label: const Text('Archivar'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: ticketStatusColor(
+                              TicketStatus.archivado,
+                            ),
+                            side: BorderSide(
+                              color: ticketStatusColor(
+                                TicketStatus.archivado,
+                              ).withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                   if (onAssign != null) ...[
@@ -773,6 +963,94 @@ class _TicketInfoSection extends StatelessWidget {
   }
 }
 
+// ── Indicador visual de impacto ──────────────────────────
+
+class _ImpactIndicator extends StatelessWidget {
+  const _ImpactIndicator({required this.ticket});
+  final Ticket ticket;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final impacto = ticket.impacto ?? 0;
+    final priorityWeight = ticket.priority.penaltyWeight;
+
+    // Calcular penalización de este ticket
+    final impactoFactor = impacto / 10.0;
+    final avanceFactor = 1.0 - (ticket.porcentajeAvance / 100.0);
+    final penalty = priorityWeight * impactoFactor * avanceFactor;
+
+    // Color según nivel de impacto
+    final Color impactColor;
+    if (impacto <= 3) {
+      impactColor = const Color(0xFF4CAF50); // Verde
+    } else if (impacto <= 6) {
+      impactColor = const Color(0xFFFFC107); // Amarillo
+    } else if (impacto <= 9) {
+      impactColor = const Color(0xFFFF9800); // Naranja
+    } else {
+      impactColor = const Color(0xFFF44336); // Rojo
+    }
+
+    final isOpen =
+        ticket.status != TicketStatus.resuelto &&
+        ticket.status != TicketStatus.archivado;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.trending_up, size: 16, color: impactColor),
+            const SizedBox(width: 6),
+            Text(
+              'Impacto: $impacto/10',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: impactColor,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              impacto <= 3
+                  ? 'Bajo'
+                  : impacto <= 6
+                  ? 'Medio'
+                  : impacto <= 9
+                  ? 'Alto'
+                  : 'Crítico',
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: impactColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: impacto / 10.0,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            color: impactColor,
+          ),
+        ),
+        if (isOpen && penalty > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Penalización al módulo: -${penalty.toStringAsFixed(1)}%',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: const Color(0xFFFF5252),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value});
 
@@ -811,7 +1089,7 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(status);
+    final color = ticketStatusColor(status);
     return Chip(
       label: Text(status.label),
       backgroundColor: color.withValues(alpha: 0.15),
@@ -831,7 +1109,7 @@ class _PriorityChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _priorityColor(priority);
+    final color = ticketPriorityColor(priority);
     return Chip(
       label: Text(priority.label),
       backgroundColor: color.withValues(alpha: 0.15),
@@ -842,6 +1120,234 @@ class _PriorityChip extends StatelessWidget {
         fontSize: 12,
       ),
     );
+  }
+}
+
+// ── Bitácora de Movimientos ──────────────────────────────
+
+class _BitacoraCard extends StatelessWidget {
+  const _BitacoraCard({required this.entries});
+  final List<TicketComment> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+
+    // Ordenar de más reciente a más antiguo
+    final sorted = [...entries]
+      ..sort(
+        (a, b) => (b.createdAt ?? DateTime(2000)).compareTo(
+          a.createdAt ?? DateTime(2000),
+        ),
+      );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.history, size: 18, color: muted),
+                const SizedBox(width: 8),
+                Text(
+                  'BITÁCORA (${sorted.length})',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1,
+                    color: muted,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            if (sorted.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'Sin movimientos registrados',
+                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                ),
+              )
+            else
+              // Mostrar máximo 10 más recientes, con opción de expandir
+              _BitacoraList(entries: sorted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BitacoraList extends StatefulWidget {
+  const _BitacoraList({required this.entries});
+  final List<TicketComment> entries;
+
+  @override
+  State<_BitacoraList> createState() => _BitacoraListState();
+}
+
+class _BitacoraListState extends State<_BitacoraList> {
+  static const _initialLimit = 5;
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final entries = widget.entries;
+    final visible = _expanded ? entries : entries.take(_initialLimit).toList();
+
+    return Column(
+      children: [
+        for (final entry in visible) _BitacoraEntry(entry: entry),
+        if (entries.length > _initialLimit)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 6,
+                  horizontal: 12,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      size: 18,
+                      color: muted,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _expanded ? 'Ver menos' : 'Ver todos (${entries.length})',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: muted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _BitacoraEntry extends StatelessWidget {
+  const _BitacoraEntry({required this.entry});
+  final TicketComment entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final color = _typeColor(entry.type, theme);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icono de tipo
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(_typeIcon(entry.type), size: 14, color: color),
+          ),
+          const SizedBox(width: 10),
+          // Contenido
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: theme.textTheme.bodySmall,
+                    children: [
+                      TextSpan(
+                        text: entry.authorName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: ' — ${_typeLabel(entry.type)}',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  entry.text,
+                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          // Fecha
+          if (entry.createdAt != null)
+            Text(
+              _formatDateTime(entry.createdAt!),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: muted,
+                fontSize: 10,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  IconData _typeIcon(CommentType type) {
+    return switch (type) {
+      CommentType.statusChange => Icons.swap_horiz,
+      CommentType.assignment => Icons.person_add_outlined,
+      CommentType.priorityChange => Icons.flag_outlined,
+      CommentType.comment => Icons.chat_bubble_outline,
+    };
+  }
+
+  Color _typeColor(CommentType type, ThemeData theme) {
+    return switch (type) {
+      CommentType.statusChange => const Color(0xFF2196F3),
+      CommentType.assignment => const Color(0xFF4CAF50),
+      CommentType.priorityChange => const Color(0xFFFFC107),
+      CommentType.comment => theme.colorScheme.onSurfaceVariant,
+    };
+  }
+
+  String _typeLabel(CommentType type) {
+    return switch (type) {
+      CommentType.statusChange => 'Cambio de estado',
+      CommentType.assignment => 'Asignación',
+      CommentType.priorityChange => 'Cambio de prioridad',
+      CommentType.comment => 'Comentario',
+    };
+  }
+
+  String _formatDateTime(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/'
+        '${dt.month.toString().padLeft(2, '0')}/'
+        '${dt.year} '
+        '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -1073,21 +1579,5 @@ class _CommentInput extends StatelessWidget {
 }
 
 // ── Color helpers ────────────────────────────────────────
-
-Color _statusColor(TicketStatus status) {
-  return switch (status) {
-    TicketStatus.abierto => const Color(0xFF2196F3),
-    TicketStatus.enProgreso => const Color(0xFFFFC107),
-    TicketStatus.resuelto => const Color(0xFF4CAF50),
-    TicketStatus.cerrado => Colors.grey,
-  };
-}
-
-Color _priorityColor(TicketPriority priority) {
-  return switch (priority) {
-    TicketPriority.baja => const Color(0xFF4CAF50),
-    TicketPriority.media => const Color(0xFF2196F3),
-    TicketPriority.alta => const Color(0xFFFFC107),
-    TicketPriority.critica => const Color(0xFFD71921),
-  };
-}
+// Use shared helpers from ticket_colors.dart:
+// ticketStatusColor() and ticketPriorityColor()

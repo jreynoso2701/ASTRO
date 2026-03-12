@@ -43,42 +43,48 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final citasAsync = ref.watch(myCitasProvider);
     final allCitas = citasAsync.value ?? [];
 
-    return SafeArea(
-      child: Column(
-        children: [
-          // ── Header ───────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'CALENDARIO',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontFamily: AppTypography.fontFamilyDisplay,
-                      letterSpacing: 2,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: SafeArea(
+        child: Column(
+          children: [
+            // ── Header ───────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'CALENDARIO',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontFamily: AppTypography.fontFamilyDisplay,
+                        letterSpacing: 2,
+                      ),
                     ),
                   ),
-                ),
-                _ViewToggle(
-                  showCalendar: _showCalendar,
-                  onToggle: () =>
-                      setState(() => _showCalendar = !_showCalendar),
-                ),
-              ],
+                  _ViewToggle(
+                    showCalendar: _showCalendar,
+                    onToggle: () =>
+                        setState(() => _showCalendar = !_showCalendar),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // ── Content ──────────────────────────────────
-          Expanded(
-            child: citasAsync.isLoading && allCitas.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : _showCalendar
-                ? _buildCalendarView(theme, allCitas)
-                : _buildAgendaView(theme, allCitas),
-          ),
-        ],
+            // ── Content ──────────────────────────────────
+            Expanded(
+              child: citasAsync.isLoading && allCitas.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : _showCalendar
+                  ? _buildCalendarView(theme, allCitas)
+                  : _buildAgendaView(theme, allCitas),
+            ),
+          ],
+        ),
       ),
     );
   }

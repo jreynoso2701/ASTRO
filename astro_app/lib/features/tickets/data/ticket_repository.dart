@@ -148,6 +148,8 @@ class TicketRepository {
   }
 
   /// Cambia el estado de un ticket.
+  ///
+  /// Auto-ajusta porcentajeAvance: 100% para Resuelto, 0% para Pendiente.
   Future<void> updateStatus(String ticketId, TicketStatus newStatus) async {
     final now = DateTime.now();
     final updates = <String, dynamic>{
@@ -157,12 +159,42 @@ class TicketRepository {
       // V2
       'status': newStatus.label,
       'updatedAt': Timestamp.fromDate(now),
+      // Timestamp del cambio de estado (excepto archivado/desarchivado)
+      if (newStatus != TicketStatus.archivado)
+        'statusChangedAt': Timestamp.fromDate(now),
     };
-    if (newStatus == TicketStatus.cerrado ||
-        newStatus == TicketStatus.resuelto) {
+    // Auto-progress según estado
+    if (newStatus == TicketStatus.resuelto) {
+      updates['porcentajeAvance'] = 100.0;
       updates['closedAt'] = Timestamp.fromDate(now);
+    } else if (newStatus == TicketStatus.pendiente) {
+      updates['porcentajeAvance'] = 0.0;
+    }
+    // Limpiar razón de archivado al cambiar a otro estado.
+    if (newStatus != TicketStatus.archivado) {
+      updates['archiveReason'] = FieldValue.delete();
+      updates['archivedByName'] = FieldValue.delete();
     }
     await _ref.doc(ticketId).update(updates);
+  }
+
+  /// Archiva un ticket con justificación obligatoria.
+  Future<void> archiveTicket(
+    String ticketId, {
+    required String reason,
+    required String archivedByName,
+  }) async {
+    final now = DateTime.now();
+    await _ref.doc(ticketId).update({
+      // V1
+      'estatusIncidente': TicketStatus.archivado.v1Label,
+      'fhActualizacion': _nowV1String(now),
+      // V2
+      'status': TicketStatus.archivado.label,
+      'updatedAt': Timestamp.fromDate(now),
+      'archiveReason': reason,
+      'archivedByName': archivedByName,
+    });
   }
 
   /// Asigna el ticket a un usuario de Soporte.
@@ -214,11 +246,13 @@ class TicketRepository {
         .map((snap) => snap.docs.map(TicketComment.fromFirestore).toList());
   }
 
-  /// Agrega un comentario al ticket.
+  /// Agrega un comentario al ticket e incrementa el contador desnormalizado.
   Future<void> addComment(String ticketId, TicketComment comment) async {
     final data = comment.toFirestore();
     data['refIncidente'] = ticketId;
     await _commentsRef.add(data);
+    // Incrementar commentCount en el documento del ticket
+    await _ref.doc(ticketId).update({'commentCount': FieldValue.increment(1)});
   }
 
   static String _nowV1String(DateTime now) {

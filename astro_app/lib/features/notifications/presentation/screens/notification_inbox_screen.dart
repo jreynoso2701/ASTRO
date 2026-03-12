@@ -16,55 +16,61 @@ class NotificationInboxScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('NOTIFICACIONES'),
-        actions: [
-          TextButton.icon(
-            onPressed: () async {
-              final repo = ref.read(notificationRepoProvider);
-              final uid = ref.read(authStateProvider).value?.uid;
-              if (uid != null) await repo.markAllAsRead(uid);
-            },
-            icon: const Icon(Icons.done_all, size: 18),
-            label: const Text('Leer todo'),
-          ),
-        ],
-      ),
-      body: notifAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (notifications) {
-          if (notifications.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.notifications_off_outlined,
-                    size: 64,
-                    color: colors.onSurface.withValues(alpha: .3),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Sin notificaciones',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: colors.onSurface.withValues(alpha: .5),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('NOTIFICACIONES'),
+          actions: [
+            TextButton.icon(
+              onPressed: () async {
+                final repo = ref.read(notificationRepoProvider);
+                final uid = ref.read(authStateProvider).value?.uid;
+                if (uid != null) await repo.markAllAsRead(uid);
+              },
+              icon: const Icon(Icons.done_all, size: 18),
+              label: const Text('Leer todo'),
+            ),
+          ],
+        ),
+        body: notifAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+          data: (notifications) {
+            if (notifications.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.notifications_off_outlined,
+                      size: 64,
+                      color: colors.onSurface.withValues(alpha: .3),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                    const SizedBox(height: 16),
+                    Text(
+                      'Sin notificaciones',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: colors.onSurface.withValues(alpha: .5),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: notifications.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, i) =>
-                _NotificationTile(notification: notifications[i]),
-          );
-        },
+            return ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: notifications.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, i) =>
+                  _NotificationTile(notification: notifications[i]),
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,0 +1,548 @@
+import 'package:flutter/material.dart';
+import 'package:astro/core/models/ticket.dart';
+import 'package:astro/core/models/ticket_status.dart';
+import 'package:astro/core/utils/ticket_colors.dart';
+import 'package:astro/core/utils/progress_color.dart';
+
+// ── Criterios de ordenamiento ────────────────────────────
+
+enum KanbanSortCriteria {
+  reciente('Más reciente', Icons.schedule),
+  antiguo('Más antiguo', Icons.history),
+  prioridadDesc('Prioridad ↑', Icons.arrow_upward),
+  prioridadAsc('Prioridad ↓', Icons.arrow_downward),
+  reporto('Quién reporta', Icons.person_outline),
+  soporte('Soporte asignado', Icons.headset_mic_outlined),
+  avance('% Avance', Icons.trending_up),
+  impacto('Impacto', Icons.warning_amber_rounded);
+
+  const KanbanSortCriteria(this.label, this.icon);
+  final String label;
+  final IconData icon;
+}
+
+/// Tablero Kanban que agrupa tickets por estado en columnas horizontales.
+/// Soporta drag & drop entre columnas y ordenamiento por columna.
+class TicketKanbanBoard extends StatefulWidget {
+  const TicketKanbanBoard({
+    required this.tickets,
+    required this.onTicketTap,
+    required this.onStatusChange,
+    super.key,
+  });
+
+  final List<Ticket> tickets;
+  final ValueChanged<Ticket> onTicketTap;
+  final void Function(Ticket ticket, TicketStatus newStatus) onStatusChange;
+
+  @override
+  State<TicketKanbanBoard> createState() => _TicketKanbanBoardState();
+}
+
+class _TicketKanbanBoardState extends State<TicketKanbanBoard> {
+  /// Ordenamiento global (aplica a todas las columnas).
+  KanbanSortCriteria _sort = KanbanSortCriteria.reciente;
+
+  List<Ticket> _sortTickets(List<Ticket> tickets) {
+    final sorted = List<Ticket>.of(tickets);
+    switch (_sort) {
+      case KanbanSortCriteria.reciente:
+        sorted.sort(
+          (a, b) => (b.createdAt ?? DateTime(2000)).compareTo(
+            a.createdAt ?? DateTime(2000),
+          ),
+        );
+      case KanbanSortCriteria.antiguo:
+        sorted.sort(
+          (a, b) => (a.createdAt ?? DateTime(2000)).compareTo(
+            b.createdAt ?? DateTime(2000),
+          ),
+        );
+      case KanbanSortCriteria.prioridadDesc:
+        sorted.sort((a, b) => b.priority.index.compareTo(a.priority.index));
+      case KanbanSortCriteria.prioridadAsc:
+        sorted.sort((a, b) => a.priority.index.compareTo(b.priority.index));
+      case KanbanSortCriteria.reporto:
+        sorted.sort(
+          (a, b) => a.createdByName.toLowerCase().compareTo(
+            b.createdByName.toLowerCase(),
+          ),
+        );
+      case KanbanSortCriteria.soporte:
+        sorted.sort(
+          (a, b) => (a.assignedToName ?? 'zzz').toLowerCase().compareTo(
+            (b.assignedToName ?? 'zzz').toLowerCase(),
+          ),
+        );
+      case KanbanSortCriteria.avance:
+        sorted.sort((a, b) => b.porcentajeAvance.compareTo(a.porcentajeAvance));
+      case KanbanSortCriteria.impacto:
+        sorted.sort((a, b) => (b.impacto ?? 0).compareTo(a.impacto ?? 0));
+    }
+    return sorted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final columns = TicketStatus.kanbanValues;
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        // ── Sort bar ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                Icons.sort,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Ordenar:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final criteria in KanbanSortCriteria.values)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: FilterChip(
+                            avatar: Icon(criteria.icon, size: 14),
+                            label: Text(criteria.label),
+                            selected: _sort == criteria,
+                            onSelected: (_) => setState(() => _sort = criteria),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            labelStyle: theme.textTheme.labelSmall,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Board ──
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const minColumnWidth = 230.0;
+              final availableWidth = constraints.maxWidth;
+              final fitsAll = availableWidth >= columns.length * minColumnWidth;
+              final columnWidth = fitsAll
+                  ? availableWidth / columns.length
+                  : minColumnWidth;
+
+              final child = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final status in columns)
+                    SizedBox(
+                      width: columnWidth,
+                      child: _KanbanColumn(
+                        status: status,
+                        tickets: _sortTickets(
+                          widget.tickets
+                              .where((t) => t.status == status)
+                              .toList(),
+                        ),
+                        onTicketTap: widget.onTicketTap,
+                        onStatusChange: widget.onStatusChange,
+                      ),
+                    ),
+                ],
+              );
+
+              if (fitsAll) return child;
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: child,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Columna Kanban ───────────────────────────────────────
+
+class _KanbanColumn extends StatelessWidget {
+  const _KanbanColumn({
+    required this.status,
+    required this.tickets,
+    required this.onTicketTap,
+    required this.onStatusChange,
+  });
+
+  final TicketStatus status;
+  final List<Ticket> tickets;
+  final ValueChanged<Ticket> onTicketTap;
+  final void Function(Ticket ticket, TicketStatus newStatus) onStatusChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = ticketStatusColor(status);
+
+    return DragTarget<Ticket>(
+      onWillAcceptWithDetails: (details) => details.data.status != status,
+      onAcceptWithDetails: (details) => onStatusChange(details.data, status),
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          decoration: BoxDecoration(
+            color: isHovering
+                ? color.withValues(alpha: 0.08)
+                : theme.colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isHovering
+                  ? color.withValues(alpha: 0.5)
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              width: isHovering ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // ── Header ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(11),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        status.label,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${tickets.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Cards ──
+              Expanded(
+                child: tickets.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'Sin tickets',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(6),
+                        itemCount: tickets.length,
+                        itemBuilder: (context, index) {
+                          final ticket = tickets[index];
+                          return LongPressDraggable<Ticket>(
+                            data: ticket,
+                            delay: const Duration(milliseconds: 150),
+                            feedback: Material(
+                              elevation: 8,
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 210,
+                                child: _KanbanCard(
+                                  ticket: ticket,
+                                  isDragging: true,
+                                ),
+                              ),
+                            ),
+                            childWhenDragging: Opacity(
+                              opacity: 0.3,
+                              child: _KanbanCard(ticket: ticket),
+                            ),
+                            child: GestureDetector(
+                              onTap: () => onTicketTap(ticket),
+                              child: _KanbanCard(ticket: ticket),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Tarjeta Kanban Compacta ──────────────────────────────
+
+class _KanbanCard extends StatelessWidget {
+  const _KanbanCard({required this.ticket, this.isDragging = false});
+
+  final Ticket ticket;
+  final bool isDragging;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final pct = ticket.porcentajeAvance;
+    final priorityColor = ticketPriorityColor(ticket.priority);
+
+    return Card(
+      elevation: isDragging ? 6 : 1,
+      margin: const EdgeInsets.symmetric(vertical: 3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Folio + Priority badge ──
+            Row(
+              children: [
+                Text(
+                  ticket.folio,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: priorityColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: priorityColor.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    ticket.priority.label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: priorityColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+
+            // ── Título (2 lines) ──
+            Text(
+              ticket.titulo,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+
+            // ── Módulo ──
+            _CardInfoRow(icon: Icons.widgets_outlined, text: ticket.moduleName),
+
+            // ── Reportó ──
+            _CardInfoRow(
+              icon: Icons.person_outline,
+              text: ticket.createdByName,
+            ),
+
+            // ── Soporte ──
+            _CardInfoRow(
+              icon: Icons.headset_mic_outlined,
+              text: ticket.assignedToName ?? 'Sin asignar',
+            ),
+
+            // ── Fecha reporte ──
+            if (ticket.createdAt != null)
+              _CardInfoRow(
+                icon: Icons.calendar_today_outlined,
+                text: _shortDate(ticket.createdAt!),
+              ),
+
+            // ── Impacto badge ──
+            if (ticket.impacto != null)
+              _CardInfoRow(
+                icon: Icons.warning_amber_rounded,
+                text: 'Impacto: ${ticket.impacto}/10',
+                color: ticket.impacto! <= 3
+                    ? const Color(0xFF4CAF50)
+                    : ticket.impacto! <= 6
+                    ? const Color(0xFFFFC107)
+                    : ticket.impacto! <= 9
+                    ? const Color(0xFFFF9800)
+                    : const Color(0xFFF44336),
+              ),
+
+            const SizedBox(height: 6),
+
+            // ── Indicadores: adjuntos + comentarios ──
+            if (ticket.evidencias.isNotEmpty || ticket.commentCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    if (ticket.evidencias.isNotEmpty) ...[
+                      Icon(Icons.attach_file, size: 12, color: muted),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${ticket.evidencias.length}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: muted,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 9,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    if (ticket.commentCount > 0) ...[
+                      Icon(Icons.chat_bubble_outline, size: 11, color: muted),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${ticket.commentCount}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: muted,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+            // ── Progress bar + percentage ──
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: pct / 100,
+                      minHeight: 4,
+                      backgroundColor: muted.withValues(alpha: 0.1),
+                      valueColor: AlwaysStoppedAnimation(progressColor(pct)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${pct.toInt()}%',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 9,
+                    color: progressColor(pct),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _shortDate(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/'
+        '${dt.month.toString().padLeft(2, '0')}/'
+        '${dt.year}';
+  }
+}
+
+/// Row compacto de ícono + texto para las tarjetas Kanban.
+class _CardInfoRow extends StatelessWidget {
+  const _CardInfoRow({required this.icon, required this.text, this.color});
+  final IconData icon;
+  final String text;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 12, color: c),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: c, fontSize: 10),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

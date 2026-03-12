@@ -758,7 +758,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           descripcion: _descripcionController.text.trim(),
           projectName: proyecto.nombreProyecto,
           moduleName: _selectedModuleName,
-          status: TicketStatus.abierto,
+          status: TicketStatus.pendiente,
           priority: _priority,
           createdByName: profile.displayName,
           projectId: widget.projectId,

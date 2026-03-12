@@ -4,19 +4,40 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/ticket.dart';
 import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
+import 'package:astro/core/models/ticket_comment.dart';
+import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/utils/ticket_colors.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart';
 
 /// Pantalla de listado de tickets de un proyecto.
-class TicketListScreen extends ConsumerWidget {
+/// En móvil muestra lista; en pantallas anchas, tablero Kanban.
+/// Toggle manual en AppBar para alternar vista.
+class TicketListScreen extends ConsumerStatefulWidget {
   const TicketListScreen({required this.projectId, super.key});
 
   final String projectId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TicketListScreen> createState() => _TicketListScreenState();
+}
+
+class _TicketListScreenState extends ConsumerState<TicketListScreen> {
+  /// null = auto (list on mobile, kanban on wide).
+  bool? _forceKanban;
+
+  bool _isKanban(double width) {
+    if (_forceKanban != null) return _forceKanban!;
+    return width >= AppBreakpoints.medium;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = widget.projectId;
     final proyectoAsync = ref.watch(proyectoByIdProvider(projectId));
 
     return proyectoAsync.when(
@@ -42,6 +63,10 @@ class TicketListScreen extends ConsumerWidget {
         final searchQuery = ref.watch(ticketSearchProvider);
         final statusFilter = ref.watch(ticketStatusFilterProvider);
         final priorityFilter = ref.watch(ticketPriorityFilterNotifier);
+        final impactFilter = ref.watch(ticketImpactFilterProvider);
+        final canManage = ref.watch(canManageProjectProvider(projectId));
+        final width = MediaQuery.sizeOf(context).width;
+        final kanban = _isKanban(width);
 
         return Scaffold(
           appBar: AppBar(
@@ -51,7 +76,23 @@ class TicketListScreen extends ConsumerWidget {
               onPressed: () => context.pop(),
             ),
             actions: [
-              // Cualquier usuario puede crear tickets
+              // Archivados (Root + Soporte)
+              if (canManage)
+                IconButton(
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  tooltip: 'Tickets archivados',
+                  onPressed: () =>
+                      _showArchivedSheet(context, projectId, projectName),
+                ),
+              // Toggle vista
+              IconButton(
+                icon: Icon(
+                  kanban ? Icons.view_list_rounded : Icons.view_kanban_rounded,
+                ),
+                tooltip: kanban ? 'Vista lista' : 'Vista Kanban',
+                onPressed: () => setState(() => _forceKanban = !kanban),
+              ),
+              // Crear ticket
               IconButton(
                 icon: const Icon(Icons.add),
                 tooltip: 'Nuevo ticket',
@@ -64,33 +105,32 @@ class TicketListScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (_) {
-              return AdaptiveBody(
-                maxWidth: 960,
-                child: Column(
-                  children: [
-                    // Barra de búsqueda
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar ticket...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () => ref
-                                      .read(ticketSearchProvider.notifier)
-                                      .clear(),
-                                )
-                              : null,
-                          isDense: true,
-                        ),
-                        onChanged: (v) =>
-                            ref.read(ticketSearchProvider.notifier).setQuery(v),
+              return Column(
+                children: [
+                  // Barra de búsqueda
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Buscar ticket...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () => ref
+                                    .read(ticketSearchProvider.notifier)
+                                    .clear(),
+                              )
+                            : null,
+                        isDense: true,
                       ),
+                      onChanged: (v) =>
+                          ref.read(ticketSearchProvider.notifier).setQuery(v),
                     ),
+                  ),
 
-                    // Filtros de estado
+                  // Filtros de estado — solo en modo lista
+                  if (!kanban)
                     SizedBox(
                       height: 40,
                       child: ListView(
@@ -113,109 +153,204 @@ class TicketListScreen extends ConsumerWidget {
                                 onSelected: (_) => ref
                                     .read(ticketStatusFilterProvider.notifier)
                                     .set(s),
-                                color: _statusColor(s),
+                                color: ticketStatusColor(s),
                               ),
                             ),
                         ],
                       ),
                     ),
 
-                    // Filtro de prioridad
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        children: [
-                          _FilterChip(
-                            label: 'Prioridad: Todas',
-                            selected: priorityFilter == null,
-                            onSelected: (_) => ref
-                                .read(ticketPriorityFilterNotifier.notifier)
-                                .clear(),
+                  // Filtro de prioridad
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      children: [
+                        _FilterChip(
+                          label: 'Prioridad: Todas',
+                          selected: priorityFilter == null,
+                          onSelected: (_) => ref
+                              .read(ticketPriorityFilterNotifier.notifier)
+                              .clear(),
+                        ),
+                        for (final p in TicketPriority.values)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: _FilterChip(
+                              label: p.label,
+                              selected: priorityFilter == p,
+                              onSelected: (_) => ref
+                                  .read(ticketPriorityFilterNotifier.notifier)
+                                  .set(p),
+                              color: ticketPriorityColor(p),
+                            ),
                           ),
-                          for (final p in TicketPriority.values)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 6),
-                              child: _FilterChip(
-                                label: p.label,
-                                selected: priorityFilter == p,
-                                onSelected: (_) => ref
-                                    .read(ticketPriorityFilterNotifier.notifier)
-                                    .set(p),
-                                color: _priorityColor(p),
-                              ),
-                            ),
-                        ],
-                      ),
+                      ],
                     ),
+                  ),
 
-                    // Contador
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${filteredTickets.length} ticket${filteredTickets.length == 1 ? '' : 's'}',
-                            style: Theme.of(context).textTheme.bodySmall,
+                  // Filtro de impacto
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      children: [
+                        _FilterChip(
+                          label: 'Impacto: Todos',
+                          selected: impactFilter == null,
+                          onSelected: (_) => ref
+                              .read(ticketImpactFilterProvider.notifier)
+                              .clear(),
+                        ),
+                        for (final level in ImpactLevel.values)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 6),
+                            child: _FilterChip(
+                              label: level.label,
+                              selected: impactFilter == level,
+                              onSelected: (_) => ref
+                                  .read(ticketImpactFilterProvider.notifier)
+                                  .set(level),
+                            ),
                           ),
-                        ],
-                      ),
+                      ],
                     ),
+                  ),
 
-                    // Lista
-                    Expanded(
-                      child: filteredTickets.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.confirmation_num_outlined,
-                                    size: 64,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Sin tickets',
-                                    style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              itemCount: filteredTickets.length,
-                              itemBuilder: (context, index) {
-                                final ticket = filteredTickets[index];
-                                return _TicketCard(
-                                  ticket: ticket,
-                                  onTap: () => context.push(
-                                    '/projects/$projectId/tickets/${ticket.id}',
-                                  ),
-                                );
-                              },
-                            ),
+                  // Contador
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${filteredTickets.length} ticket${filteredTickets.length == 1 ? '' : 's'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Contenido: Kanban o Lista
+                  Expanded(
+                    child: kanban
+                        ? _buildKanban(context, filteredTickets, projectId)
+                        : _buildList(context, filteredTickets, projectId),
+                  ),
+                ],
               );
             },
           ),
         );
       },
+    );
+  }
+
+  // ── Bottom sheet de tickets archivados ─────────────────
+
+  void _showArchivedSheet(
+    BuildContext context,
+    String projectId,
+    String projectName,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => _ArchivedTicketsSheet(
+          projectId: projectId,
+          projectName: projectName,
+          scrollController: scrollController,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKanban(
+    BuildContext context,
+    List<Ticket> tickets,
+    String projectId,
+  ) {
+    return TicketKanbanBoard(
+      tickets: tickets,
+      onTicketTap: (ticket) =>
+          context.push('/projects/$projectId/tickets/${ticket.id}'),
+      onStatusChange: (ticket, newStatus) async {
+        final repo = ref.read(ticketRepositoryProvider);
+        await repo.updateStatus(ticket.id, newStatus);
+        // Registrar en bitácora
+        final profile = ref.read(currentUserProfileProvider).value;
+        if (profile != null) {
+          await repo.addComment(
+            ticket.id,
+            TicketComment(
+              id: '',
+              text:
+                  'Cambió estado de "${ticket.status.label}" a "${newStatus.label}"',
+              authorId: profile.uid,
+              authorName: profile.displayName,
+              type: CommentType.statusChange,
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    List<Ticket> tickets,
+    String projectId,
+  ) {
+    if (tickets.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.confirmation_num_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Sin tickets',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return AdaptiveBody(
+      maxWidth: 960,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: tickets.length,
+        itemBuilder: (context, index) {
+          final ticket = tickets[index];
+          return _TicketCard(
+            ticket: ticket,
+            onTap: () =>
+                context.push('/projects/$projectId/tickets/${ticket.id}'),
+          );
+        },
+      ),
     );
   }
 }
@@ -286,7 +421,7 @@ class _TicketCard extends StatelessWidget {
 
               divider,
 
-              // ── Prioridad + Cobertura ──
+              // ── Prioridad + Cobertura + Impacto ──
               Row(
                 children: [
                   Expanded(
@@ -303,6 +438,21 @@ class _TicketCard extends StatelessWidget {
                       value: ticket.cobertura ?? '—',
                     ),
                   ),
+                  if (ticket.impacto != null)
+                    Expanded(
+                      child: _IconLabel(
+                        icon: Icons.warning_amber_rounded,
+                        label: 'Impacto:',
+                        value: '${ticket.impacto}/10',
+                        valueColor: ticket.impacto! <= 3
+                            ? const Color(0xFF4CAF50)
+                            : ticket.impacto! <= 6
+                            ? const Color(0xFFFFC107)
+                            : ticket.impacto! <= 9
+                            ? const Color(0xFFFF9800)
+                            : const Color(0xFFF44336),
+                      ),
+                    ),
                 ],
               ),
 
@@ -363,7 +513,7 @@ class _TicketCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // ── Barra inferior: porcentaje + Seguimiento ──
+              // ── Barra inferior: porcentaje + indicadores + Seguimiento ──
               Row(
                 children: [
                   // Porcentaje circular
@@ -392,6 +542,59 @@ class _TicketCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  // Indicador de adjuntos
+                  if (ticket.evidencias.isNotEmpty)
+                    Tooltip(
+                      message:
+                          '${ticket.evidencias.length} adjunto${ticket.evidencias.length == 1 ? '' : 's'}',
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.attach_file, size: 15, color: muted),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${ticket.evidencias.length}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: muted,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Indicador de comentarios
+                  if (ticket.commentCount > 0)
+                    Tooltip(
+                      message:
+                          '${ticket.commentCount} comentario${ticket.commentCount == 1 ? '' : 's'}',
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 14,
+                              color: muted,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              '${ticket.commentCount}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: muted,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   const Spacer(),
                   OutlinedButton(
                     onPressed: onTap,
@@ -457,10 +660,12 @@ class _IconLabel extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.valueColor,
   });
   final IconData icon;
   final String label;
   final String value;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +673,7 @@ class _IconLabel extends StatelessWidget {
     final muted = theme.colorScheme.onSurfaceVariant;
     return Column(
       children: [
-        Icon(icon, size: 22, color: muted),
+        Icon(icon, size: 22, color: valueColor ?? muted),
         const SizedBox(height: 2),
         Text(
           label,
@@ -480,6 +685,7 @@ class _IconLabel extends StatelessWidget {
           value,
           style: theme.textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.bold,
+            color: valueColor,
           ),
           textAlign: TextAlign.center,
           maxLines: 2,
@@ -498,7 +704,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(status);
+    final color = ticketStatusColor(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -547,21 +753,518 @@ class _FilterChip extends StatelessWidget {
 }
 
 // ── Helpers de color ─────────────────────────────────────
+// Use shared helpers from ticket_colors.dart:
+// ticketStatusColor() and ticketPriorityColor()
 
-Color _statusColor(TicketStatus status) {
-  return switch (status) {
-    TicketStatus.abierto => const Color(0xFF2196F3),
-    TicketStatus.enProgreso => const Color(0xFFFFC107),
-    TicketStatus.resuelto => const Color(0xFF4CAF50),
-    TicketStatus.cerrado => Colors.grey,
-  };
+// ── Bottom Sheet · Tickets Archivados (Root) ─────────────
+
+class _ArchivedTicketsSheet extends ConsumerStatefulWidget {
+  const _ArchivedTicketsSheet({
+    required this.projectId,
+    required this.projectName,
+    required this.scrollController,
+  });
+
+  final String projectId;
+  final String projectName;
+  final ScrollController scrollController;
+
+  @override
+  ConsumerState<_ArchivedTicketsSheet> createState() =>
+      _ArchivedTicketsSheetState();
 }
 
-Color _priorityColor(TicketPriority priority) {
-  return switch (priority) {
-    TicketPriority.baja => const Color(0xFF4CAF50),
-    TicketPriority.media => const Color(0xFF2196F3),
-    TicketPriority.alta => const Color(0xFFFFC107),
-    TicketPriority.critica => const Color(0xFFD71921),
-  };
+class _ArchivedTicketsSheetState extends ConsumerState<_ArchivedTicketsSheet> {
+  String _search = '';
+  TicketPriority? _priority;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final archivadoColor = ticketStatusColor(TicketStatus.archivado);
+
+    // Obtener todos los tickets del proyecto y filtrar archivados.
+    final allTickets =
+        ref.watch(ticketsByProjectProvider(widget.projectName)).value ?? [];
+    var archived = allTickets
+        .where((t) => t.status == TicketStatus.archivado)
+        .toList();
+
+    // Filtro de prioridad.
+    if (_priority != null) {
+      archived = archived.where((t) => t.priority == _priority).toList();
+    }
+
+    // Filtro de búsqueda.
+    if (_search.isNotEmpty) {
+      final q = _search.toUpperCase();
+      archived = archived.where((t) {
+        return t.titulo.toUpperCase().contains(q) ||
+            t.folio.toUpperCase().contains(q) ||
+            t.descripcion.toUpperCase().contains(q) ||
+            t.createdByName.toUpperCase().contains(q) ||
+            (t.assignedToName?.toUpperCase().contains(q) ?? false);
+      }).toList();
+    }
+
+    // Ordenar por fecha de archivado/actualización descendente.
+    archived.sort(
+      (a, b) => (b.updatedAt ?? b.createdAt ?? DateTime(2000)).compareTo(
+        a.updatedAt ?? a.createdAt ?? DateTime(2000),
+      ),
+    );
+
+    return Column(
+      children: [
+        // ── Drag handle ──
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(top: 8, bottom: 4),
+            width: 32,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+
+        // ── Header ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, color: archivadoColor, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tickets Archivados',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: archivadoColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${archived.length}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: archivadoColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Búsqueda ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: 'Buscar por folio, título, descripción, nombre...',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: _search.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () => setState(() => _search = ''),
+                    )
+                  : null,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+            onChanged: (v) => setState(() => _search = v),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // ── Filtros de prioridad ──
+        SizedBox(
+          height: 38,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            children: [
+              _FilterChip(
+                label: 'Todas',
+                selected: _priority == null,
+                onSelected: (_) => setState(() => _priority = null),
+              ),
+              for (final p in TicketPriority.values)
+                Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: _FilterChip(
+                    label: p.label,
+                    selected: _priority == p,
+                    onSelected: (_) => setState(() => _priority = p),
+                    color: ticketPriorityColor(p),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        const Divider(height: 1),
+
+        // ── Lista de tickets archivados ──
+        Expanded(
+          child: archived.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.archive_outlined,
+                        size: 48,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _search.isNotEmpty || _priority != null
+                            ? 'Sin resultados'
+                            : 'No hay tickets archivados',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: widget.scrollController,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  itemCount: archived.length,
+                  itemBuilder: (context, index) {
+                    final ticket = archived[index];
+                    return _ArchivedTicketCard(
+                      ticket: ticket,
+                      onTap: () {
+                        Navigator.pop(context); // cerrar bottom sheet
+                        context.push(
+                          '/projects/${widget.projectId}/tickets/${ticket.id}',
+                        );
+                      },
+                      onUnarchive: () {
+                        ref
+                            .read(ticketRepositoryProvider)
+                            .updateStatus(ticket.id, TicketStatus.resuelto);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Tarjeta de ticket archivado ──────────────────────────
+
+class _ArchivedTicketCard extends StatelessWidget {
+  const _ArchivedTicketCard({
+    required this.ticket,
+    required this.onTap,
+    required this.onUnarchive,
+  });
+
+  final Ticket ticket;
+  final VoidCallback onTap;
+  final VoidCallback onUnarchive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final priorityColor = ticketPriorityColor(ticket.priority);
+    final pct = ticket.porcentajeAvance;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Folio + Prioridad ──
+              Row(
+                children: [
+                  Icon(Icons.inventory_2_outlined, size: 14, color: muted),
+                  const SizedBox(width: 4),
+                  Text(
+                    ticket.folio,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: muted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: priorityColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: priorityColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      ticket.priority.label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: priorityColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              // ── Título ──
+              Text(
+                ticket.titulo,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+
+              // ── Info rows ──
+              _ArchivedInfoRow(
+                icon: Icons.widgets_outlined,
+                label: 'Módulo',
+                value: ticket.moduleName,
+              ),
+              _ArchivedInfoRow(
+                icon: Icons.person_outline,
+                label: 'Reportó',
+                value: ticket.createdByName,
+              ),
+              _ArchivedInfoRow(
+                icon: Icons.headset_mic_outlined,
+                label: 'Soporte',
+                value: ticket.assignedToName ?? 'Sin asignar',
+              ),
+              if (ticket.createdAt != null)
+                _ArchivedInfoRow(
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Creado',
+                  value: _shortDate(ticket.createdAt!),
+                ),
+              if (ticket.closedAt != null)
+                _ArchivedInfoRow(
+                  icon: Icons.check_circle_outline,
+                  label: 'Cerrado',
+                  value: _shortDate(ticket.closedAt!),
+                ),
+
+              // Razón de archivado
+              if (ticket.archiveReason != null &&
+                  ticket.archiveReason!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: ticketStatusColor(
+                        TicketStatus.archivado,
+                      ).withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: ticketStatusColor(
+                          TicketStatus.archivado,
+                        ).withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 12,
+                              color: ticketStatusColor(TicketStatus.archivado),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Razón:',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                                color: ticketStatusColor(
+                                  TicketStatus.archivado,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          ticket.archiveReason!,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 10,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (ticket.archivedByName != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Por: ${ticket.archivedByName}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontSize: 9,
+                                color: muted,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 8),
+
+              // ── Progress + Actions ──
+              Row(
+                children: [
+                  // Progress
+                  Expanded(
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: pct / 100,
+                              minHeight: 4,
+                              backgroundColor: muted.withValues(alpha: 0.1),
+                              valueColor: AlwaysStoppedAnimation(
+                                progressColor(pct),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${pct.toInt()}%',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            color: progressColor(pct),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Desarchivar
+                  TextButton.icon(
+                    onPressed: onUnarchive,
+                    icon: const Icon(Icons.unarchive_outlined, size: 16),
+                    label: const Text('Desarchivar'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      textStyle: theme.textTheme.labelSmall,
+                    ),
+                  ),
+
+                  // Ver detalle
+                  TextButton.icon(
+                    onPressed: onTap,
+                    icon: const Icon(Icons.open_in_new, size: 16),
+                    label: const Text('Detalle'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      textStyle: theme.textTheme.labelSmall,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _shortDate(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/'
+        '${dt.month.toString().padLeft(2, '0')}/'
+        '${dt.year}';
+  }
+}
+
+class _ArchivedInfoRow extends StatelessWidget {
+  const _ArchivedInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 13, color: muted),
+          const SizedBox(width: 6),
+          Text(
+            '$label: ',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: muted,
+              fontSize: 11,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 11,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
