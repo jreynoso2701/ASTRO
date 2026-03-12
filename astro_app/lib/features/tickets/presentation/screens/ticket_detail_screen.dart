@@ -178,10 +178,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
   Future<void> _changeStatus(Ticket ticket, TicketStatus newStatus) async {
     final repo = ref.read(ticketRepositoryProvider);
-    await repo.updateStatus(ticket.id, newStatus);
+    final profile = ref.read(currentUserProfileProvider).value;
+    await repo.updateStatus(
+      ticket.id,
+      newStatus,
+      updatedBy: profile?.uid ?? '',
+    );
 
     // Agregar entrada de historial
-    final profile = ref.read(currentUserProfileProvider).value;
     if (profile != null) {
       await repo.addComment(
         ticket.id,
@@ -277,6 +281,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       ticket.id,
       reason: reason,
       archivedByName: archivedBy,
+      updatedBy: profile?.uid ?? '',
     );
 
     // Entrada de historial
@@ -359,10 +364,15 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
     if (selected != null) {
       final repo = ref.read(ticketRepositoryProvider);
-      await repo.assign(ticket.id, selected.uid, selected.name);
+      final profile = ref.read(currentUserProfileProvider).value;
+      await repo.assign(
+        ticket.id,
+        selected.uid,
+        selected.name,
+        updatedBy: profile?.uid ?? '',
+      );
 
       // Entrada de historial
-      final profile = ref.read(currentUserProfileProvider).value;
       if (profile != null) {
         await repo.addComment(
           ticket.id,

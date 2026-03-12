@@ -302,9 +302,13 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
           context.push('/projects/$projectId/tickets/${ticket.id}'),
       onStatusChange: (ticket, newStatus) async {
         final repo = ref.read(ticketRepositoryProvider);
-        await repo.updateStatus(ticket.id, newStatus);
-        // Registrar en bitácora
         final profile = ref.read(currentUserProfileProvider).value;
+        await repo.updateStatus(
+          ticket.id,
+          newStatus,
+          updatedBy: profile?.uid ?? '',
+        );
+        // Registrar en bitácora
         if (profile != null) {
           await repo.addComment(
             ticket.id,
@@ -1017,9 +1021,16 @@ class _ArchivedTicketsSheetState extends ConsumerState<_ArchivedTicketsSheet> {
                         );
                       },
                       onUnarchive: () {
+                        final uid =
+                            ref.read(currentUserProfileProvider).value?.uid ??
+                            '';
                         ref
                             .read(ticketRepositoryProvider)
-                            .updateStatus(ticket.id, TicketStatus.resuelto);
+                            .updateStatus(
+                              ticket.id,
+                              TicketStatus.resuelto,
+                              updatedBy: uid,
+                            );
                       },
                     );
                   },

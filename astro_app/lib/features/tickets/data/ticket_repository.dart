@@ -150,7 +150,11 @@ class TicketRepository {
   /// Cambia el estado de un ticket.
   ///
   /// Auto-ajusta porcentajeAvance: 100% para Resuelto, 0% para Pendiente.
-  Future<void> updateStatus(String ticketId, TicketStatus newStatus) async {
+  Future<void> updateStatus(
+    String ticketId,
+    TicketStatus newStatus, {
+    required String updatedBy,
+  }) async {
     final now = DateTime.now();
     final updates = <String, dynamic>{
       // V1
@@ -159,6 +163,7 @@ class TicketRepository {
       // V2
       'status': newStatus.label,
       'updatedAt': Timestamp.fromDate(now),
+      'updatedBy': updatedBy,
       // Timestamp del cambio de estado (excepto archivado/desarchivado)
       if (newStatus != TicketStatus.archivado)
         'statusChangedAt': Timestamp.fromDate(now),
@@ -183,6 +188,7 @@ class TicketRepository {
     String ticketId, {
     required String reason,
     required String archivedByName,
+    required String updatedBy,
   }) async {
     final now = DateTime.now();
     await _ref.doc(ticketId).update({
@@ -192,6 +198,7 @@ class TicketRepository {
       // V2
       'status': TicketStatus.archivado.label,
       'updatedAt': Timestamp.fromDate(now),
+      'updatedBy': updatedBy,
       'archiveReason': reason,
       'archivedByName': archivedByName,
     });
@@ -201,8 +208,9 @@ class TicketRepository {
   Future<void> assign(
     String ticketId,
     String assignedTo,
-    String assignedToName,
-  ) async {
+    String assignedToName, {
+    required String updatedBy,
+  }) async {
     final now = DateTime.now();
     await _ref.doc(ticketId).update({
       // V1
@@ -212,6 +220,7 @@ class TicketRepository {
       'assignedTo': assignedTo,
       'assignedToName': assignedToName,
       'updatedAt': Timestamp.fromDate(now),
+      'updatedBy': updatedBy,
     });
   }
 
