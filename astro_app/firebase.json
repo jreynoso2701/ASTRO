@@ -1,1 +1,26 @@
-{"firestore":{"indexes":"firestore.indexes.json"},"flutter":{"platforms":{"android":{"default":{"projectId":"astro-b97c2","appId":"1:124307506572:android:fa336e636445c325cc42a9","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"astro-b97c2","configurations":{"android":"1:124307506572:android:fa336e636445c325cc42a9","ios":"1:124307506572:ios:9ea5735386b82196cc42a9","web":"1:124307506572:web:3b4676d9273caab0cc42a9"}}}}}}
+{
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "astro-b97c2",
+          "appId": "1:124307506572:android:fa336e636445c325cc42a9",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "astro-b97c2",
+          "configurations": {
+            "android": "1:124307506572:android:fa336e636445c325cc42a9",
+            "ios": "1:124307506572:ios:9ea5735386b82196cc42a9",
+            "web": "1:124307506572:web:3b4676d9273caab0cc42a9"
+          }
+        }
+      }
+    }
+  }
+}

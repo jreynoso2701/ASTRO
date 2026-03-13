@@ -21,6 +21,7 @@ import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/models/minuta_modalidad.dart';
 import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart'
     show deadlineInfo;
+import 'package:astro/features/ai_agent/presentation/screens/ai_agent_sheet.dart';
 
 /// Pantalla de Dashboard — vista principal tras login.
 class DashboardScreen extends ConsumerWidget {
@@ -34,185 +35,206 @@ class DashboardScreen extends ConsumerWidget {
     final profile = ref.watch(currentUserProfileProvider).value;
     final width = MediaQuery.sizeOf(context).width;
 
-    return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          // ── Header ─────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('ASTRO', style: theme.textTheme.displaySmall),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Hola, ${profile?.displayName.split(' ').first ?? ''}',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+    // El agente IA está disponible para todo usuario autenticado.
+    // El backend ya filtra los datos según permisos del usuario.
+    final showAiFab = profile != null;
+
+    return Scaffold(
+      floatingActionButton: showAiFab
+          ? FloatingActionButton(
+              heroTag: 'ai_agent_fab',
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const AiAgentSheet(),
+                );
+              },
+              tooltip: 'ASTRO AI',
+              child: const Icon(Icons.auto_awesome),
+            )
+          : null,
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // ── Header ─────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('ASTRO', style: theme.textTheme.displaySmall),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Hola, ${profile?.displayName.split(' ').first ?? ''}',
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      if (isRoot)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(
-                                0xFFD71921,
-                              ).withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'ROOT',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: const Color(0xFFD71921),
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1,
+                          ],
+                        ),
+                        const Spacer(),
+                        if (isRoot)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFD71921,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'ROOT',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: const Color(0xFFD71921),
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
                               ),
                             ),
                           ),
+                        GestureDetector(
+                          onTap: () => context.push('/profile'),
+                          child: CircleAvatar(
+                            radius: 18,
+                            backgroundImage: profile?.photoUrl != null
+                                ? NetworkImage(profile!.photoUrl!)
+                                : null,
+                            child: profile?.photoUrl == null
+                                ? Text(
+                                    profile?.displayName.isNotEmpty == true
+                                        ? profile!.displayName[0].toUpperCase()
+                                        : '?',
+                                    style: theme.textTheme.labelLarge,
+                                  )
+                                : null,
+                          ),
                         ),
-                      GestureDetector(
-                        onTap: () => context.push('/profile'),
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundImage: profile?.photoUrl != null
-                              ? NetworkImage(profile!.photoUrl!)
-                              : null,
-                          child: profile?.photoUrl == null
-                              ? Text(
-                                  profile?.displayName.isNotEmpty == true
-                                      ? profile!.displayName[0].toUpperCase()
-                                      : '?',
-                                  style: theme.textTheme.labelLarge,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Stats summary ──────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _StatsSummary(projects: projects),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-          // ── Resumen de incidentes por estado ───────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _TicketStatusOverview(),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-          // ── Semáforo de deadlines (Root) ───────────
-          if (isRoot)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: _TicketDeadlineOverview(),
-              ),
-            ),
-
-          if (isRoot) const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-          // ── Próximas citas ────────────────────────
-          SliverToBoxAdapter(child: _UpcomingCitasSection()),
-
-          // ── Mis proyectos ──────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'MIS PROYECTOS',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  letterSpacing: 1,
-                  color: theme.colorScheme.onSurfaceVariant,
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),
-          ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-          // ── Grid de proyectos ──────────────────────
-          if (projects.isEmpty)
+            // ── Stats summary ──────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.folder_off_outlined,
-                            size: 48,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Sin proyectos asignados',
-                            style: theme.textTheme.bodyLarge?.copyWith(
+                child: _StatsSummary(projects: projects),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // ── Resumen de incidentes por estado ───────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _TicketStatusOverview(),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // ── Semáforo de deadlines (Root) ───────────
+            if (isRoot)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _TicketDeadlineOverview(),
+                ),
+              ),
+
+            if (isRoot) const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+            // ── Próximas citas ────────────────────────
+            SliverToBoxAdapter(child: _UpcomingCitasSection()),
+
+            // ── Mis proyectos ──────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'MIS PROYECTOS',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // ── Grid de proyectos ──────────────────────
+            if (projects.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.folder_off_outlined,
+                              size: 48,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Text(
+                              'Sin proyectos asignados',
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: adaptiveGridColumns(width),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  mainAxisExtent: 180,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _ProjectCard(
-                    proyecto: projects[index],
-                    ref: ref,
-                    onTap: () =>
-                        context.push('/projects/${projects[index].id}'),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: adaptiveGridColumns(width),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    mainAxisExtent: 180,
                   ),
-                  childCount: projects.length,
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _ProjectCard(
+                      proyecto: projects[index],
+                      ref: ref,
+                      onTap: () =>
+                          context.push('/projects/${projects[index].id}'),
+                    ),
+                    childCount: projects.length,
+                  ),
                 ),
               ),
-            ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ],
+        ),
       ),
     );
   }

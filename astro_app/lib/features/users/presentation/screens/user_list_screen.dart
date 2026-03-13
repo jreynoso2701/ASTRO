@@ -147,9 +147,7 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final role = user.isRoot
-        ? UserRole.root
-        : UserRole.fromString(user.legacyRolUsuario ?? 'Usuario');
+    final role = user.globalRole;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -195,24 +193,7 @@ class _UserCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _RoleBadge(role: role),
-                        if (user.legacyDeEmpresa != null) ...[
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              user.legacyDeEmpresa!,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    _RoleBadge(role: role),
                   ],
                 ),
               ),

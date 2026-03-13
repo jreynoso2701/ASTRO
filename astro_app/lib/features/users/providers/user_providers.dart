@@ -53,7 +53,7 @@ final hasProjectAssignmentsProvider = Provider<bool?>((ref) {
   if (profile.isLoading) return null;
 
   final user = profile.value;
-  if (user == null) return null;
+  if (user == null) return false; // No user doc → treat as no assignments
   if (user.isRoot) return true;
 
   final uid = user.uid;

@@ -18,10 +18,6 @@ class AppUser {
     this.defaultEmpresaId,
     this.fcmTokens = const [],
     this.pushGlobalEnabled = true,
-    // Campos legacy V1 para compatibilidad de lectura
-    this.legacyDeEmpresa,
-    this.legacyRolUsuario,
-    this.legacyProyectosAsignados,
   });
 
   final String uid;
@@ -37,13 +33,8 @@ class AppUser {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  // Legacy V1 fields (solo lectura, no se escriben en docs nuevos)
-  final String? legacyDeEmpresa;
-  final String? legacyRolUsuario;
-  final List<String>? legacyProyectosAsignados;
-
-  /// Rol efectivo global — Root si `isRoot`, de lo contrario se determina
-  /// por sus `projectAssignments`.
+  /// Rol efectivo global — Root si `isRoot`, de lo contrario Usuario.
+  /// Los roles por proyecto se gestionan vía `projectAssignments`.
   UserRole get globalRole => isRoot ? UserRole.root : UserRole.usuario;
 
   /// Crea un [AppUser] desde un documento de Firestore.
@@ -56,12 +47,6 @@ class AppUser {
       if (value is Timestamp) return value.toDate();
       if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
       return DateTime.now();
-    }
-
-    // Parsear array de strings (V1: proyectosAsignados)
-    List<String>? parseStringList(dynamic value) {
-      if (value is List) return value.map((e) => e.toString()).toList();
-      return null;
     }
 
     return AppUser(
@@ -87,10 +72,6 @@ class AppUser {
       updatedAt: parseDate(
         data['updatedAt'] ?? data['createdAt'] ?? data['created_time'],
       ),
-      // Legacy
-      legacyDeEmpresa: data['deEmpresa'] as String?,
-      legacyRolUsuario: data['rolUsuario'] as String?,
-      legacyProyectosAsignados: parseStringList(data['proyectosAsignados']),
     );
   }
 
@@ -139,9 +120,6 @@ class AppUser {
       pushGlobalEnabled: pushGlobalEnabled ?? this.pushGlobalEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
-      legacyDeEmpresa: legacyDeEmpresa,
-      legacyRolUsuario: legacyRolUsuario,
-      legacyProyectosAsignados: legacyProyectosAsignados,
     );
   }
 }
