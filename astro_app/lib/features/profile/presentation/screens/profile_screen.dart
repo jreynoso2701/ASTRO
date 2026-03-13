@@ -7,6 +7,7 @@ import 'package:astro/core/theme/theme_provider.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/ai_agent/providers/ai_agent_providers.dart';
 
 /// Pantalla de perfil y configuración de cuenta.
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -98,6 +99,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                 const SizedBox(height: 24),
 
+                // ── Sección: Asistente IA ──────────────
+                _SectionTitle(label: 'ASISTENTE IA'),
+                const SizedBox(height: 8),
+                _SettingsTile(
+                  icon: Icons.auto_awesome_outlined,
+                  title: 'Borrar historial del agente',
+                  subtitle: 'Elimina todas las conversaciones con ASTRO AI',
+                  onTap: () => _confirmClearAiHistory(),
+                ),
+
+                const SizedBox(height: 24),
+
                 // ── Sección: Información ───────────────
                 _SectionTitle(label: 'INFORMACIÓN'),
                 const SizedBox(height: 8),
@@ -130,6 +143,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // ── Acciones ─────────────────────────────────────────
+
+  void _confirmClearAiHistory() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Borrar historial'),
+        content: const Text(
+          '¿Estás seguro de que deseas eliminar todo el historial de conversaciones con ASTRO AI? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(aiChatNotifierProvider.notifier).clearHistory();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Historial del agente eliminado'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _pickAndUploadPhoto(String uid) async {
     final picker = ImagePicker();

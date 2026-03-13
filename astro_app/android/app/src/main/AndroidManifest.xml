@@ -23,6 +23,9 @@
     <!-- Notificaciones push (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Micrófono (speech-to-text para el agente IA) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <application
         android:label="ASTRO"
         android:name="${applicationName}"

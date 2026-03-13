@@ -205,9 +205,7 @@ class _UserInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final role = user.isRoot
-        ? UserRole.root
-        : UserRole.fromString(user.legacyRolUsuario ?? 'Usuario');
+    final role = user.globalRole;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,9 +267,7 @@ class _UserInfoSection extends StatelessWidget {
                   ],
                 ),
                 const Divider(height: 24),
-                _InfoRow(label: 'Rol actual', value: role.label),
-                if (user.legacyDeEmpresa != null)
-                  _InfoRow(label: 'Empresa', value: user.legacyDeEmpresa!),
+                _InfoRow(label: 'Rol plataforma', value: role.label),
                 if (user.phoneNumber != null)
                   _InfoRow(label: 'Teléfono', value: user.phoneNumber!),
                 _InfoRow(

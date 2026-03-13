@@ -398,10 +398,18 @@
 
 ### 2.6 Módulo de Agente de IA
 
-- [ ] Agente conversacional para consultar avances del proyecto asignado.
-- [ ] Consultas sobre: minutas, tickets, incidentes, avances y todo lo relacionado.
-- [ ] Disponible solo para roles: **Root**, **Supervisor** y **Soporte**.
-- [ ] Integración con Firebase AI Logic (Gemini).
+- [x] **Modelo de datos** — `AiChatMessage` con bloques de contenido tipados (`AiContentBlock`): text, tickets, minutas, requerimientos, citas, progress, actionConfirm. Colección Firestore `chatAI`.
+- [x] **Repositorio** — `AiChatRepository`: stream de mensajes, agregar mensaje, borrar historial por usuario.
+- [x] **Servicio Gemini** — `GeminiService` con Gemini 2.0 Flash via Firebase AI Logic. System prompt en español. Loop iterativo de function calling.
+- [x] **Function calling** (6 funciones): `buscarTickets`, `obtenerProgresoProyecto`, `buscarMinutas`, `buscarRequerimientos`, `buscarCitas`, `obtenerResumenProyecto`. Cada función consulta Firestore directamente.
+- [x] **Servicio de voz** — `VoiceService`: TTS (`flutter_tts`, es-MX) + STT (`speech_to_text`, es_MX, dictation mode).
+- [x] **Providers Riverpod** — `AiChatNotifier` con estado (isLoading, isListening, isSpeaking, autoSpeak), envío de mensajes, voz automática, borrado de historial.
+- [x] **Chat UI** — Bottom sheet modal (`AiAgentSheet`): drag handle, header con toggle auto-voz, lista de mensajes con burbujas (usuario/asistente), bloques de datos interactivos (cards tapeables), indicador de escritura animado, barra de entrada con campo de texto + micrófono + enviar, sugerencias rápidas en estado vacío.
+- [x] **FAB en Dashboard** — Botón flotante `Icons.auto_awesome` que abre el bottom sheet del agente. Visible para todos los usuarios autenticados.
+- [x] **Borrar historial en Perfil** — Sección "ASISTENTE IA" en la pantalla de perfil con opción para borrar historial con diálogo de confirmación.
+- [x] **Permiso RECORD_AUDIO** — Agregado en AndroidManifest.xml para speech-to-text.
+- [ ] Pruebas en dispositivo físico y ajustes de UX.
+- [ ] Integración con navegación a detalle de items (tickets, minutas, requerimientos, citas).
 
 ---
 
@@ -417,4 +425,4 @@
 
 ---
 
-*Última actualización: 12 de marzo de 2026 — Sección 1.12 ampliada: logotipo oficial integrado, íconos y splash screen configurados para Android/iOS/Web. Nombre unificado a "ASTRO" en todas las plataformas. Fix: `updatedBy` en actualizaciones de tickets para excluir al autor de notificaciones propias. Versión 2.0.0+9.*
+*Última actualización: Módulo 2.6 Agente de IA implementado — Gemini 2.0 Flash via Firebase AI Logic con function calling (6 funciones), servicio de voz TTS/STT, chat UI bottom sheet, FAB en Dashboard, borrar historial en Perfil. Versión 2.0.0+9.*

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/auth/presentation/widgets/google_sign_in_button.dart';
+import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de registro.
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -49,7 +50,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
 
       // Actualizar displayName
-      await credential.user?.updateDisplayName(_nameController.text.trim());
+      final displayName = _nameController.text.trim();
+      await credential.user?.updateDisplayName(displayName);
+
+      // Crear documento en Firestore para que Root lo vea y el router funcione.
+      final user = credential.user;
+      if (user != null) {
+        final userRepo = ref.read(userRepositoryProvider);
+        await userRepo.ensureUserExists(
+          uid: user.uid,
+          displayName: displayName,
+          email: user.email ?? '',
+        );
+      }
     } on Exception catch (e) {
       setState(() => _errorMessage = _mapAuthError(e));
     } finally {
@@ -65,7 +78,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       final repo = ref.read(authRepositoryProvider);
-      await repo.signInWithGoogle();
+      final credential = await repo.signInWithGoogle();
+
+      // Si es usuario nuevo, crear documento en Firestore.
+      final user = credential.user;
+      if (user != null) {
+        final userRepo = ref.read(userRepositoryProvider);
+        await userRepo.ensureUserExists(
+          uid: user.uid,
+          displayName: user.displayName ?? '',
+          email: user.email ?? '',
+          photoUrl: user.photoURL,
+        );
+      }
     } on Exception catch (e) {
       setState(() => _errorMessage = _mapAuthError(e));
     } finally {

@@ -9,6 +9,7 @@
 
 import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {auth} from "firebase-functions/v1";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
@@ -855,5 +856,117 @@ export const checkTicketDeadlines = onSchedule(
     }
 
     await Promise.all(promises);
+  }
+);
+
+// ── Trigger: NUEVO USUARIO REGISTRADO ────────────────────
+
+/**
+ * Se dispara cuando un usuario se registra en Firebase Auth.
+ * 1. Crea el documento `users/{uid}` si no existe (respaldo del cliente).
+ * 2. Notifica a todos los usuarios Root vía push + bandeja in-app.
+ */
+export const onNewUserCreated = auth.user().onCreate(
+  async (userRecord) => {
+    const uid = userRecord.uid;
+
+    // 1. Crear documento de usuario si el cliente no lo creó aún.
+    const userRef = db.collection("users").doc(uid);
+    const existingDoc = await userRef.get();
+
+    if (!existingDoc.exists) {
+      await userRef.set({
+        uid,
+        displayName: userRecord.displayName || "",
+        email: userRecord.email || "",
+        photoUrl: userRecord.photoURL || null,
+        isActive: true,
+        isRoot: false,
+        fcmTokens: [],
+        pushGlobalEnabled: true,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    // 2. Notificar a todos los Root activos.
+    const rootSnap = await db
+      .collection("users")
+      .where("isRoot", "==", true)
+      .where("isActive", "==", true)
+      .get();
+
+    if (rootSnap.empty) return;
+
+    const displayName =
+      userRecord.displayName || userRecord.email || "Nuevo usuario";
+    const cuerpo = `${displayName} se ha registrado en ASTRO.`;
+
+    const notifPromises: Promise<void>[] = [];
+
+    for (const rootDoc of rootSnap.docs) {
+      // No notificar al propio usuario si es Root (caso teórico).
+      if (rootDoc.id === uid) continue;
+
+      notifPromises.push(
+        (async () => {
+          // Notificación in-app
+          await db.collection("Notificaciones").add({
+            userId: rootDoc.id,
+            titulo: "Nuevo usuario registrado",
+            cuerpo,
+            tipo: "nuevo_usuario",
+            refType: "user",
+            refId: uid,
+            projectId: "",
+            projectName: "",
+            leida: false,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+
+          // Push notification
+          const tokens = await getFcmTokens(rootDoc.id);
+          if (tokens.length === 0) return;
+
+          const response = await messaging.sendEachForMulticast({
+            tokens,
+            notification: {
+              title: "Nuevo usuario registrado",
+              body: cuerpo,
+            },
+            data: {
+              tipo: "nuevo_usuario",
+              refType: "user",
+              refId: uid,
+            },
+            android: {
+              priority: "high",
+              notification: {channelId: "astro_default"},
+            },
+          });
+
+          // Limpiar tokens inválidos
+          const tokensToRemove: string[] = [];
+          response.responses.forEach((resp, i) => {
+            if (!resp.success) {
+              const code = resp.error?.code;
+              if (
+                code === "messaging/invalid-registration-token" ||
+                code === "messaging/registration-token-not-registered"
+              ) {
+                tokensToRemove.push(tokens[i]);
+              }
+            }
+          });
+          if (tokensToRemove.length > 0) {
+            await db.collection("users").doc(rootDoc.id).update({
+              fcmTokens: FieldValue.arrayRemove(tokensToRemove),
+            });
+          }
+        })()
+      );
+    }
+
+    await Promise.all(notifPromises);
   }
 );

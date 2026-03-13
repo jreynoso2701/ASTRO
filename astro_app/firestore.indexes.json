@@ -282,6 +282,88 @@
       ]
     },
     {
+      "collectionGroup": "Citas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fechaHora", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Citas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fechaHora", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Citas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fechaHora", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Minutas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Incidentes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkxProyecto", "order": "ASCENDING" },
+        { "fieldPath": "estatusIncidente", "order": "ASCENDING" },
+        { "fieldPath": "prioridadIncidente", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Requerimientos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Requerimientos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "chatAI",
       "queryScope": "COLLECTION",
       "fields": [
@@ -350,10 +432,27 @@
       ]
     },
     {
+      "collectionGroup": "chatAI",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creador", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "CategoriasDocumento",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "Modulos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkProyecto", "order": "ASCENDING" },
         { "fieldPath": "isActive", "order": "ASCENDING" }
       ]
     }

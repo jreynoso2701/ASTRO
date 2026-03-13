@@ -89,6 +89,33 @@ class UserRepository {
     return snapshot.docs.map(AppUser.fromFirestore).toList();
   }
 
+  /// Crea el documento del usuario si aún no existe en Firestore.
+  /// Retorna `true` si se creó un documento nuevo.
+  Future<bool> ensureUserExists({
+    required String uid,
+    required String displayName,
+    required String email,
+    String? photoUrl,
+  }) async {
+    final doc = await _usersRef.doc(uid).get();
+    if (doc.exists) return false;
+
+    final now = DateTime.now();
+    await setUser(
+      AppUser(
+        uid: uid,
+        displayName: displayName,
+        email: email,
+        photoUrl: photoUrl,
+        isActive: true,
+        isRoot: false,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    return true;
+  }
+
   /// Actualiza nombre, teléfono y/o foto de un usuario.
   Future<void> updateProfile(
     String uid, {
