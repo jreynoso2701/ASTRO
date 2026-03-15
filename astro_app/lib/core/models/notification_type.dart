@@ -17,7 +17,28 @@ enum NotificationType {
   // Deadline de tickets
   ticketDeadlineAmber('ticket_deadline_amber', 'Ticket próximo a vencer'),
   ticketDeadlineOrange('ticket_deadline_orange', 'Ticket vence hoy/mañana'),
-  ticketDeadlineRed('ticket_deadline_red', 'Ticket vencido');
+  ticketDeadlineRed('ticket_deadline_red', 'Ticket vencido'),
+
+  // Tareas
+  tareaCreada('tarea_creada', 'Tarea creada'),
+  tareaStatusCambiada('tarea_status', 'Estado de tarea cambiado'),
+  tareaAsignada('tarea_asignada', 'Tarea asignada'),
+
+  // Deadline de tareas
+  tareaDeadlineAmber('tarea_deadline_amber', 'Tarea próxima a vencer'),
+  tareaDeadlineOrange('tarea_deadline_orange', 'Tarea vence hoy/mañana'),
+  tareaDeadlineRed('tarea_deadline_red', 'Tarea vencida'),
+
+  // Compromisos deadline
+  compromisoDeadlineAmber(
+    'compromiso_deadline_amber',
+    'Compromiso próximo a vencer',
+  ),
+  compromisoDeadlineOrange(
+    'compromiso_deadline_orange',
+    'Compromiso vence hoy/mañana',
+  ),
+  compromisoDeadlineRed('compromiso_deadline_red', 'Compromiso vencido');
 
   const NotificationType(this.value, this.label);
   final String value;
@@ -35,7 +56,9 @@ enum NotificationType {
 enum NotificationRefType {
   ticket('ticket'),
   requerimiento('requerimiento'),
-  cita('cita');
+  cita('cita'),
+  minuta('minuta'),
+  tarea('tarea');
 
   const NotificationRefType(this.value);
   final String value;

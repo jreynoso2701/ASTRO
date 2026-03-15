@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/core/models/compromiso_status.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/models/user_role.dart';
 import 'package:astro/core/services/places_service.dart';
@@ -147,4 +148,62 @@ final filteredMinutasProvider = Provider.family<List<Minuta>, String>((
 /// Cuenta minutas visibles de un proyecto (para badges).
 final minutaCountProvider = Provider.family<int, String>((ref, projectId) {
   return ref.watch(visibleMinutasProvider(projectId)).length;
+});
+
+// ── Compromisos pendientes del usuario (Dashboard) ───────
+
+/// Registro plano de un compromiso con su contexto de minuta/proyecto.
+typedef CompromisoPendiente = ({
+  CompromisoMinuta compromiso,
+  String minutaId,
+  String minutaFolio,
+  String projectId,
+  String projectName,
+});
+
+/// Compromisos pendientes/vencidos del usuario actual, a través de todos sus proyectos.
+final myPendingCompromisosProvider = Provider<List<CompromisoPendiente>>((ref) {
+  final profile = ref.watch(currentUserProfileProvider).value;
+  if (profile == null) return [];
+
+  final projects = ref.watch(myProjectsProvider);
+  final isRoot = ref.watch(isCurrentUserRootProvider);
+  final result = <CompromisoPendiente>[];
+
+  for (final project in projects) {
+    final minutas = ref.watch(visibleMinutasProvider(project.id));
+    for (final minuta in minutas) {
+      for (final c in minuta.compromisos) {
+        if (c.status != CompromisoStatus.pendiente &&
+            c.status != CompromisoStatus.vencido) {
+          continue;
+        }
+        // Root ve todos; demás solo sus propios compromisos
+        if (!isRoot && c.responsableUid != profile.uid) continue;
+
+        result.add((
+          compromiso: c,
+          minutaId: minuta.id,
+          minutaFolio: minuta.folio,
+          projectId: project.id,
+          projectName: project.nombreProyecto,
+        ));
+      }
+    }
+  }
+
+  // Ordenar: vencidos primero, luego por fecha más próxima
+  result.sort((a, b) {
+    final aVencido = a.compromiso.status == CompromisoStatus.vencido ? 0 : 1;
+    final bVencido = b.compromiso.status == CompromisoStatus.vencido ? 0 : 1;
+    if (aVencido != bVencido) return aVencido.compareTo(bVencido);
+    final aDate = a.compromiso.fechaEntrega;
+    final bDate = b.compromiso.fechaEntrega;
+    if (aDate == null && bDate == null) return 0;
+    if (aDate == null) return 1;
+    if (bDate == null) return -1;
+    return aDate.compareTo(bDate);
+  });
+
+  return result;
 });

@@ -22,6 +22,10 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
+import 'package:astro/core/models/tarea.dart';
+import 'package:astro/core/models/tarea_status.dart';
+import 'package:astro/core/models/tarea_prioridad.dart';
+import 'package:astro/features/tareas/data/tarea_repository.dart';
 
 /// Pantalla de creación / edición de minuta.
 class MinutaFormScreen extends ConsumerStatefulWidget {
@@ -807,49 +811,93 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
     final tareaCtrl = TextEditingController();
     final responsableCtrl = TextEditingController();
     DateTime? fechaEntrega;
+    String? selectedUid;
+
+    // Obtener miembros del proyecto para sugerencias
+    final members = ref.read(projectMembersProvider(widget.projectId));
+    final memberItems = members
+        .where((m) => m.user != null)
+        .map((m) => (uid: m.user!.uid, nombre: m.user!.displayName))
+        .toList();
 
     final result = await showDialog<CompromisoMinuta>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlgState) => AlertDialog(
           title: const Text('Nuevo compromiso'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: tareaCtrl,
-                decoration: const InputDecoration(labelText: 'Tarea *'),
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: responsableCtrl,
-                decoration: const InputDecoration(labelText: 'Responsable *'),
-                textCapitalization: TextCapitalization.words,
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  fechaEntrega != null
-                      ? DateFormat('dd/MM/yyyy').format(fechaEntrega!)
-                      : 'Fecha de entrega',
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: tareaCtrl,
+                  decoration: const InputDecoration(labelText: 'Tarea *'),
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: 2,
                 ),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate: DateTime.now().add(const Duration(days: 7)),
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2030),
-                  );
-                  if (picked != null) {
-                    setDlgState(() => fechaEntrega = picked);
-                  }
-                },
-              ),
-            ],
+                const SizedBox(height: 12),
+                // Autocomplete: permite seleccionar un miembro o escribir nombre externo
+                Autocomplete<({String uid, String nombre})>(
+                  displayStringForOption: (opt) => opt.nombre,
+                  optionsBuilder: (textEditingValue) {
+                    final text = textEditingValue.text.toLowerCase();
+                    if (text.isEmpty) return memberItems;
+                    return memberItems.where(
+                      (m) => m.nombre.toLowerCase().contains(text),
+                    );
+                  },
+                  onSelected: (opt) {
+                    setDlgState(() {
+                      selectedUid = opt.uid;
+                      responsableCtrl.text = opt.nombre;
+                    });
+                  },
+                  fieldViewBuilder: (ctx, textCtrl, focusNode, onFieldSubmitted) {
+                    // Sincronizar con nuestro controller
+                    textCtrl.addListener(() {
+                      responsableCtrl.text = textCtrl.text;
+                      // Si el texto ya no coincide con un miembro, limpiar UID
+                      final match = memberItems.where(
+                        (m) => m.nombre == textCtrl.text,
+                      );
+                      if (match.isEmpty) {
+                        selectedUid = null;
+                      }
+                    });
+                    return TextField(
+                      controller: textCtrl,
+                      focusNode: focusNode,
+                      decoration: const InputDecoration(
+                        labelText: 'Responsable *',
+                        hintText: 'Escribe o selecciona un miembro',
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    fechaEntrega != null
+                        ? DateFormat('dd/MM/yyyy').format(fechaEntrega!)
+                        : 'Fecha de entrega',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: DateTime.now().add(const Duration(days: 7)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2030),
+                    );
+                    if (picked != null) {
+                      setDlgState(() => fechaEntrega = picked);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -868,6 +916,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
                     numero: _compromisos.length + 1,
                     tarea: tareaCtrl.text.trim(),
                     responsable: responsableCtrl.text.trim(),
+                    responsableUid: selectedUid, // null si es externo
                     fechaEntrega: fechaEntrega,
                   ),
                 );
@@ -973,6 +1022,9 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
       for (final a in _asistentes) {
         if (a.uid != null) participantUids.add(a.uid!);
       }
+      for (final c in _compromisos) {
+        if (c.responsableUid != null) participantUids.add(c.responsableUid!);
+      }
 
       final minuta = Minuta(
         id: widget.minutaId ?? '',
@@ -1029,6 +1081,13 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
           profile: profile,
         );
 
+        // Auto-crear tareas para compromisos con responsable asignado
+        await _autoCreateTareasFromCompromisos(
+          minutaId: widget.minutaId!,
+          proyecto: proyecto,
+          profile: profile,
+        );
+
         if (mounted) {
           context.pop();
         }
@@ -1052,6 +1111,13 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
           profile: profile,
         );
 
+        // Auto-crear tareas para compromisos con responsable asignado
+        await _autoCreateTareasFromCompromisos(
+          minutaId: docId,
+          proyecto: proyecto,
+          profile: profile,
+        );
+
         if (mounted) {
           context.pushReplacement(
             '/projects/${widget.projectId}/minutas/$docId',
@@ -1060,6 +1126,57 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  /// Auto-crea tareas para compromisos que tengan responsableUid definido.
+  /// Evita duplicados verificando si ya existe una tarea con la misma
+  /// combinación de minutaId + compromisoNumero.
+  Future<void> _autoCreateTareasFromCompromisos({
+    required String minutaId,
+    required dynamic proyecto,
+    required dynamic profile,
+  }) async {
+    try {
+      final tareaRepo = TareaRepository();
+      final db = FirebaseFirestore.instance;
+
+      for (final c in _compromisos) {
+        if (c.responsableUid == null) continue;
+
+        // Verificar si ya existe una tarea para este compromiso
+        final existing = await db
+            .collection('Tareas')
+            .where('refMinutaId', isEqualTo: minutaId)
+            .where('refCompromisoNumero', isEqualTo: c.numero)
+            .where('isActive', isEqualTo: true)
+            .limit(1)
+            .get();
+
+        if (existing.docs.isNotEmpty) continue;
+
+        final tarea = Tarea(
+          id: '',
+          folio: '',
+          titulo: c.tarea,
+          descripcion: 'Compromiso de minuta: ${c.tarea}',
+          projectId: widget.projectId,
+          projectName: proyecto.nombreProyecto,
+          status: TareaStatus.pendiente,
+          prioridad: TareaPrioridad.media,
+          createdByUid: profile?.uid ?? '',
+          createdByName: profile?.displayName ?? '',
+          assignedToUid: c.responsableUid,
+          assignedToName: c.responsable,
+          fechaEntrega: c.fechaEntrega,
+          refMinutaId: minutaId,
+          refCompromisoNumero: c.numero,
+        );
+
+        await tareaRepo.create(tarea);
+      }
+    } catch (_) {
+      // Best-effort: no bloquear el guardado de la minuta.
     }
   }
 }

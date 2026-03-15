@@ -186,7 +186,7 @@ async function sendNotifications(
     titulo: string;
     cuerpo: string;
     tipo: string;
-    refType: "ticket" | "requerimiento" | "cita";
+    refType: "ticket" | "requerimiento" | "cita" | "minuta" | "tarea";
     refId: string;
     projectId: string;
     projectName: string;
@@ -968,5 +968,351 @@ export const onNewUserCreated = auth.user().onCreate(
     }
 
     await Promise.all(notifPromises);
+  }
+);
+
+// ── Scheduled: COMPROMISOS DE MINUTAS — DEADLINES ────────
+
+/**
+ * Se ejecuta diariamente a las 08:00 AM (CDMX).
+ * Revisa todos los compromisos de minutas activas y envía
+ * notificaciones push al responsable cuando la fecha de entrega
+ * está próxima o ya venció.
+ */
+export const checkCompromisoDeadlines = onSchedule(
+  {
+    schedule: "every day 08:00",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const snap = await db
+      .collection("Minutas")
+      .where("isActive", "==", true)
+      .get();
+
+    if (snap.empty) return;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const promises: Promise<void>[] = [];
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const minutaId = doc.id;
+      const projectId = data.projectId as string | undefined;
+      const projectName = (data.projectName as string) ?? "";
+      const folio = (data.folio as string) ?? "";
+
+      if (!projectId) continue;
+
+      const compromisos = data.compromisos as Array<Record<string, unknown>> | undefined;
+      if (!compromisos || compromisos.length === 0) continue;
+
+      for (const c of compromisos) {
+        const status = c.status as string | undefined;
+        // Solo compromisos pendientes
+        if (status !== "pendiente") continue;
+
+        const responsableUid = c.responsableUid as string | undefined;
+        if (!responsableUid) continue;
+
+        // Parsear fechaEntrega
+        const fhRaw = c.fechaEntrega;
+        let target: Date | null = null;
+        if (fhRaw && typeof (fhRaw as {toDate?: () => Date}).toDate === "function") {
+          target = (fhRaw as {toDate: () => Date}).toDate();
+        } else if (typeof fhRaw === "string" && fhRaw.length > 0) {
+          const iso = new Date(fhRaw);
+          if (!isNaN(iso.getTime())) target = iso;
+        }
+        if (!target) continue;
+
+        const deadline = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+        const diffMs = deadline.getTime() - today.getTime();
+        const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+        let emoji = "";
+        let label = "";
+        let shouldNotify = false;
+
+        if (days < 0) {
+          emoji = "\u{1F534}"; // red circle
+          label = `Vencido hace ${-days} día(s)`;
+          shouldNotify = true;
+        } else if (days <= 1) {
+          emoji = "\u{1F7E0}"; // orange circle
+          label = days === 0 ? "Vence HOY" : "Vence MAÑANA";
+          shouldNotify = true;
+        } else if (days <= 3) {
+          emoji = "\u{1F7E1}"; // yellow circle
+          label = `Vence en ${days} días`;
+          shouldNotify = true;
+        }
+
+        if (!shouldNotify) continue;
+
+        const tarea = (c.tarea as string) ?? "";
+        const responsable = (c.responsable as string) ?? "";
+
+        promises.push(
+          sendNotifications([responsableUid], {
+            titulo: `${emoji} Compromiso — ${label}`,
+            cuerpo: `${tarea} (${responsable}) — Minuta ${folio}`,
+            tipo: "compromiso_deadline",
+            refType: "minuta",
+            refId: minutaId,
+            projectId,
+            projectName,
+          })
+        );
+      }
+    }
+
+    await Promise.all(promises);
+  }
+);
+
+// ── Helpers: TAREAS ──────────────────────────────────────
+
+/**
+ * Determina los destinatarios de una notificación de tareas.
+ * Root/Supervisor/Soporte reciben siempre, Usuario solo si es participante.
+ */
+async function getTareaRecipients(
+  projectId: string,
+  participantUids: string[],
+  excludeUid?: string
+): Promise<string[]> {
+  const assignments = await getProjectAssignments(projectId);
+  const recipients = new Set<string>();
+
+  for (const a of assignments) {
+    if (a.userId === excludeUid) continue;
+
+    if (
+      a.role === "Root" ||
+      a.role === "Supervisor" ||
+      a.role === "Soporte"
+    ) {
+      recipients.add(a.userId);
+    } else if (participantUids.includes(a.userId)) {
+      recipients.add(a.userId);
+    }
+  }
+
+  return Array.from(recipients);
+}
+
+// ── Triggers: TAREAS ─────────────────────────────────────
+
+/**
+ * Tarea creada → notificar a los destinatarios elegibles.
+ */
+export const onTareaCreated = onDocumentCreated(
+  "Tareas/{tareaId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const projectId = data.projectId as string | undefined;
+    const projectName = data.projectName as string ?? "";
+    const createdBy = data.createdByUid as string | undefined;
+    const titulo = data.titulo as string ?? "Nueva tarea";
+    const folio = data.folio as string ?? "";
+    const assignedTo = data.assignedToUid as string | undefined;
+
+    if (!projectId) return;
+
+    const participantUids = [createdBy, assignedTo].filter(Boolean) as string[];
+    const recipients = await getTareaRecipients(
+      projectId,
+      participantUids,
+      createdBy
+    );
+
+    await sendNotifications(recipients, {
+      titulo: `Nueva tarea: ${folio}`,
+      cuerpo: titulo,
+      tipo: "tarea_creada",
+      refType: "tarea",
+      refId: event.params.tareaId,
+      projectId,
+      projectName,
+    });
+  }
+);
+
+/**
+ * Tarea actualizada → detectar cambios de status y asignación.
+ */
+export const onTareaUpdated = onDocumentUpdated(
+  "Tareas/{tareaId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const projectId = after.projectId as string | undefined;
+    if (!projectId) return;
+
+    const projectName = after.projectName as string ?? "";
+    const folio = after.folio as string ?? "";
+    const tareaId = event.params.tareaId;
+    const createdBy = after.createdByUid as string | undefined;
+    const assignedTo = after.assignedToUid as string | undefined;
+    const participantUids = [createdBy, assignedTo].filter(Boolean) as string[];
+
+    // Cambio de status
+    if (before.status !== after.status) {
+      const updatedBy = after.updatedBy as string | undefined;
+      const recipients = await getTareaRecipients(
+        projectId,
+        participantUids,
+        updatedBy
+      );
+      await sendNotifications(recipients, {
+        titulo: `${folio} → ${after.status}`,
+        cuerpo: `El estado de la tarea cambió a "${after.status}"`,
+        tipo: "tarea_status",
+        refType: "tarea",
+        refId: tareaId,
+        projectId,
+        projectName,
+      });
+    }
+
+    // Cambio de asignación
+    if (before.assignedToUid !== after.assignedToUid && after.assignedToUid) {
+      const updatedBy = after.updatedBy as string | undefined;
+      const recipients = await getTareaRecipients(
+        projectId,
+        participantUids,
+        updatedBy
+      );
+      await sendNotifications(recipients, {
+        titulo: `${folio} asignada`,
+        cuerpo: `Tarea asignada a ${after.assignedToName ?? "alguien"}`,
+        tipo: "tarea_asignada",
+        refType: "tarea",
+        refId: tareaId,
+        projectId,
+        projectName,
+      });
+    }
+  }
+);
+
+// ── Scheduled: TAREAS — DEADLINES ────────────────────────
+
+/**
+ * Cada día a las 08:00 (CDMX) revisa tareas activas con fechaEntrega.
+ * Envía notificaciones al asignado + Root cuando la deadline está próxima o venció.
+ */
+export const checkTareaDeadlines = onSchedule(
+  {
+    schedule: "every day 08:00",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const snap = await db
+      .collection("Tareas")
+      .where("isActive", "==", true)
+      .get();
+
+    if (snap.empty) return;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const promises: Promise<void>[] = [];
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const tareaId = doc.id;
+
+      // Solo tareas pendientes o en progreso
+      const status = data.status as string | undefined;
+      if (status === "completada" || status === "cancelada") continue;
+
+      const fhRaw = data.fechaEntrega;
+      if (!fhRaw) continue;
+
+      let target: Date | null = null;
+      if (fhRaw.toDate) {
+        target = fhRaw.toDate();
+      } else if (typeof fhRaw === "string" && fhRaw.length > 0) {
+        const iso = new Date(fhRaw);
+        if (!isNaN(iso.getTime())) target = iso;
+      }
+      if (!target) continue;
+
+      const deadline = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+      const diffMs = deadline.getTime() - today.getTime();
+      const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      let zone: "amber" | "orange" | "red" | null = null;
+      let emoji = "";
+      let label = "";
+
+      if (days < 0) {
+        zone = "red";
+        emoji = "\u{1F534}";
+        label = `Vencida hace ${-days} día(s)`;
+      } else if (days <= 1) {
+        zone = "orange";
+        emoji = "\u{1F7E0}";
+        label = days === 0 ? "Vence HOY" : "Vence MAÑANA";
+      } else if (days <= 5) {
+        zone = "amber";
+        emoji = "\u{1F7E1}";
+        label = `Vence en ${days} días`;
+      }
+
+      if (!zone) continue;
+
+      // Anti-spam: solo notificar si la zona cambió
+      const lastAlert = data._lastDeadlineAlert as string | undefined;
+      if (lastAlert === zone) continue;
+
+      promises.push(
+        db.collection("Tareas").doc(tareaId).update({
+          _lastDeadlineAlert: zone,
+        }).then(() => {/* ok */})
+      );
+
+      const projectId = data.projectId as string | undefined;
+      if (!projectId) continue;
+
+      const projectName = data.projectName as string ?? "";
+      const folio = data.folio as string ?? "";
+      const titulo = data.titulo as string ?? "";
+      const assignedToUid = data.assignedToUid as string | undefined;
+
+      // Notificar al asignado + Root del proyecto
+      const recipientUids: string[] = [];
+      if (assignedToUid) recipientUids.push(assignedToUid);
+
+      const assignments = await getProjectAssignments(projectId);
+      for (const a of assignments) {
+        if (a.role === "Root" && !recipientUids.includes(a.userId)) {
+          recipientUids.push(a.userId);
+        }
+      }
+
+      if (recipientUids.length === 0) continue;
+
+      promises.push(
+        sendNotifications(recipientUids, {
+          titulo: `${emoji} ${folio} — ${label}`,
+          cuerpo: titulo,
+          tipo: `tarea_deadline_${zone}`,
+          refType: "tarea",
+          refId: tareaId,
+          projectId,
+          projectName,
+        })
+      );
+    }
+
+    await Promise.all(promises);
   }
 );

@@ -4,14 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:astro/core/models/minuta.dart';
+import 'package:astro/core/models/tarea.dart';
+import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/compromiso_status.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/services/minuta_pdf_service.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de detalle de una minuta de reunión.
-class MinutaDetailScreen extends ConsumerWidget {
+class MinutaDetailScreen extends ConsumerStatefulWidget {
   const MinutaDetailScreen({
     required this.projectId,
     required this.minutaId,
@@ -22,10 +25,71 @@ class MinutaDetailScreen extends ConsumerWidget {
   final String minutaId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final minutaAsync = ref.watch(minutaByIdProvider(minutaId));
-    final canManage = ref.watch(canManageProjectProvider(projectId));
+  ConsumerState<MinutaDetailScreen> createState() => _MinutaDetailScreenState();
+}
+
+class _MinutaDetailScreenState extends ConsumerState<MinutaDetailScreen> {
+  bool _isSyncing = false;
+
+  /// Mapea compromisoNumero → Tarea vinculada (si existe).
+  Map<int, Tarea> _buildTareaMap(List<Tarea> tareas) {
+    final map = <int, Tarea>{};
+    for (final t in tareas) {
+      if (t.refCompromisoNumero != null) {
+        map[t.refCompromisoNumero!] = t;
+      }
+    }
+    return map;
+  }
+
+  /// Toggle compromiso status + sincronizar la tarea vinculada (Gap 1).
+  Future<void> _toggleCompromiso(Minuta minuta, int index) async {
+    final compromiso = minuta.compromisos[index];
+    final newStatus = compromiso.status == CompromisoStatus.cumplido
+        ? CompromisoStatus.pendiente
+        : CompromisoStatus.cumplido;
+
+    final updated = List<CompromisoMinuta>.from(minuta.compromisos);
+    updated[index] = compromiso.copyWith(status: newStatus);
+
+    setState(() => _isSyncing = true);
+    try {
+      final minutaRepo = ref.read(minutaRepositoryProvider);
+      await minutaRepo.update(minuta.copyWith(compromisos: updated));
+
+      // Sincronizar tarea vinculada (si existe).
+      final tareas =
+          ref.read(tareasByMinutaProvider(widget.minutaId)).value ?? [];
+      final linkedTarea = tareas
+          .where(
+            (t) => t.refCompromisoNumero == compromiso.numero && t.isActive,
+          )
+          .firstOrNull;
+
+      if (linkedTarea != null) {
+        final tareaRepo = ref.read(tareaRepositoryProvider);
+        final newTareaStatus = newStatus == CompromisoStatus.cumplido
+            ? TareaStatus.completada
+            : TareaStatus.pendiente;
+        await tareaRepo.updateStatus(linkedTarea.id, newTareaStatus.name);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al sincronizar: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isSyncing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final minutaAsync = ref.watch(minutaByIdProvider(widget.minutaId));
+    final canManage = ref.watch(canManageProjectProvider(widget.projectId));
     final isRoot = ref.watch(isCurrentUserRootProvider);
+    final tareasAsync = ref.watch(tareasByMinutaProvider(widget.minutaId));
 
     return Scaffold(
       appBar: AppBar(
@@ -55,7 +119,7 @@ class MinutaDetailScreen extends ConsumerWidget {
                               icon: const Icon(Icons.edit_outlined),
                               tooltip: 'Editar minuta',
                               onPressed: () => context.push(
-                                '/projects/$projectId/minutas/$minutaId/edit',
+                                '/projects/${widget.projectId}/minutas/${widget.minutaId}/edit',
                               ),
                             ),
                         ],
@@ -73,18 +137,21 @@ class MinutaDetailScreen extends ConsumerWidget {
             return const Center(child: Text('Minuta no encontrada'));
           }
 
+          final tareaMap = _buildTareaMap(tareasAsync.value ?? []);
           final width = MediaQuery.sizeOf(context).width;
           final isWide = width >= AppBreakpoints.medium;
 
           final infoSection = _MinutaInfoSection(
             minuta: minuta,
-            projectId: projectId,
+            projectId: widget.projectId,
           );
           final compromisosSection = _CompromisosSection(
             minuta: minuta,
             canManage: canManage || isRoot,
-            onToggleCompromiso: (index) =>
-                _toggleCompromiso(ref, minuta, index),
+            isSyncing: _isSyncing,
+            tareaMap: tareaMap,
+            projectId: widget.projectId,
+            onToggleCompromiso: (index) => _toggleCompromiso(minuta, index),
           );
 
           if (isWide) {
@@ -123,23 +190,6 @@ class MinutaDetailScreen extends ConsumerWidget {
         },
       ),
     );
-  }
-
-  Future<void> _toggleCompromiso(
-    WidgetRef ref,
-    Minuta minuta,
-    int index,
-  ) async {
-    final compromiso = minuta.compromisos[index];
-    final newStatus = compromiso.status == CompromisoStatus.cumplido
-        ? CompromisoStatus.pendiente
-        : CompromisoStatus.cumplido;
-
-    final updated = List<CompromisoMinuta>.from(minuta.compromisos);
-    updated[index] = compromiso.copyWith(status: newStatus);
-
-    final repo = ref.read(minutaRepositoryProvider);
-    await repo.update(minuta.copyWith(compromisos: updated));
   }
 
   Future<void> _printPdf(Minuta minuta) async {
@@ -642,11 +692,17 @@ class _CompromisosSection extends StatelessWidget {
   const _CompromisosSection({
     required this.minuta,
     required this.canManage,
+    required this.isSyncing,
+    required this.tareaMap,
+    required this.projectId,
     required this.onToggleCompromiso,
   });
 
   final Minuta minuta;
   final bool canManage;
+  final bool isSyncing;
+  final Map<int, Tarea> tareaMap;
+  final String projectId;
   final ValueChanged<int> onToggleCompromiso;
 
   @override
@@ -680,7 +736,11 @@ class _CompromisosSection extends StatelessWidget {
           ...minuta.compromisos.asMap().entries.map(
             (e) => _CompromisoTile(
               compromiso: e.value,
+              index: e.key,
               canManage: canManage,
+              isSyncing: isSyncing,
+              linkedTarea: tareaMap[e.value.numero],
+              projectId: projectId,
               onToggle: () => onToggleCompromiso(e.key),
             ),
           ),
@@ -692,12 +752,20 @@ class _CompromisosSection extends StatelessWidget {
 class _CompromisoTile extends StatelessWidget {
   const _CompromisoTile({
     required this.compromiso,
+    required this.index,
     required this.canManage,
+    required this.isSyncing,
+    required this.projectId,
     required this.onToggle,
+    this.linkedTarea,
   });
 
   final CompromisoMinuta compromiso;
+  final int index;
   final bool canManage;
+  final bool isSyncing;
+  final Tarea? linkedTarea;
+  final String projectId;
   final VoidCallback onToggle;
 
   @override
@@ -705,13 +773,16 @@ class _CompromisoTile extends StatelessWidget {
     final theme = Theme.of(context);
     final isCumplido = compromiso.status == CompromisoStatus.cumplido;
     final isVencido = compromiso.status == CompromisoStatus.vencido;
+    final isArchived = linkedTarea != null && !linkedTarea!.isActive;
     final fechaStr = compromiso.fechaEntrega != null
         ? DateFormat('dd/MM/yyyy').format(compromiso.fechaEntrega!)
         : '—';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      color: isVencido
+      color: isArchived
+          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+          : isVencido
           ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
           : isCumplido
           ? const Color(0xFF4CAF50).withValues(alpha: 0.08)
@@ -721,7 +792,7 @@ class _CompromisoTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (canManage)
+            if (canManage && !isArchived)
               IconButton(
                 icon: Icon(
                   isCumplido
@@ -731,19 +802,23 @@ class _CompromisoTile extends StatelessWidget {
                       ? const Color(0xFF4CAF50)
                       : theme.colorScheme.onSurfaceVariant,
                 ),
-                onPressed: onToggle,
+                onPressed: isSyncing ? null : onToggle,
                 tooltip: isCumplido ? 'Marcar pendiente' : 'Marcar cumplido',
               )
             else
               Padding(
                 padding: const EdgeInsets.all(8),
                 child: Icon(
-                  isCumplido
+                  isArchived
+                      ? Icons.inventory_2_outlined
+                      : isCumplido
                       ? Icons.check_circle
                       : isVencido
                       ? Icons.error_outline
                       : Icons.radio_button_unchecked,
-                  color: isCumplido
+                  color: isArchived
+                      ? theme.colorScheme.onSurfaceVariant
+                      : isCumplido
                       ? const Color(0xFF4CAF50)
                       : isVencido
                       ? theme.colorScheme.error
@@ -759,8 +834,11 @@ class _CompromisoTile extends StatelessWidget {
                   Text(
                     '${compromiso.numero}. ${compromiso.tarea}',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      decoration: isCumplido
+                      decoration: isCumplido || isArchived
                           ? TextDecoration.lineThrough
+                          : null,
+                      color: isArchived
+                          ? theme.colorScheme.onSurfaceVariant
                           : null,
                     ),
                   ),
@@ -799,9 +877,95 @@ class _CompromisoTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  _StatusChip(status: compromiso.status),
+                  // Status chip del compromiso
+                  if (!isArchived) _StatusChip(status: compromiso.status),
+                  // ── Tarea vinculada (Gap 3: inline enriquecido) ──
+                  if (linkedTarea != null) ...[
+                    const SizedBox(height: 6),
+                    _LinkedTareaRow(tarea: linkedTarea!, projectId: projectId),
+                  ],
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Fila inline que muestra la tarea vinculada a un compromiso.
+class _LinkedTareaRow extends StatelessWidget {
+  const _LinkedTareaRow({required this.tarea, required this.projectId});
+
+  final Tarea tarea;
+  final String projectId;
+
+  static Color _tareaStatusColor(TareaStatus s) => switch (s) {
+    TareaStatus.pendiente => const Color(0xFFFFC107),
+    TareaStatus.enProgreso => const Color(0xFF42A5F5),
+    TareaStatus.completada => const Color(0xFF4CAF50),
+    TareaStatus.cancelada => const Color(0xFF9E9E9E),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isArchived = !tarea.isActive;
+    final color = isArchived
+        ? theme.colorScheme.onSurfaceVariant
+        : _tareaStatusColor(tarea.status);
+    final label = isArchived ? 'Archivada' : tarea.status.label;
+
+    return InkWell(
+      onTap: () => context.push('/projects/$projectId/tareas/${tarea.id}'),
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isArchived ? Icons.inventory_2_outlined : Icons.task_alt,
+              size: 14,
+              color: color,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                tarea.folio,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right,
+              size: 14,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ],
         ),

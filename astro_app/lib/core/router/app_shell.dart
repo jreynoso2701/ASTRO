@@ -5,6 +5,7 @@ import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/notifications/providers/notification_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
+import 'package:astro/features/tareas/providers/tarea_providers.dart';
 
 /// Destino de navegación compartido entre NavigationBar y NavigationRail.
 class AppDestination {
@@ -28,6 +29,12 @@ const List<AppDestination> _allDestinations = [
     icon: Icons.space_dashboard_outlined,
     selectedIcon: Icons.space_dashboard,
     path: '/',
+  ),
+  AppDestination(
+    label: 'Tareas',
+    icon: Icons.task_outlined,
+    selectedIcon: Icons.task,
+    path: '/tareas',
   ),
   AppDestination(
     label: 'Calendario',
@@ -97,8 +104,17 @@ class AppShell extends ConsumerWidget {
     final selectedIndex = _currentIndex(context, destinations);
     final unreadCount = ref.watch(unreadCountProvider);
     final upcomingCitas = ref.watch(upcomingCitasCountProvider);
+    final pendingTareas = ref.watch(myPendingTareasProvider).length;
 
-    Widget badgeIcon(IconData icon, bool isBell, {bool isCalendar = false}) {
+    Widget badgeIcon(
+      IconData icon,
+      bool isBell, {
+      bool isCalendar = false,
+      bool isTareas = false,
+    }) {
+      if (isTareas && pendingTareas > 0) {
+        return Badge.count(count: pendingTareas, child: Icon(icon));
+      }
       if (isCalendar && upcomingCitas > 0) {
         return Badge.count(count: upcomingCitas, child: Icon(icon));
       }
@@ -121,12 +137,19 @@ class AppShell extends ConsumerWidget {
               destinations: destinations.map((d) {
                 final isBell = d.path == '/notifications';
                 final isCal = d.path == '/calendar';
+                final isTar = d.path == '/tareas';
                 return NavigationRailDestination(
-                  icon: badgeIcon(d.icon, isBell, isCalendar: isCal),
+                  icon: badgeIcon(
+                    d.icon,
+                    isBell,
+                    isCalendar: isCal,
+                    isTareas: isTar,
+                  ),
                   selectedIcon: badgeIcon(
                     d.selectedIcon,
                     isBell,
                     isCalendar: isCal,
+                    isTareas: isTar,
                   ),
                   label: Text(d.label),
                 );
@@ -150,12 +173,19 @@ class AppShell extends ConsumerWidget {
               destinations: destinations.map((d) {
                 final isBell = d.path == '/notifications';
                 final isCal = d.path == '/calendar';
+                final isTar = d.path == '/tareas';
                 return NavigationDestination(
-                  icon: badgeIcon(d.icon, isBell, isCalendar: isCal),
+                  icon: badgeIcon(
+                    d.icon,
+                    isBell,
+                    isCalendar: isCal,
+                    isTareas: isTar,
+                  ),
                   selectedIcon: badgeIcon(
                     d.selectedIcon,
                     isBell,
                     isCalendar: isCal,
+                    isTareas: isTar,
                   ),
                   label: d.label,
                 );

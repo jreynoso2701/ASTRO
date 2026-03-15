@@ -43,6 +43,10 @@ import 'package:astro/features/empresas/presentation/screens/empresa_list_screen
 import 'package:astro/features/empresas/presentation/screens/empresa_detail_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_form_screen.dart';
 import 'package:astro/features/gestion/presentation/screens/gestion_screen.dart';
+import 'package:astro/features/tareas/presentation/screens/tareas_list_screen.dart';
+import 'package:astro/features/tareas/presentation/screens/tareas_global_screen.dart';
+import 'package:astro/features/tareas/presentation/screens/tarea_detail_screen.dart';
+import 'package:astro/features/tareas/presentation/screens/tarea_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -85,6 +89,13 @@ abstract final class AppRoutes {
   static const String minutaNew = '/projects/:id/minutas/new';
   static const String minutaDetail = '/projects/:id/minutas/:minutaId';
   static const String minutaEdit = '/projects/:id/minutas/:minutaId/edit';
+
+  // Tareas
+  static const String tareas = '/tareas';
+  static const String projectTareas = '/projects/:id/tareas';
+  static const String tareaNew = '/projects/:id/tareas/new';
+  static const String tareaDetail = '/projects/:id/tareas/:tareaId';
+  static const String tareaEdit = '/projects/:id/tareas/:tareaId/edit';
 
   // Calendario global
   static const String calendar = '/calendar';
@@ -196,6 +207,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.dashboard,
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: DashboardScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.tareas,
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TareasGlobalScreen()),
           ),
           GoRoute(
             path: AppRoutes.gestion,
@@ -419,6 +435,51 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.projectCitas,
         builder: (context, state) =>
             CitaListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de tareas (más específicas primero)
+      GoRoute(
+        path: AppRoutes.tareaNew,
+        builder: (context, state) {
+          final qp = state.uri.queryParameters;
+          return TareaFormScreen(
+            projectId: state.pathParameters['id']!,
+            initialRefMinutaId: qp['refMinutaId'],
+            initialRefCompromisoNumero: int.tryParse(
+              qp['refCompromisoNumero'] ?? '',
+            ),
+            initialTitulo: qp['titulo'],
+            initialDescripcion: qp['descripcion'],
+            initialAssignedToUid: qp['assignedToUid']?.isNotEmpty == true
+                ? qp['assignedToUid']
+                : null,
+            initialAssignedToName: qp['assignedToName']?.isNotEmpty == true
+                ? qp['assignedToName']
+                : null,
+            initialFechaEntrega: qp['fechaEntrega']?.isNotEmpty == true
+                ? DateTime.tryParse(qp['fechaEntrega']!)
+                : null,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.tareaEdit,
+        builder: (context, state) => TareaFormScreen(
+          projectId: state.pathParameters['id']!,
+          tareaId: state.pathParameters['tareaId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.tareaDetail,
+        builder: (context, state) => TareaDetailScreen(
+          projectId: state.pathParameters['id']!,
+          tareaId: state.pathParameters['tareaId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectTareas,
+        builder: (context, state) =>
+            TareasListScreen(projectId: state.pathParameters['id']!),
       ),
 
       // ── Rutas de módulos (más específicas primero)

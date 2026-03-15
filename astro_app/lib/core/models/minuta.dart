@@ -96,13 +96,15 @@ class CompromisoMinuta {
     required this.numero,
     required this.tarea,
     required this.responsable,
+    this.responsableUid,
     this.fechaEntrega,
     this.status = CompromisoStatus.pendiente,
   });
 
   final int numero;
   final String tarea;
-  final String responsable;
+  final String responsable; // Nombre visible
+  final String? responsableUid; // UID del usuario asignado (null si externo)
   final DateTime? fechaEntrega;
   final CompromisoStatus status;
 
@@ -111,6 +113,7 @@ class CompromisoMinuta {
       numero: (data['numero'] as num?)?.toInt() ?? 0,
       tarea: data['tarea'] as String? ?? '',
       responsable: data['responsable'] as String? ?? '',
+      responsableUid: data['responsableUid'] as String?,
       fechaEntrega: _parseDate(data['fechaEntrega']),
       status: CompromisoStatus.fromString(data['status'] as String?),
     );
@@ -120,6 +123,7 @@ class CompromisoMinuta {
     'numero': numero,
     'tarea': tarea,
     'responsable': responsable,
+    if (responsableUid != null) 'responsableUid': responsableUid,
     if (fechaEntrega != null) 'fechaEntrega': Timestamp.fromDate(fechaEntrega!),
     'status': status.name,
   };
@@ -128,6 +132,7 @@ class CompromisoMinuta {
     int? numero,
     String? tarea,
     String? responsable,
+    String? responsableUid,
     DateTime? fechaEntrega,
     CompromisoStatus? status,
   }) {
@@ -135,6 +140,7 @@ class CompromisoMinuta {
       numero: numero ?? this.numero,
       tarea: tarea ?? this.tarea,
       responsable: responsable ?? this.responsable,
+      responsableUid: responsableUid ?? this.responsableUid,
       fechaEntrega: fechaEntrega ?? this.fechaEntrega,
       status: status ?? this.status,
     );

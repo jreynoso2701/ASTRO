@@ -389,6 +389,45 @@
 - [x] Navegación cruzada entre minutas ↔ tickets/requerimientos (tap desde detalle de minuta navega a ticket o requerimiento).
 - [x] Navegación cruzada entre requerimientos ↔ minutas (tap desde detalle de requerimiento navega a minuta).
 
+### 2.4 Módulo de Tareas
+
+- [x] Modelo de datos `Tarea` en Firestore (colección `Tareas/{docId}`).
+- [x] Campos: id, folio (TAR-ABBR-NUM), titulo, descripcion, projectId, projectName, status, prioridad, createdByUid, createdByName, moduleId/Name, assignedToUid/Name, fechaEntrega, adjuntos, refTicketId, refRequerimientoId, refMinutaId, refCompromisoNumero, isActive, createdAt, updatedAt.
+- [x] Enums: `TareaStatus` (pendiente, enProgreso, completada, cancelada), `TareaPrioridad` (baja, media, alta, urgente).
+- [x] `TareaRepository` — CRUD, folio auto-incremental (TAR-ABBR-NUM), watchByProject, watchByAssignee, archive.
+- [x] Providers Riverpod: tareas por proyecto, por ID, por asignado (cross-project), filtros (búsqueda, status, prioridad), visibilidad por rol, contadores, `myPendingTareasProvider`.
+- [x] Pantalla **Listado de Tareas por proyecto** — búsqueda, chips de filtro por status y prioridad, tarjetas con folio, status bar, prioridad badge, asignado, fecha.
+- [x] Pantalla **Detalle de Tarea** — info completa, referencias cruzadas (minuta, ticket, requerimiento).
+- [x] Pantalla **Formulario de Tarea** — crear/editar con título, descripción, módulo, prioridad, asignado (miembros del proyecto), fecha de entrega, referencias.
+- [x] Navegación: `/projects/:id/tareas`, `tareas/new`, `tareas/:tareaId`, `tareas/:tareaId/edit`.
+- [x] Cloud Functions: `onTareaCreated`, `onTareaUpdated`, `checkTareaDeadlines` — notificaciones push + in-app al crear, actualizar, y alerta de vencimiento.
+- [x] **Pantalla global de Tareas** (`/tareas`) — vista cross-proyecto en navegación principal. Muestra tareas pendientes/en progreso del usuario con filtros de status, prioridad y búsqueda. FAB para crear nueva tarea (selector de proyecto).
+- [x] **Destino "Tareas" en navegación principal** — insertado después de Dashboard con badge de tareas pendientes. Visible en NavigationBar (móvil) y NavigationRail (tablet/web).
+- [x] **Auto-generación de tareas desde compromisos de minuta** — al guardar una minuta (crear o editar), se crean automáticamente tareas para cada compromiso que tenga `responsableUid` definido. Verificación de duplicados por `refMinutaId` + `refCompromisoNumero`. Best-effort (no bloquea guardado).
+- [x] **Eliminación del botón manual "Crear Tarea"** en detalle de minuta — reemplazado por auto-generación automática.
+- [x] **Eliminación de sección "Actividades" del Dashboard** — las tareas ahora se gestionan desde la pantalla global `/tareas` en la navegación principal. Imports y código muerto eliminados del dashboard.
+- [x] **Acciones rápidas en detalle de tarea** — botones de cambio de estado según estado actual: Iniciar, Completar, Cancelar, Pendiente, Reabrir. Permisos: `canInteract` (Root, asignado o creador) para cambios de estado; `canArchive` (Root + Supervisor) para archivar/restaurar/reabrir completadas o canceladas.
+- [x] **Archivado (soft-delete) de tareas** — solo Root y Supervisor pueden archivar tareas completadas o canceladas. Confirmación con diálogo. Campo `isActive: false` en Firestore.
+- [x] **Restauración de tareas archivadas** — diálogo de selección de estado (pendiente / en progreso) al restaurar. Solo Root y Supervisor.
+- [x] **Sección de archivadas en listado por proyecto** — botón en AppBar (solo Root/Supervisor) abre DraggableScrollableSheet con búsqueda por folio/título, listado de tareas archivadas con acciones de restaurar y ver detalle.
+- [x] **Visibilidad por rol en pantalla global** — `myPendingTareasProvider` corregido: Root ve todas; Supervisor/Soporte ven todas las tareas de sus proyectos asignados; Usuario solo ve sus tareas asignadas.
+- [x] `canArchiveTareaProvider` — Provider de permisos: `true` si es Root o tiene rol Supervisor en el proyecto de la tarea.
+- [x] `TareaRepository.updateStatus` — actualización rápida de solo status (sin pasar por form completo).
+- [x] `TareaRepository.restore` — restaura tarea archivada (`isActive: true` + nuevo status).
+- [x] `TareaRepository.watchArchivedByProject` — stream de tareas archivadas por proyecto.
+
+### 2.4.1 Sincronización Bidireccional Compromisos ↔ Tareas
+
+- [x] **Sync compromiso → tarea** — al marcar/desmarcar un compromiso en el detalle de minuta, se actualiza automáticamente el status de la tarea vinculada (cumplido → completada, pendiente → pendiente). Best-effort.
+- [x] **Sync tarea → compromiso** — al cambiar el status de una tarea (acciones rápidas), se actualiza el compromiso vinculado en la minuta (completada → cumplido, otros → pendiente). Best-effort.
+- [x] **Sync al restaurar tarea** — al restaurar una tarea archivada vinculada a minuta, el compromiso se marca como pendiente.
+- [x] `MinutaRepository.updateCompromisoStatus` — método que actualiza el estado de un compromiso específico dentro de una minuta por su número.
+- [x] `TareaRepository.watchByMinuta` — stream de todas las tareas (activas + archivadas) vinculadas a una minuta, ordenadas por `refCompromisoNumero`.
+- [x] `tareasByMinutaProvider` — StreamProvider.family para consulta reactiva de tareas por minuta.
+- [x] **Vista enriquecida de compromisos** — cada compromiso en el detalle de minuta muestra inline la tarea vinculada: folio, badge de status, enlace de navegación al detalle de la tarea.
+- [x] **Flag visual de tarea archivada en minuta** — si la tarea vinculada a un compromiso está archivada, el compromiso se muestra con estilo atenuado, icono de archivado, texto tachado y badge "Archivada". El toggle queda deshabilitado.
+- [x] **Diálogo de archivado consciente de minuta** — al archivar una tarea vinculada a minuta, el diálogo advierte que el compromiso en la minuta se mostrará como archivado. No bloquea el archivado.
+
 ### 2.5 Auto-generación de PDF de Minuta como Documento Formal
 
 - [x] Categoría `minuta` añadida a `DocumentoCategoria` enum.
@@ -425,4 +464,4 @@
 
 ---
 
-*Última actualización: Módulo 2.6 Agente de IA implementado — Gemini 2.0 Flash via Firebase AI Logic con function calling (6 funciones), servicio de voz TTS/STT, chat UI bottom sheet, FAB en Dashboard, borrar historial en Perfil. Versión 2.0.0+9.*
+*Última actualización: Módulo 2.4.1 — Sincronización bidireccional compromisos ↔ tareas, vista enriquecida de compromisos con tarea inline, flag visual de tarea archivada en minuta, diálogo de archivado consciente de minuta. 13 Cloud Functions desplegadas. Versión 2.0.0+9.*

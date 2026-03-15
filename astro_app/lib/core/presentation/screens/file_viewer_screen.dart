@@ -123,6 +123,11 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Regresar',
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           _displayName,
           style: theme.textTheme.titleSmall?.copyWith(color: Colors.white),

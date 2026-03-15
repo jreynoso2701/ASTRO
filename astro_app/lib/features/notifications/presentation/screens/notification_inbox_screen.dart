@@ -185,6 +185,10 @@ class _NotificationTile extends ConsumerWidget {
       context.push('/projects/${n.projectId}/tickets/${n.refId}');
     } else if (n.refType == NotificationRefType.requerimiento) {
       context.push('/projects/${n.projectId}/requirements/${n.refId}');
+    } else if (n.refType == NotificationRefType.minuta) {
+      context.push('/projects/${n.projectId}/minutas/${n.refId}');
+    } else if (n.refType == NotificationRefType.tarea) {
+      context.push('/projects/${n.projectId}/tareas/${n.refId}');
     }
   }
 
@@ -203,6 +207,15 @@ class _NotificationTile extends ConsumerWidget {
       NotificationType.ticketDeadlineAmber => Icons.schedule,
       NotificationType.ticketDeadlineOrange => Icons.warning_amber_outlined,
       NotificationType.ticketDeadlineRed => Icons.error_outline,
+      NotificationType.tareaCreada => Icons.task_outlined,
+      NotificationType.tareaStatusCambiada => Icons.swap_horiz,
+      NotificationType.tareaAsignada => Icons.person_add_outlined,
+      NotificationType.tareaDeadlineAmber => Icons.schedule,
+      NotificationType.tareaDeadlineOrange => Icons.warning_amber_outlined,
+      NotificationType.tareaDeadlineRed => Icons.error_outline,
+      NotificationType.compromisoDeadlineAmber => Icons.schedule,
+      NotificationType.compromisoDeadlineOrange => Icons.warning_amber_outlined,
+      NotificationType.compromisoDeadlineRed => Icons.error_outline,
     };
   }
 

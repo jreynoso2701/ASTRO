@@ -107,6 +107,32 @@ class MinutaRepository {
         .set(minuta.toFirestore(), SetOptions(merge: true));
   }
 
+  /// Actualiza el status de un compromiso específico dentro de una minuta.
+  Future<void> updateCompromisoStatus(
+    String minutaId, {
+    required int compromisoNumero,
+    required String newStatus,
+  }) async {
+    final doc = await _ref.doc(minutaId).get();
+    if (!doc.exists || doc.data() == null) return;
+
+    final minuta = Minuta.fromFirestore(doc);
+    final updated = List<Map<String, dynamic>>.from(
+      minuta.compromisos.map((c) {
+        final map = c.toMap();
+        if (c.numero == compromisoNumero) {
+          map['status'] = newStatus;
+        }
+        return map;
+      }),
+    );
+
+    await _ref.doc(minutaId).update({
+      'compromisos': updated,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
   /// Añade una referencia de ticket a una minuta.
   Future<void> addRefTicket(String minutaId, String ticketId) async {
     await _ref.doc(minutaId).update({

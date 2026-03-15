@@ -13,6 +13,7 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
+import 'package:astro/features/tareas/providers/tarea_providers.dart';
 
 /// Pantalla de detalle/dashboard de un proyecto.
 class ProjectDetailScreen extends ConsumerWidget {
@@ -88,6 +89,8 @@ class ProjectDetailScreen extends ConsumerWidget {
             citasProgramadas: ref.watch(
               citasProgramadasCountProvider(projectId),
             ),
+            onTareasTap: () => context.push('/projects/$projectId/tareas'),
+            pendingTareas: ref.watch(pendingTareaCountProvider(projectId)),
             onNotifSettingsTap: isRoot
                 ? () =>
                       context.push('/projects/$projectId/notification-settings')
@@ -170,6 +173,8 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.minutaCount,
     required this.onCitasTap,
     required this.citasProgramadas,
+    required this.onTareasTap,
+    required this.pendingTareas,
     this.onNotifSettingsTap,
     this.descripcion,
   });
@@ -193,6 +198,8 @@ class _ProjectInfoSection extends StatelessWidget {
   final int minutaCount;
   final VoidCallback onCitasTap;
   final int citasProgramadas;
+  final VoidCallback onTareasTap;
+  final int pendingTareas;
   final VoidCallback? onNotifSettingsTap;
 
   @override
@@ -450,6 +457,22 @@ class _ProjectInfoSection extends StatelessWidget {
           ),
         ),
 
+        const SizedBox(height: 8),
+
+        // Botón de tareas
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: enabled ? onTareasTap : null,
+            icon: Badge(
+              isLabelVisible: pendingTareas > 0,
+              label: Text('$pendingTareas'),
+              child: const Icon(Icons.task_outlined),
+            ),
+            label: const Text('Ver tareas'),
+          ),
+        ),
+
         // Botón de notificaciones (solo Root)
         if (isRoot && onNotifSettingsTap != null) ...[
           const SizedBox(height: 8),
@@ -643,9 +666,7 @@ class _MembersSection extends ConsumerWidget {
         .map((m) => m.assignment.userId as String)
         .toSet();
     final availableUsers = allUsers
-        .where(
-          (u) => u.isActive && !existingUserIds.contains(u.uid) && !u.isRoot,
-        )
+        .where((u) => u.isActive && !existingUserIds.contains(u.uid))
         .toList();
 
     if (!context.mounted) return;
