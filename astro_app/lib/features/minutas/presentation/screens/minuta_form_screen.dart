@@ -273,24 +273,31 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // Dirección — Google Maps autocomplete (presencial / híbrida)
+              // Dirección — editable + búsqueda Google Maps (presencial / híbrida)
               if (_showDireccion) ...[
                 TextFormField(
                   controller: _direccionController,
                   decoration: InputDecoration(
-                    labelText: 'Dirección (Google Maps)',
+                    labelText: 'Dirección',
                     prefixIcon: const Icon(Icons.map_outlined),
-                    hintText: 'Buscar dirección...',
-                    suffixIcon: _direccionController.text.isNotEmpty
-                        ? IconButton(
+                    hintText: 'Escribe o busca una dirección...',
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_direccionController.text.isNotEmpty)
+                          IconButton(
                             icon: const Icon(Icons.clear),
                             onPressed: () =>
                                 setState(() => _direccionController.clear()),
-                          )
-                        : null,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          tooltip: 'Buscar en Google Maps',
+                          onPressed: _showPlacesSearch,
+                        ),
+                      ],
+                    ),
                   ),
-                  readOnly: true,
-                  onTap: _showPlacesSearch,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -549,6 +556,19 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
 
   Future<void> _showPlacesSearch() async {
     final placesService = ref.read(placesServiceProvider);
+    if (placesService == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Búsqueda de direcciones no disponible. '
+              'Escribe la dirección manualmente.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => _PlacesSearchDialog(placesService: placesService),

@@ -15,12 +15,9 @@ final minutaRepositoryProvider = Provider<MinutaRepository>((ref) {
 
 // ── Places Service ───────────────────────────────────────
 
-final placesServiceProvider = Provider<PlacesService>((ref) {
+final placesServiceProvider = Provider<PlacesService?>((ref) {
   const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
-  assert(
-    apiKey.isNotEmpty,
-    'GOOGLE_MAPS_API_KEY no definida. Compila con: --dart-define=GOOGLE_MAPS_API_KEY=tu_key',
-  );
+  if (apiKey.isEmpty) return null;
   return PlacesService(apiKey: apiKey);
 });
 
