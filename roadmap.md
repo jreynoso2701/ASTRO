@@ -450,6 +450,18 @@
 - [ ] Pruebas en dispositivo físico y ajustes de UX.
 - [ ] Integración con navegación a detalle de items (tickets, minutas, requerimientos, citas).
 
+### 2.6.1 Integración de Tareas con el Agente de IA
+
+- [x] **`AiContentType.tareas`** — Nuevo tipo de contenido en el enum para renderizar tarjetas de tareas en el chat.
+- [x] **`buscarTareas` function calling** — Nueva función Gemini para buscar/filtrar tareas por proyecto, status, prioridad, asignado y texto libre. Consulta colección `Tareas` en Firestore.
+- [x] **System prompt actualizado** — Incluir tareas en las capacidades descritas al modelo. Gemini sabrá buscar tareas pendientes, filtrar por prioridad/status, y reportar tareas vencidas.
+- [x] **Tarjeta de tarea en el chat** — Renderizado de mini-cards de tareas con folio, título, status badge, prioridad badge, asignado y fecha de entrega.
+- [x] **Navegación a detalle de tarea** — Al tapear una tarjeta de tarea en el chat, navegar a `/projects/{projectId}/tareas/{tareaId}`.
+- [x] **Colores de status/prioridad para tareas** — Helpers `_tareaStatusColor` y `_tareaPrioridadColor` en el sheet del agente.
+- [x] **Sugerencia rápida "Mis tareas pendientes"** — Chip de sugerencia en el estado vacío del chat.
+- [x] **Texto del empty state actualizado** — Incluir "tareas" en la descripción de capacidades del asistente.
+- [x] Validación con `dart analyze`.
+
 ---
 
 ## Leyenda de Estados
@@ -464,4 +476,4 @@
 
 ---
 
-*Última actualización: Módulo 2.4.1 — Sincronización bidireccional compromisos ↔ tareas, vista enriquecida de compromisos con tarea inline, flag visual de tarea archivada en minuta, diálogo de archivado consciente de minuta. 13 Cloud Functions desplegadas. Versión 2.0.0+9.*
+*Última actualización: Integración de Tareas con el Agente de IA — `buscarTareas` function calling, tarjetas de tarea en el chat, navegación a detalle, colores de status/prioridad, suggestion chip, system prompt actualizado. Sección 2.6.1 completada. Versión 2.0.0+9.*

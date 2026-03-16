@@ -7,6 +7,7 @@ enum AiContentType {
   minutas,
   requerimientos,
   citas,
+  tareas,
   progress,
   actionConfirm,
 }

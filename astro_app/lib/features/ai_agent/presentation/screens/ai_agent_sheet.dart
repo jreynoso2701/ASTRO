@@ -175,6 +175,12 @@ class _AiAgentSheetState extends ConsumerState<AiAgentSheet> {
         context.push('/projects/_/requirements/$id');
       case AiContentType.citas:
         context.push('/projects/_/citas/$id');
+      case AiContentType.tareas:
+        // id viene como "projectId/tareaId" desde el callback.
+        final parts = id.split('/');
+        if (parts.length == 2) {
+          context.push('/projects/${parts[0]}/tareas/${parts[1]}');
+        }
       default:
         break;
     }
@@ -287,7 +293,7 @@ class _EmptyState extends StatelessWidget {
             Text('¡Hola! Soy ASTRO AI', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Pregúntame sobre tus proyectos, tickets, minutas, requerimientos o citas.',
+              'Pregúntame sobre tus proyectos, tickets, tareas, minutas, requerimientos o citas.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -301,6 +307,7 @@ class _EmptyState extends StatelessWidget {
               children: [
                 _SuggestionChip(label: '¿Cómo va mi proyecto?'),
                 _SuggestionChip(label: 'Tickets críticos'),
+                _SuggestionChip(label: 'Mis tareas pendientes'),
                 _SuggestionChip(label: 'Próximas citas'),
                 _SuggestionChip(label: 'Resumen general'),
               ],
@@ -462,6 +469,20 @@ class _MessageBubble extends StatelessWidget {
           onTap: (id) => onNavigate(block.type, id),
         );
 
+      case AiContentType.tareas:
+        return _DataCardsBlock(
+          block: block,
+          onTap: (id) {
+            // Tareas necesitan projectId del item para navegar.
+            final item = block.items?.firstWhere(
+              (i) => i['id'] == id,
+              orElse: () => <String, dynamic>{},
+            );
+            final projId = item?['projectId'] as String? ?? '_';
+            onNavigate(AiContentType.tareas, '$projId/$id');
+          },
+        );
+
       case AiContentType.progress:
         return _ProgressBlock(block: block);
 
@@ -484,6 +505,7 @@ class _DataCardsBlock extends StatelessWidget {
     AiContentType.minutas => Icons.description_outlined,
     AiContentType.requerimientos => Icons.checklist_outlined,
     AiContentType.citas => Icons.calendar_today_outlined,
+    AiContentType.tareas => Icons.task_alt_outlined,
     _ => Icons.article_outlined,
   };
 
@@ -492,6 +514,7 @@ class _DataCardsBlock extends StatelessWidget {
     AiContentType.minutas => 'minutas',
     AiContentType.requerimientos => 'requerimientos',
     AiContentType.citas => 'citas',
+    AiContentType.tareas => 'tareas',
     _ => 'items',
   };
 
@@ -650,6 +673,7 @@ class _MiniCard extends StatelessWidget {
       AiContentType.tickets => _buildTicketMeta(style, muted),
       AiContentType.minutas => _buildMinutaMeta(style, muted),
       AiContentType.citas => _buildCitaMeta(style, muted),
+      AiContentType.tareas => _buildTareaMeta(style, muted),
       _ => const SizedBox.shrink(), // requerimientos: no extra metadata
     };
   }
@@ -697,6 +721,44 @@ class _MiniCard extends StatelessWidget {
     return Row(
       children: [
         if (fecha.isNotEmpty) ...[
+          Icon(Icons.calendar_today, size: 12, color: muted),
+          const SizedBox(width: 4),
+          Text(fecha, style: style),
+        ],
+        const Spacer(),
+        Icon(Icons.chevron_right, size: 14, color: muted),
+      ],
+    );
+  }
+
+  Widget _buildTareaMeta(TextStyle? style, Color muted) {
+    final prioridad = item['prioridad'] as String? ?? '';
+    final assignedTo = item['assignedToName'] as String? ?? '';
+    final fecha = _formatIsoDate(item['fechaEntrega'] as String? ?? '');
+    final prioColor = _tareaPrioridadColor(prioridad);
+
+    return Row(
+      children: [
+        if (prioridad.isNotEmpty) ...[
+          Icon(Icons.flag_outlined, size: 12, color: prioColor),
+          const SizedBox(width: 4),
+          Text(prioridad, style: style?.copyWith(color: prioColor)),
+        ],
+        if (assignedTo.isNotEmpty) ...[
+          if (prioridad.isNotEmpty) const SizedBox(width: 10),
+          Icon(Icons.person_outline, size: 12, color: muted),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              assignedTo,
+              style: style,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+        if (fecha.isNotEmpty) ...[
+          const SizedBox(width: 10),
           Icon(Icons.calendar_today, size: 12, color: muted),
           const SizedBox(width: 4),
           Text(fecha, style: style),
@@ -793,6 +855,7 @@ Color _statusColorForType(AiContentType type, String status) {
     AiContentType.tickets => _ticketStatusColor(upper),
     AiContentType.requerimientos => _reqStatusColor(status),
     AiContentType.citas => _citaStatusColor(status),
+    AiContentType.tareas => _tareaStatusColor(status),
     _ => const Color(0xFF90A4AE),
   };
 }
@@ -839,6 +902,28 @@ Color _priorityColor(String prioridad) {
     'NORMAL' => const Color(0xFF2196F3),
     'ALTA' => const Color(0xFFFFC107),
     'CRITICA' || 'CRÍTICA' => const Color(0xFFD71921),
+    _ => const Color(0xFF90A4AE),
+  };
+}
+
+Color _tareaStatusColor(String status) {
+  final lower = status.toLowerCase().trim();
+  return switch (lower) {
+    'pendiente' => const Color(0xFFFFC107),
+    'enprogreso' || 'en progreso' => const Color(0xFF42A5F5),
+    'completada' => const Color(0xFF4CAF50),
+    'cancelada' => const Color(0xFF9E9E9E),
+    _ => const Color(0xFF90A4AE),
+  };
+}
+
+Color _tareaPrioridadColor(String prioridad) {
+  final lower = prioridad.toLowerCase().trim();
+  return switch (lower) {
+    'baja' => const Color(0xFF4CAF50),
+    'media' => const Color(0xFFFFC107),
+    'alta' => const Color(0xFFFF9800),
+    'urgente' => const Color(0xFFD32F2F),
     _ => const Color(0xFF90A4AE),
   };
 }

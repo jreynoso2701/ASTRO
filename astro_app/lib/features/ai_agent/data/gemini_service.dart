@@ -170,13 +170,14 @@ class GeminiService {
       _searchMinutasFn,
       _searchRequerimientosFn,
       _searchCitasFn,
+      _searchTareasFn,
       _getProjectSummaryFn,
     ]),
   ];
 
   FunctionDeclaration get _searchTicketsFn => FunctionDeclaration(
     'buscarTickets',
-    'Busca tickets/incidentes de un proyecto. Puede filtrar por estado, prioridad o texto.',
+    'Busca tickets/incidentes de un proyecto. Puede filtrar por estado, prioridad o texto. Por defecto solo busca activos; usa archivados=true para buscar en los archivados.',
     parameters: {
       'projectName': Schema.string(
         description: 'Nombre del proyecto en Firestore',
@@ -192,6 +193,11 @@ class GeminiService {
       ),
       'busqueda': Schema.string(
         description: 'Texto libre para buscar en folio o título',
+        nullable: true,
+      ),
+      'archivados': Schema.boolean(
+        description:
+            'true para buscar solo tickets archivados (isActive=false). Default: false (solo activos).',
         nullable: true,
       ),
       'limit': Schema.integer(
@@ -262,6 +268,42 @@ class GeminiService {
     },
   );
 
+  FunctionDeclaration get _searchTareasFn => FunctionDeclaration(
+    'buscarTareas',
+    'Busca tareas de un proyecto. Puede filtrar por estado, prioridad, asignado o texto.',
+    parameters: {
+      'projectName': Schema.string(
+        description: 'Nombre del proyecto en Firestore',
+      ),
+      'status': Schema.string(
+        description:
+            'Filtro de estado: pendiente, enProgreso, completada, cancelada',
+        nullable: true,
+      ),
+      'prioridad': Schema.string(
+        description: 'Filtro de prioridad: baja, media, alta, urgente',
+        nullable: true,
+      ),
+      'assignedToName': Schema.string(
+        description: 'Nombre del responsable asignado para filtrar sus tareas',
+        nullable: true,
+      ),
+      'busqueda': Schema.string(
+        description: 'Texto libre para buscar en folio o título',
+        nullable: true,
+      ),
+      'archivados': Schema.boolean(
+        description:
+            'true para buscar solo tareas archivadas (isActive=false). Default: false (solo activas).',
+        nullable: true,
+      ),
+      'limit': Schema.integer(
+        description: 'Máximo de resultados (default 10)',
+        nullable: true,
+      ),
+    },
+  );
+
   FunctionDeclaration get _getProjectSummaryFn => FunctionDeclaration(
     'obtenerResumenProyecto',
     'Obtiene un resumen completo del proyecto: tickets activos, módulos, requerimientos pendientes, próximas citas.',
@@ -303,6 +345,8 @@ class GeminiService {
         return _execSearchRequerimientos(args);
       case 'buscarCitas':
         return _execSearchCitas(args);
+      case 'buscarTareas':
+        return _execSearchTareas(args);
       case 'obtenerResumenProyecto':
         return _execGetSummary(args);
       default:
@@ -317,11 +361,13 @@ class GeminiService {
     final status = args['status'] as String?;
     final prioridad = args['prioridad'] as String?;
     final busqueda = args['busqueda'] as String?;
+    final archivados = args['archivados'] as bool? ?? false;
     final limit = (args['limit'] as num?)?.toInt() ?? 10;
 
     Query<Map<String, dynamic>> query = _db
         .collection('Incidentes')
-        .where('fkxProyecto', isEqualTo: projectName);
+        .where('fkxProyecto', isEqualTo: projectName)
+        .where('isActive', isEqualTo: !archivados);
 
     if (status != null) {
       query = query.where('estatusIncidente', isEqualTo: status);
@@ -685,6 +731,111 @@ class GeminiService {
     };
   }
 
+  Future<Map<String, dynamic>> _execSearchTareas(
+    Map<String, dynamic> args,
+  ) async {
+    final projectName = args['projectName'] as String;
+    final status = args['status'] as String?;
+    final prioridad = args['prioridad'] as String?;
+    final assignedToName = args['assignedToName'] as String?;
+    final busqueda = args['busqueda'] as String?;
+    final archivados = args['archivados'] as bool? ?? false;
+    final limit = (args['limit'] as num?)?.toInt() ?? 10;
+
+    // Resolver projectId a partir del nombre.
+    final projSnap = await _db
+        .collection('Proyectos')
+        .where('nombreProyecto', isEqualTo: projectName)
+        .limit(1)
+        .get();
+    if (projSnap.docs.isEmpty) {
+      return {'error': 'Proyecto "$projectName" no encontrado', 'count': 0};
+    }
+    final projectId = projSnap.docs.first.id;
+
+    Query<Map<String, dynamic>> query = _db
+        .collection('Tareas')
+        .where('projectId', isEqualTo: projectId)
+        .where('isActive', isEqualTo: !archivados);
+
+    if (status != null) {
+      query = query.where('status', isEqualTo: status);
+    }
+    if (prioridad != null) {
+      query = query.where('prioridad', isEqualTo: prioridad);
+    }
+
+    final snap = await query
+        .orderBy('updatedAt', descending: true)
+        .limit(limit)
+        .get();
+
+    var tareas = snap.docs.map((d) {
+      final data = d.data();
+      return {
+        'id': d.id,
+        'folio': data['folio'] ?? '',
+        'titulo': data['titulo'] ?? '',
+        'status': data['status'] ?? '',
+        'prioridad': data['prioridad'] ?? '',
+        'assignedToName': data['assignedToName'] ?? '',
+        'moduleName': data['moduleName'] ?? '',
+        'fechaEntrega':
+            (data['fechaEntrega'] as Timestamp?)?.toDate().toIso8601String() ??
+            '',
+        'projectId': projectId,
+      };
+    }).toList();
+
+    // Filtros client-side
+    if (assignedToName != null && assignedToName.isNotEmpty) {
+      final lower = assignedToName.toLowerCase();
+      tareas = tareas
+          .where(
+            (t) =>
+                (t['assignedToName'] as String).toLowerCase().contains(lower),
+          )
+          .toList();
+    }
+    if (busqueda != null && busqueda.isNotEmpty) {
+      final lower = busqueda.toLowerCase();
+      tareas = tareas
+          .where(
+            (t) =>
+                (t['folio'] as String).toLowerCase().contains(lower) ||
+                (t['titulo'] as String).toLowerCase().contains(lower),
+          )
+          .toList();
+    }
+
+    final ids = tareas.map((t) => t['id'] as String).toList();
+    final items = tareas
+        .map(
+          (t) => {
+            'id': t['id'],
+            'folio': t['folio'],
+            'titulo': t['titulo'],
+            'status': t['status'],
+            'prioridad': t['prioridad'],
+            'assignedToName': t['assignedToName'],
+            'fechaEntrega': t['fechaEntrega'],
+            'projectId': t['projectId'],
+          },
+        )
+        .toList();
+
+    return {
+      'count': tareas.length,
+      'tareas': tareas,
+      '_contentBlock': AiContentBlock(
+        type: AiContentType.tareas,
+        text: '${tareas.length} tarea(s) encontradas',
+        data: ids,
+        items: items,
+      ),
+    };
+  }
+
   Future<Map<String, dynamic>> _execGetSummary(
     Map<String, dynamic> args,
   ) async {
@@ -811,13 +962,17 @@ Eres ASTRO AI, el asistente inteligente de la plataforma ASTRO para gestión de 
 $roleDesc$projectRule
 
 Tu rol:
-- Ayudar a los usuarios a consultar el estado de sus proyectos, tickets, minutas, requerimientos y citas.
+- Ayudar a los usuarios a consultar el estado de sus proyectos, tickets, tareas, minutas, requerimientos y citas.
 - Responder en español, de forma concisa y profesional.
 - Usar las funciones disponibles para obtener datos reales del proyecto antes de responder.
 - Cuando muestres datos, sé específico: incluye folios, estados, porcentajes.
 - Si no tienes suficiente información, pregunta al usuario qué proyecto o detalle necesita.
 - Si el usuario tiene un solo proyecto asignado, úsalo automáticamente sin preguntar.
 - Nunca inventes datos. Si una función no retorna resultados, informa al usuario.
+- Para tareas, puedes buscar por estado (pendiente, enProgreso, completada, cancelada), prioridad (baja, media, alta, urgente), asignado o texto libre.
+- Si el usuario pregunta por "mis tareas" o tareas pendientes, usa buscarTareas con status pendiente o enProgreso.
+- Tanto buscarTickets como buscarTareas soportan el parámetro archivados=true para buscar elementos archivados (isActive=false). Por defecto solo muestran activos.
+- Si el usuario pregunta por tickets/tareas archivados, usa archivados=true.
 
 Personalidad:
 - Profesional pero amigable.
@@ -827,7 +982,7 @@ Personalidad:
 Formato de respuesta:
 - Usa texto breve y claro.
 - Cuando haya datos tabulares, resúmelos de forma legible.
-- Las cards de tickets/minutas/requerimientos/citas se renderizan automáticamente en la app, solo menciónalos en tu texto de forma natural.
+- Las cards de tickets/tareas/minutas/requerimientos/citas se renderizan automáticamente en la app, solo menciónalos en tu texto de forma natural.
 ''';
   }
 }
