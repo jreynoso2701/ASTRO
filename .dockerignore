@@ -1,0 +1,33 @@
+# Git
+.git
+.github
+
+# Node (funciones Firebase)
+functions/node_modules
+node_modules
+
+# Flutter build artifacts
+astro_app/build
+astro_app/.dart_tool
+astro_app/.idea
+astro_app/android
+astro_app/ios
+
+# IDE
+.vscode
+*.iml
+
+# Secrets
+*.env
+dart_defines*.env
+key.properties
+*.jks
+*.keystore
+
+# Scripts temporales
+scripts/
+
+# Otros
+README.md
+roadmap.md
+*.md

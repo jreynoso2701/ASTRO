@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://astro-production-be6a.up.railway.app",
+      "https://astro-b97c2.firebaseapp.com",
+      "http://localhost:8080"
+    ],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Content-Length", "Content-Range"]
+  }
+]

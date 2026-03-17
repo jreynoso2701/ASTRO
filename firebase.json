@@ -8,6 +8,7 @@
     }
   ],
   "firestore": {
+    "rules": "firestore.rules",
     "indexes": "astro_app/firestore.indexes.json"
   }
 }

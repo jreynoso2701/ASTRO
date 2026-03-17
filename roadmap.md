@@ -274,6 +274,10 @@
   - Theme: NavigationBar/Rail indicadores blancos, ElevatedButton/FilledButton gris.
   - Folios, badges, avatares decorativos → onSurface neutral.
   - progressColor(): rojo <25%, interpolación amber 25-49%, verde 50-100%.
+- [x] **Compatibilidad web del Visor de Archivos** — `FileViewerScreen` adaptado para web:
+  - Descarga: en web abre la URL en nueva pestaña (navegador maneja la descarga), ya manejado con `kIsWeb`.
+  - Visor de PDF (`_PdfViewer`): intenta renderizar con `pdfx` (tiene soporte web vía pdfjs); si falla, muestra fallback con botón "Abrir PDF" que abre el visor nativo del navegador vía `url_launcher`. Sin cambios en móvil.
+  - Galería (`gal`): en web retorna `null`, fallback a descarga vía navegador.
 - [ ] Testing visual en múltiples tamaños de pantalla.
 
 ### 1.11 Testing y QA
@@ -295,9 +299,10 @@
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
 - [x] Build de release para Android (`flutter build appbundle`) — AAB 53.6MB.
 - [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11).
+- [x] **Hardening de Firestore Security Rules**: eliminada regla catch-all abierta (`request.time < 2044`), reemplazadas todas las reglas `if true` por `request.auth != null`, reglas explícitas para las 28+ colecciones y sub-colecciones del proyecto, denegación por defecto para colecciones no listadas. Cloud Functions no afectadas (Admin SDK). Archivo fuente: `firestore.rules`.
+- [x] **Preparación Deploy Web (Railway)**: Dockerfile multi-stage (Flutter build + Nginx Alpine), `nginx.conf` con SPA routing + gzip + security headers + `$PORT` dinámico, `.dockerignore` optimizado. CORS configurado en Firebase Storage para dominio Railway. Dominio `astro-production-be6a.up.railway.app` agregado a Firebase Auth Authorized Domains.
 - [ ] Deploy web en Railway.
 - [ ] Build para iOS / TestFlight.
-- [ ] Optimización ASO (App Store Optimization).
 
 ### 1.13 Gestión de Cuenta y Perfil
 
@@ -496,4 +501,4 @@
 
 ---
 
-*Última actualización: Sistema de notificaciones completo — `updatedBy` en tickets, requerimientos, tareas y citas; NotificationConfig expandido con campos de tareas/citas; 5 nuevos NotificationType (citas + req prioridad); 3 nuevos Cloud Function triggers (onCitaCreated, onCitaUpdated, getCitaRecipients); getTareaRecipients refactorizado; bandeja y settings UI actualizados. App bundle 2.1.2+11 generado para Google Play. Versión 2.1.2+11.*
+*Última actualización: Compatibilidad web del Visor de Archivos — PDF viewer con fallback a navegador nativo en web, descarga vía nueva pestaña en web, sin cambios en móvil. Eliminados items de Google Calendar/videoconferencia del roadmap. Versión 2.1.2+11.*

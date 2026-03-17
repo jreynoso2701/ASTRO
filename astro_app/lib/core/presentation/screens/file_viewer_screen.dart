@@ -459,6 +459,13 @@ class _PdfViewerState extends State<_PdfViewer> {
     super.dispose();
   }
 
+  Future<void> _openInBrowser() async {
+    final uri = Uri.tryParse(widget.url);
+    if (uri != null) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -467,7 +474,34 @@ class _PdfViewerState extends State<_PdfViewer> {
       );
     }
 
+    // On web, if pdfx fails, show fallback to open in browser.
     if (_error != null || _pdfController == null) {
+      if (kIsWeb) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.picture_as_pdf, size: 64, color: Colors.white54),
+              const SizedBox(height: 16),
+              const Text(
+                'El PDF no se puede mostrar aquí',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Ábrelo directamente en tu navegador',
+                style: TextStyle(color: Colors.white38, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _openInBrowser,
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Abrir PDF'),
+              ),
+            ],
+          ),
+        );
+      }
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

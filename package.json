@@ -19,5 +19,8 @@
   "homepage": "https://github.com/jreynoso2701/ASTRO#readme",
   "dependencies": {
     "firebase-admin": "^13.7.0"
+  },
+  "devDependencies": {
+    "@google-cloud/storage": "^7.19.0"
   }
 }
