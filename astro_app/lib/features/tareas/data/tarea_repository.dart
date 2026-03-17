@@ -93,8 +93,10 @@ class TareaRepository {
   }
 
   /// Actualiza una tarea (merge).
-  Future<void> update(Tarea tarea) async {
-    await _ref.doc(tarea.id).set(tarea.toFirestore(), SetOptions(merge: true));
+  Future<void> update(Tarea tarea, {required String updatedBy}) async {
+    final data = tarea.toFirestore();
+    data['updatedBy'] = updatedBy;
+    await _ref.doc(tarea.id).set(data, SetOptions(merge: true));
   }
 
   /// Actualiza solo los adjuntos de una tarea.
@@ -115,18 +117,28 @@ class TareaRepository {
   }
 
   /// Restaura una tarea archivada (reactivar + cambiar estado).
-  Future<void> restore(String tareaId, {required String newStatus}) async {
+  Future<void> restore(
+    String tareaId, {
+    required String newStatus,
+    required String updatedBy,
+  }) async {
     await _ref.doc(tareaId).update({
       'isActive': true,
       'status': newStatus,
+      'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
 
   /// Actualiza solo el status de una tarea.
-  Future<void> updateStatus(String tareaId, String newStatus) async {
+  Future<void> updateStatus(
+    String tareaId,
+    String newStatus, {
+    required String updatedBy,
+  }) async {
     await _ref.doc(tareaId).update({
       'status': newStatus,
+      'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }

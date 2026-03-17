@@ -189,6 +189,8 @@ class _NotificationTile extends ConsumerWidget {
       context.push('/projects/${n.projectId}/minutas/${n.refId}');
     } else if (n.refType == NotificationRefType.tarea) {
       context.push('/projects/${n.projectId}/tareas/${n.refId}');
+    } else if (n.refType == NotificationRefType.cita) {
+      context.push('/projects/${n.projectId}/citas/${n.refId}');
     }
   }
 
@@ -204,6 +206,7 @@ class _NotificationTile extends ConsumerWidget {
       NotificationType.reqAsignado => Icons.person_add_alt_1_outlined,
       NotificationType.reqComentario => Icons.chat_outlined,
       NotificationType.reqFaseAsignada => Icons.next_plan_outlined,
+      NotificationType.reqPrioridadCambiada => Icons.flag_outlined,
       NotificationType.ticketDeadlineAmber => Icons.schedule,
       NotificationType.ticketDeadlineOrange => Icons.warning_amber_outlined,
       NotificationType.ticketDeadlineRed => Icons.error_outline,
@@ -216,6 +219,10 @@ class _NotificationTile extends ConsumerWidget {
       NotificationType.compromisoDeadlineAmber => Icons.schedule,
       NotificationType.compromisoDeadlineOrange => Icons.warning_amber_outlined,
       NotificationType.compromisoDeadlineRed => Icons.error_outline,
+      NotificationType.citaCreada => Icons.event_outlined,
+      NotificationType.citaActualizada => Icons.event_note_outlined,
+      NotificationType.citaCancelada => Icons.event_busy_outlined,
+      NotificationType.citaRecordatorio => Icons.notifications_active_outlined,
     };
   }
 

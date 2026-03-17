@@ -127,28 +127,37 @@
   - [x] Dashboard: `_ProjectCard` con indicador naranja de penalización por tickets.
   - [x] Migración Cloud Function: 78 tickets Resuelto actualizados de 0% a 100%.
   - [x] Auto-progreso: Resuelto → 100%, Pendiente → 0% (aplica en cambio de status y drag & drop Kanban).
-- [ ] Notificaciones push al asignar/cambiar estado (Fase 1.8).
+- [x] Notificaciones push al asignar/cambiar estado (implementado en Fase 1.8).
 
 ### 1.7 Levantamiento de Requerimientos
 
 - [x] Modelo de datos de Requerimiento en Firestore (colección `Requerimientos/{docId}`).
-- [x] Enums: RequerimientoStatus (8 estados: Propuesto → En Revisión → Aprobado/Diferido/Rechazado → En Desarrollo → Implementado → Cerrado), RequerimientoTipo (Funcional, No Funcional), RequerimientoFase (Fase Actual, Próxima Fase).
+- [x] Enums: RequerimientoStatus (6 estados: Propuesto, En Revisión, En Desarrollo, Implementado, Completado, Descartado), RequerimientoTipo (Funcional, No Funcional), RequerimientoFase (Fase Actual, Próxima Fase).
+  - Overhaul: eliminados Aprobado, Diferido, Rechazado, Cerrado. Backward compat vía `fromString()` (aprobado→enDesarrollo, diferido→propuesto, rechazado→descartado, cerrado→completado).
+  - Transiciones no lineales por rol: Root/Supervisor (completas + descarte), Soporte (limitadas, sin descarte/archivado/eliminación).
 - [x] Modelo con CriterioAceptacion (texto + checkbox completado), Participante (uid, nombre, rol).
 - [x] Porcentaje de avance auto-calculado desde criterios de aceptación, con override manual por Root/Soporte.
 - [x] Modelo de RequerimientoComment (colección separada `ComentariosRequerimientos/{docId}`).
-- [x] Repositorio: RequerimientoRepository con CRUD, folio auto-incremental V1, comentarios, criterios, adjuntos, asignación.
-- [x] Providers: requerimientos por proyecto, filtros (estado, tipo, búsqueda), conteo de pendientes, visibilidad por rol.
+- [x] Repositorio: RequerimientoRepository con CRUD, folio auto-incremental V1, comentarios, criterios, adjuntos, asignación, `delete()` (hard delete), `watchArchivedByProject()`.
+- [x] Providers: requerimientos por proyecto, filtros (estado, tipo, búsqueda), conteo de pendientes, visibilidad por rol, `archivedReqsByProjectProvider`, `canArchiveReqProvider` (Root + Supervisor).
 - [x] Creación y edición de requerimientos con asociación a proyecto y módulo (existente o propuesto).
 - [x] Pantalla de listado con búsqueda, chips de estado y tipo, tarjetas informativas con progreso circular.
-- [x] Pantalla de detalle con info, criterios de aceptación (checklist interactivo), participantes, adjuntos, observaciones internas (solo Root/Soporte), motivo de rechazo, acciones de cambio de estado, hilo de comentarios.
+- [x] **Vista Kanban** (tablero de 6 columnas por estado) con drag & drop — toggle lista/kanban en AppBar, responsive (lista en móvil, kanban en pantallas anchas ≥840px).
+  - Tarjetas enriquecidas: folio, badge de prioridad, título, tipo, módulo, solicitante, responsable, fecha, fase, criterios, adjuntos, barra de progreso.
+  - Ordenamiento global con 7 criterios (reciente, antiguo, prioridad ↑↓, solicitante, responsable, % avance).
+  - Cambio de estado vía drag & drop genera comentario automático de tipo `statusChange`.
+- [x] **Sección Archivados**: sheet deslizable con búsqueda, tarjetas con unarchive y vista, accesible solo para Root y Supervisor.
+- [x] Pantalla de detalle con info, criterios de aceptación (checklist interactivo), participantes, adjuntos, observaciones internas (solo Root/Soporte), motivo de descarte, acciones de cambio de estado, archivado, eliminación, hilo de comentarios.
 - [x] Pantalla de creación / edición con criterios dinámicos, adjuntos (galería + archivos), gestión manual de porcentaje y fase.
-- [x] Root como gatekeeper: aprueba, rechaza, difiere. Soporte avanza estado operativo.
+- [x] Permisos de requerimientos: Root/Supervisor = full actions (descarte, archivado, eliminación), Soporte = avance operativo sin descarte/archivado/eliminación.
 - [x] ObservacionesRoot visibles solo para Root y Soporte.
 - [x] Badge de requerimientos pendientes en botón "Ver requerimientos" de detalle de proyecto.
 - [x] Navegación: `/projects/:id/requirements`, `requirements/new`, `requirements/:reqId`, `requirements/:reqId/edit`.
 - [x] `StorageService.uploadToPath` — método genérico para subir adjuntos a rutas arbitrarias en Firebase Storage.
 - [x] Visibilidad por rol: Usuario solo ve sus propios requerimientos; Root/Supervisor/Soporte ven todos.
 - [x] Vinculación bidireccional con minutas (modelo ya tenía `refMinutas`/`refCitas`).
+- [x] Gemini AI: status descriptions y `pendingStatuses` actualizados a nuevos 6 estados, filtro `isActive == false` para excluir archivados.
+- [x] AI Agent Sheet: colores de status actualizados a nuevos 6 estados.
 
 ### 1.8 Notificaciones Push
 
@@ -159,7 +168,7 @@
 - [x] `main.dart` actualizado — `FirebaseMessaging.onBackgroundMessage` + `FcmInitializer` envolviendo `MaterialApp`.
 - [x] `AndroidManifest.xml` — ícono y canal de notificación por defecto (`astro_default`).
 - [x] Campo `fcmTokens` (array) añadido al modelo `AppUser` (Firestore `users/{uid}`).
-- [x] Modelo `NotificationType` — 10 tipos de notificación (5 tickets + 5 requerimientos).
+- [x] Modelo `NotificationType` — 15 tipos de notificación (5 tickets + 6 requerimientos + 4 citas).
 - [x] Modelo `InAppNotification` — bandeja in-app (`Notificaciones/{docId}`).
 - [x] Modelo `NotificationConfig` — configuración por usuario/proyecto (`NotificationConfig/{projectId_userId}`).
 - [x] Enum `NotificationScope` — `participante`, `proyecto`, `todos` con defaults por rol.
@@ -167,7 +176,7 @@
 - [x] `NotificationRepository` — bandeja in-app: watch, markAsRead, markAllAsRead, delete.
 - [x] Providers: `inboxNotificationsProvider`, `unreadNotificationsProvider`, `unreadCountProvider`, `projectNotifConfigsProvider`, `userNotifConfigProvider`.
 - [x] Pantalla **Bandeja de Notificaciones** — historial in-app con iconos por tipo, marca leído/no leído, tiempo relativo, navegación a ticket/req, eliminar con long-press.
-- [x] Pantalla **Notificaciones del Proyecto** (Root) — gestión granular por usuario: master toggle, recibir tickets on/off, recibir reqs on/off, selector de alcance (`SegmentedButton`), indicador de override vs defaults, restaurar defaults.
+- [x] Pantalla **Notificaciones del Proyecto** (Root) — gestión granular por usuario: master toggle, recibir tickets on/off, recibir reqs on/off, recibir tareas on/off, recibir citas on/off, selector de alcance por tipo (`SegmentedButton`), indicador de override vs defaults, restaurar defaults.
 - [x] Destino "Notificaciones" en shell de navegación con badge de no leídas (todos los roles).
 - [x] Botón "Configurar notificaciones" en detalle de proyecto (solo Root).
 - [x] Navegación: `/notifications` (inbox), `/projects/:id/notification-settings` (Root config).
@@ -177,18 +186,31 @@
   - [x] `onTicketUpdated` — notifica cambio de status, asignación, prioridad.
   - [x] `onTicketCommentCreated` — notifica comentarios (no system entries).
   - [x] `onReqCreated` — notifica al crear requerimiento.
-  - [x] `onReqUpdated` — notifica cambio de status, asignación, fase.
+  - [x] `onReqUpdated` — notifica cambio de status, asignación, fase, prioridad.
   - [x] `onReqCommentCreated` — notifica comentarios de requerimiento.
+  - [x] `onCitaCreated` — notifica al crear cita.
+  - [x] `onCitaUpdated` — notifica cambio de status, cancelación, cambio de fecha/hora.
+  - [x] `getTareaRecipients` — helper refactorizado para usar `NotificationConfig` (recibirTareas/scopeTareas) en vez de roles hardcodeados.
+  - [x] `getCitaRecipients` — nuevo helper para destinatarios de citas usando `recibirCitas`/`scopeCitas`.
   - [x] Limpieza automática de FCM tokens inválidos.
   - [x] Escritura dual: push FCM + entrada in-app (Notificaciones).
   - [x] Respeta `NotificationConfig` overrides por usuario/proyecto.
 - [x] Índices Firestore para `Notificaciones` (userId+createdAt, userId+leida+createdAt).
-- [x] Índices Firestore completos desplegados (37 índices: Notificaciones, Tickets, projectAssignments, Modulos, Requerimientos, ComentariosRequerimientos, users, Proyectos, NotificacionesGral, chatAI, chats, etc.).\n- [x] **`updatedBy` en actualizaciones de tickets** — `updateStatus`, `archiveTicket` y `assign` del `TicketRepository` ahora envían `updatedBy` con el UID del usuario que ejecutó la acción. La Cloud Function `onTicketUpdated` usa este campo para excluir al autor de las notificaciones de su propia acción.
+- [x] Índices Firestore completos desplegados (45+ índices: Notificaciones, Tickets, projectAssignments, Modulos, Requerimientos, ComentariosRequerimientos, users, Proyectos, NotificacionesGral, chatAI, Citas, Tareas, Minutas, DocumentosProyecto, etc.).
+- [x] **`updatedBy` en actualizaciones de tickets** — `updateStatus`, `archiveTicket` y `assign` del `TicketRepository` ahora envían `updatedBy` con el UID del usuario que ejecutó la acción. La Cloud Function `onTicketUpdated` usa este campo para excluir al autor de las notificaciones de su propia acción.
+- [x] **`updatedBy` en actualizaciones de requerimientos** — `update`, `updateStatus` y `assign` del `RequerimientoRepository` envían `updatedBy`. Screens actualizadas: detail, list/kanban, form.
+- [x] **`updatedBy` en actualizaciones de tareas** — `update`, `updateStatus` y `restore` del `TareaRepository` envían `updatedBy`. Screens actualizadas: detail, form, list, global, minuta sync.
+- [x] **`updatedBy` en actualizaciones de citas** — `update` y `updateStatus` del `CitaRepository` envían `updatedBy`. Screens actualizadas: detail, form.
+- [x] **NotificationConfig expandido** — 4 nuevos campos: `recibirTareas`, `scopeTareas`, `recibirCitas`, `scopeCitas`. Defaults por rol. Pantalla de configuración con secciones Tareas y Citas.
+- [x] **NotificationType expandido** — tipos añadidos: `reqPrioridadCambiada`, `citaCreada`, `citaActualizada`, `citaCancelada`, `citaRecordatorio`.
+- [x] **Bandeja de notificaciones actualizada** — íconos y navegación para los nuevos tipos de notificación (citas, prioridad de reqs).
+- [x] Deploy de Cloud Functions a Firebase — **15 triggers v2** en us-central1 (6 tickets/reqs + 3 tareas + 3 citas + 3 schedulers).
 - [x] `firebase.json` y `.firebaserc` en raíz del repo para deploy de functions.
 - [x] Botón back en pantalla de Notificaciones del Proyecto (soporte iOS/tablet sin botón hardware).
 - [x] Buscador de miembros en pantalla de Notificaciones del Proyecto (filtro por nombre, email, rol).
-- [x] Deploy de Cloud Functions a Firebase (`firebase deploy --only functions`) — 6 triggers v2 en us-central1.
+- [x] Deploy de Cloud Functions a Firebase (`firebase deploy --only functions`) — 15 triggers v2 en us-central1.
 - [x] Configurar VAPID key para notificaciones push web — service worker `firebase-messaging-sw.js`, constante `fcmVapidKey` en `fcm_config.dart` (pendiente: pegar key real de Firebase Console).
+- [x] Notificaciones push al asignar/cambiar estado en tickets, requerimientos, tareas y citas (completo).
 
 ### 1.9 Documentación del Proyecto
 
@@ -269,10 +291,10 @@
 - [x] Metadata web actualizada: `manifest.json` con colores `#000000`, descripción profesional, nombre ASTRO.
 - [x] `index.html` actualizado: título, descripción, apple-mobile-web-app-title.
 - [x] Splash Android: fondo negro en `launch_background.xml` (values + drawable-v21).
-- [x] Versión bumped a `2.0.0+9`.
-- [ ] Configurar firma de release para Android (keystore).
-- [ ] Build de release para Android (`flutter build appbundle`).
-- [ ] Actualización en Google Play (Closed Testing).
+- [x] Versión bumped a `2.1.2+11`.
+- [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
+- [x] Build de release para Android (`flutter build appbundle`) — AAB 53.6MB.
+- [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11).
 - [ ] Deploy web en Railway.
 - [ ] Build para iOS / TestFlight.
 - [ ] Optimización ASO (App Store Optimization).
@@ -331,8 +353,6 @@
 - [x] Badge de citas próximas en ícono de Calendario en la navegación.
 - [x] **Dashboard: indicador de citas** — StatCard "Próximas citas" + sección con hasta 3 citas próximas con enlace.
 - [x] **Cloud Function `checkCitaReminders`** — cada 15 min revisa citas programadas y envía push + notificación in-app según `recordatorios` (ventana ±7.5 min).
-- [ ] Integración con **Google Calendar** para programar eventos (Fase posterior).
-- [ ] Generación automática de URL de videoconferencia (Fase posterior).
 
 ### 2.2 Módulo de Minutas
 
@@ -476,4 +496,4 @@
 
 ---
 
-*Última actualización: Integración de Tareas con el Agente de IA — `buscarTareas` function calling, tarjetas de tarea en el chat, navegación a detalle, colores de status/prioridad, suggestion chip, system prompt actualizado. Sección 2.6.1 completada. Versión 2.0.0+9.*
+*Última actualización: Sistema de notificaciones completo — `updatedBy` en tickets, requerimientos, tareas y citas; NotificationConfig expandido con campos de tareas/citas; 5 nuevos NotificationType (citas + req prioridad); 3 nuevos Cloud Function triggers (onCitaCreated, onCitaUpdated, getCitaRecipients); getTareaRecipients refactorizado; bandeja y settings UI actualizados. App bundle 2.1.2+11 generado para Google Play. Versión 2.1.2+11.*

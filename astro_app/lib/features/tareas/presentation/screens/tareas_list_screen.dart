@@ -7,6 +7,7 @@ import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/features/auth/providers/auth_providers.dart';
 
 /// Pantalla de listado de tareas de un proyecto.
 class TareasListScreen extends ConsumerWidget {
@@ -549,7 +550,8 @@ class _ArchivedTareasSheetState extends ConsumerState<_ArchivedTareasSheet> {
 
     try {
       final repo = ref.read(tareaRepositoryProvider);
-      await repo.restore(tarea.id, newStatus: newStatus.name);
+      final uid = ref.read(authStateProvider).value?.uid ?? '';
+      await repo.restore(tarea.id, newStatus: newStatus.name, updatedBy: uid);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Tarea restaurada como ${newStatus.label}')),

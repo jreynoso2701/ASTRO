@@ -8,6 +8,7 @@ import 'package:astro/core/models/tarea_prioridad.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/features/auth/providers/auth_providers.dart';
 
 /// Pantalla global de tareas (cross-proyecto) para la navegación principal.
 class TareasGlobalScreen extends ConsumerStatefulWidget {
@@ -588,7 +589,12 @@ class _GlobalArchivedSheetState extends ConsumerState<_GlobalArchivedSheet> {
 
     try {
       final repo = ref.read(tareaRepositoryProvider);
-      await repo.restore(item.tarea.id, newStatus: newStatus.name);
+      final uid = ref.read(authStateProvider).value?.uid ?? '';
+      await repo.restore(
+        item.tarea.id,
+        newStatus: newStatus.name,
+        updatedBy: uid,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Tarea restaurada como ${newStatus.label}')),

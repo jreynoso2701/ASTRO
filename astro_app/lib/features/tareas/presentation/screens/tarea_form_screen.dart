@@ -561,7 +561,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
       );
 
       if (_isEditing) {
-        await repo.update(tarea);
+        await repo.update(tarea, updatedBy: profile.uid);
       } else {
         await repo.create(tarea);
       }

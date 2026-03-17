@@ -141,7 +141,7 @@ final filteredRequerimientosProvider =
 
 // ── Contadores rápidos ───────────────────────────────────
 
-/// Cuenta requerimientos propuestos (pendientes de revisión) de un proyecto.
+/// Cuenta requerimientos pendientes (propuesto / en revisión) de un proyecto.
 final pendingReqCountProvider = Provider.family<int, String>((ref, projectId) {
   final proyecto = ref.watch(proyectoByIdProvider(projectId)).value;
   if (proyecto == null) return 0;
@@ -157,4 +157,33 @@ final pendingReqCountProvider = Provider.family<int, String>((ref, projectId) {
             r.status == RequerimientoStatus.enRevision,
       )
       .length;
+});
+
+// ── Requerimientos archivados ────────────────────────────
+
+/// Stream de requerimientos archivados (isActive == false) de un proyecto.
+final archivedReqsByProjectProvider =
+    StreamProvider.family<List<Requerimiento>, String>((ref, projectId) {
+      final proyecto = ref.watch(proyectoByIdProvider(projectId)).value;
+      if (proyecto == null) return const Stream.empty();
+      return ref
+          .watch(requerimientoRepositoryProvider)
+          .watchArchivedByProject(proyecto.nombreProyecto);
+    });
+
+// ── Permisos de archivo ──────────────────────────────────
+
+/// Solo Root y Supervisor pueden archivar/eliminar/descartar requerimientos.
+final canArchiveReqProvider = Provider.family<bool, String>((ref, projectId) {
+  final isRoot = ref.watch(isCurrentUserRootProvider);
+  if (isRoot) return true;
+
+  final uid = ref.watch(authStateProvider).value?.uid;
+  if (uid == null) return false;
+
+  final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
+  return assignments.any(
+    (a) =>
+        a.projectId == projectId && a.isActive && a.role == UserRole.supervisor,
+  );
 });

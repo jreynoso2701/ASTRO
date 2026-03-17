@@ -7,6 +7,7 @@ import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/auth/providers/auth_providers.dart';
 
 /// Pantalla de detalle de una cita.
 class CitaDetailScreen extends ConsumerWidget {
@@ -110,7 +111,8 @@ class CitaDetailScreen extends ConsumerWidget {
     CitaStatus newStatus,
   ) async {
     final repo = ref.read(citaRepositoryProvider);
-    await repo.updateStatus(cita.id, newStatus);
+    final uid = ref.read(authStateProvider).value?.uid ?? '';
+    await repo.updateStatus(cita.id, newStatus, updatedBy: uid);
   }
 }
 

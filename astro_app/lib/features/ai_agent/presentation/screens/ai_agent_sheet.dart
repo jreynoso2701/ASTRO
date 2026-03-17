@@ -877,12 +877,10 @@ Color _reqStatusColor(String status) {
   if (lower.contains('revisión') || lower.contains('revision')) {
     return const Color(0xFF42A5F5);
   }
-  if (lower.contains('aprobado')) return const Color(0xFF66BB6A);
-  if (lower.contains('diferido')) return const Color(0xFFFFB74D);
-  if (lower.contains('rechazado')) return const Color(0xFFEF5350);
   if (lower.contains('desarrollo')) return const Color(0xFFFFC107);
   if (lower.contains('implementado')) return const Color(0xFF4CAF50);
-  if (lower.contains('cerrado')) return const Color(0xFF388E3C);
+  if (lower.contains('completado')) return const Color(0xFF388E3C);
+  if (lower.contains('descartado')) return const Color(0xFFEF5350);
   return const Color(0xFF90A4AE);
 }
 

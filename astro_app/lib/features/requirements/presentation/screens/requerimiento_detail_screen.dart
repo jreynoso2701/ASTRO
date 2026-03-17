@@ -46,6 +46,7 @@ class _RequerimientoDetailScreenState
     final isRoot = ref.watch(isCurrentUserRootProvider);
     final canManage = ref.watch(canManageProjectProvider(widget.projectId));
     final isManager = canManage || isRoot;
+    final canArchive = ref.watch(canArchiveReqProvider(widget.projectId));
 
     return Scaffold(
       appBar: AppBar(
@@ -93,6 +94,9 @@ class _RequerimientoDetailScreenState
             onToggleCriterio: isManager
                 ? (criterio) => _toggleCriterio(req, criterio)
                 : null,
+            canArchive: canArchive,
+            onArchive: canArchive ? () => _archiveReq(req) : null,
+            onDelete: canArchive ? () => _deleteReq(req) : null,
           );
 
           final commentsSection = _CommentsSection(
@@ -175,17 +179,21 @@ class _RequerimientoDetailScreenState
     Requerimiento req,
     RequerimientoStatus newStatus,
   ) async {
-    // Si rechazado/diferido → pedir motivo
-    if (newStatus == RequerimientoStatus.rechazado ||
-        newStatus == RequerimientoStatus.diferido) {
+    // Si descartado → pedir motivo
+    if (newStatus == RequerimientoStatus.descartado) {
       final motivo = await _askMotivo(newStatus.label);
       if (motivo == null) return;
       final repo = ref.read(requerimientoRepositoryProvider);
-      await repo.update(req.copyWith(status: newStatus, motivoRechazo: motivo));
+      final profile = ref.read(currentUserProfileProvider).value;
+      await repo.update(
+        req.copyWith(status: newStatus, motivoRechazo: motivo),
+        updatedBy: profile?.uid ?? '',
+      );
     } else {
+      final profile = ref.read(currentUserProfileProvider).value;
       await ref
           .read(requerimientoRepositoryProvider)
-          .updateStatus(req.id, newStatus);
+          .updateStatus(req.id, newStatus, updatedBy: profile?.uid ?? '');
     }
 
     // Historial
@@ -208,9 +216,13 @@ class _RequerimientoDetailScreenState
   }
 
   Future<void> _changeFase(Requerimiento req, RequerimientoFase fase) async {
+    final profile = ref.read(currentUserProfileProvider).value;
     await ref
         .read(requerimientoRepositoryProvider)
-        .update(req.copyWith(faseAsignada: fase));
+        .update(
+          req.copyWith(faseAsignada: fase),
+          updatedBy: profile?.uid ?? '',
+        );
   }
 
   Future<void> _toggleCriterio(
@@ -289,9 +301,14 @@ class _RequerimientoDetailScreenState
 
     if (selected != null) {
       final repo = ref.read(requerimientoRepositoryProvider);
-      await repo.assign(req.id, selected.uid, selected.name);
-
       final profile = ref.read(currentUserProfileProvider).value;
+      await repo.assign(
+        req.id,
+        selected.uid,
+        selected.name,
+        updatedBy: profile?.uid ?? '',
+      );
+
       if (profile != null) {
         await repo.addComment(
           req.id,
@@ -305,6 +322,59 @@ class _RequerimientoDetailScreenState
         );
       }
     }
+  }
+
+  Future<void> _archiveReq(Requerimiento req) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Archivar requerimiento'),
+        content: Text(
+          '¿Archivar "${req.titulo}"? Podrás desarchivarlo después.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Archivar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(requerimientoRepositoryProvider).deactivate(req.id);
+    if (mounted) context.pop();
+  }
+
+  Future<void> _deleteReq(Requerimiento req) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar requerimiento'),
+        content: Text(
+          '¿Eliminar permanentemente "${req.titulo}"? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(requerimientoRepositoryProvider).delete(req.id);
+    if (mounted) context.pop();
   }
 
   Future<String?> _askMotivo(String accion) async {
@@ -351,19 +421,25 @@ class _InfoSection extends StatelessWidget {
     required this.isRoot,
     required this.isManager,
     required this.onStatusChange,
+    this.canArchive = false,
     this.onFaseChange,
     this.onAssign,
     this.onToggleCriterio,
+    this.onArchive,
+    this.onDelete,
   });
 
   final Requerimiento req;
   final String projectId;
   final bool isRoot;
   final bool isManager;
+  final bool canArchive;
   final ValueChanged<RequerimientoStatus> onStatusChange;
   final ValueChanged<RequerimientoFase>? onFaseChange;
   final VoidCallback? onAssign;
   final ValueChanged<CriterioAceptacion>? onToggleCriterio;
+  final VoidCallback? onArchive;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -617,10 +693,10 @@ class _InfoSection extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
-        // Motivo de rechazo
+        // Motivo de descarte
         if (req.motivoRechazo != null && req.motivoRechazo!.isNotEmpty) ...[
           Text(
-            'MOTIVO DE ${req.status == RequerimientoStatus.diferido ? "DIFERIMIENTO" : "RECHAZO"}',
+            'MOTIVO DE DESCARTE',
             style: theme.textTheme.labelLarge?.copyWith(
               letterSpacing: 1,
               color: theme.colorScheme.error,
@@ -642,8 +718,8 @@ class _InfoSection extends StatelessWidget {
 
         const Divider(),
 
-        // Acciones de estado
-        if (isRoot) ...[
+        // Acciones de estado (Root / Supervisor: completas; Soporte: limitadas)
+        if (canArchive) ...[
           Text(
             'ACCIONES',
             style: theme.textTheme.labelLarge?.copyWith(
@@ -658,7 +734,7 @@ class _InfoSection extends StatelessWidget {
             children: _buildStatusActions(req.status),
           ),
           const SizedBox(height: 8),
-        ] else if (isManager) ...[
+        ] else if (isManager && !canArchive) ...[
           Text(
             'ACCIONES',
             style: theme.textTheme.labelLarge?.copyWith(
@@ -688,10 +764,42 @@ class _InfoSection extends StatelessWidget {
           ),
         ],
 
-        // Asignar fase (solo Root, solo para aprobados sin fase)
+        // Archivar / Eliminar  (Root / Supervisor — cualquier estado)
+        if (onArchive != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onArchive,
+              icon: const Icon(Icons.archive_outlined),
+              label: const Text('Archivar'),
+            ),
+          ),
+        ],
+        if (onDelete != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onDelete,
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              label: Text(
+                'Eliminar',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ),
+        ],
+
+        // Asignar fase (solo Root, enDesarrollo)
         if (onFaseChange != null &&
-            (req.status == RequerimientoStatus.aprobado ||
-                req.status == RequerimientoStatus.enDesarrollo)) ...[
+            req.status == RequerimientoStatus.enDesarrollo) ...[
           const SizedBox(height: 8),
           Row(
             children: [
@@ -733,34 +841,21 @@ class _InfoSection extends StatelessWidget {
       );
     }
 
-    switch (current) {
-      case RequerimientoStatus.propuesto:
-        add(RequerimientoStatus.enRevision);
-        add(RequerimientoStatus.rechazado, color: const Color(0xFFEF5350));
-      case RequerimientoStatus.enRevision:
-        add(RequerimientoStatus.aprobado);
-        add(RequerimientoStatus.diferido);
-        add(RequerimientoStatus.rechazado, color: const Color(0xFFEF5350));
-      case RequerimientoStatus.aprobado:
-        add(RequerimientoStatus.enDesarrollo);
-        add(RequerimientoStatus.diferido);
-      case RequerimientoStatus.diferido:
-        add(RequerimientoStatus.enRevision);
-        add(RequerimientoStatus.aprobado);
-      case RequerimientoStatus.enDesarrollo:
-        add(RequerimientoStatus.implementado);
-      case RequerimientoStatus.implementado:
-        add(RequerimientoStatus.cerrado);
-        add(RequerimientoStatus.enDesarrollo);
-      case RequerimientoStatus.cerrado:
-      case RequerimientoStatus.rechazado:
-        add(RequerimientoStatus.propuesto); // Reabrir
+    // No-lineal: Root/Supervisor puede ir a cualquier estado.
+    for (final s in RequerimientoStatus.values) {
+      if (s == current) continue;
+      add(
+        s,
+        color: s == RequerimientoStatus.descartado
+            ? const Color(0xFFEF5350)
+            : null,
+      );
     }
 
     return actions;
   }
 
-  /// Acciones para Soporte (más limitadas).
+  /// Acciones para Soporte (no puede descartar, archivar, eliminar).
   List<Widget> _buildSoporteActions(RequerimientoStatus current) {
     final actions = <Widget>[];
 
@@ -774,15 +869,10 @@ class _InfoSection extends StatelessWidget {
       );
     }
 
-    switch (current) {
-      case RequerimientoStatus.aprobado:
-        add(RequerimientoStatus.enDesarrollo);
-      case RequerimientoStatus.enDesarrollo:
-        add(RequerimientoStatus.implementado);
-      case RequerimientoStatus.implementado:
-        add(RequerimientoStatus.enDesarrollo);
-      default:
-        break;
+    // No-lineal: Soporte puede ir a cualquier estado excepto Descartado.
+    for (final s in RequerimientoStatus.values) {
+      if (s == current || s == RequerimientoStatus.descartado) continue;
+      add(s);
     }
 
     return actions;
@@ -819,23 +909,19 @@ class _StatusBadge extends StatelessWidget {
 Color _statusColor(RequerimientoStatus status) => switch (status) {
   RequerimientoStatus.propuesto => const Color(0xFF90A4AE),
   RequerimientoStatus.enRevision => const Color(0xFF42A5F5),
-  RequerimientoStatus.aprobado => const Color(0xFF66BB6A),
-  RequerimientoStatus.diferido => const Color(0xFFFFB74D),
-  RequerimientoStatus.rechazado => const Color(0xFFEF5350),
   RequerimientoStatus.enDesarrollo => const Color(0xFFFFC107),
   RequerimientoStatus.implementado => const Color(0xFF4CAF50),
-  RequerimientoStatus.cerrado => const Color(0xFF388E3C),
+  RequerimientoStatus.completado => const Color(0xFF388E3C),
+  RequerimientoStatus.descartado => const Color(0xFFEF5350),
 };
 
 IconData _statusIcon(RequerimientoStatus status) => switch (status) {
   RequerimientoStatus.propuesto => Icons.fiber_new,
   RequerimientoStatus.enRevision => Icons.visibility,
-  RequerimientoStatus.aprobado => Icons.check_circle_outline,
-  RequerimientoStatus.diferido => Icons.pause_circle_outline,
-  RequerimientoStatus.rechazado => Icons.cancel_outlined,
   RequerimientoStatus.enDesarrollo => Icons.code,
   RequerimientoStatus.implementado => Icons.done_all,
-  RequerimientoStatus.cerrado => Icons.lock_outline,
+  RequerimientoStatus.completado => Icons.check_circle,
+  RequerimientoStatus.descartado => Icons.cancel_outlined,
 };
 
 // ── Detail Row ───────────────────────────────────────────

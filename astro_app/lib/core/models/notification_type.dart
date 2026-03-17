@@ -13,6 +13,7 @@ enum NotificationType {
   reqAsignado('req_asignado', 'Requerimiento asignado'),
   reqComentario('req_comentario', 'Nuevo comentario en requerimiento'),
   reqFaseAsignada('req_fase', 'Fase asignada a requerimiento'),
+  reqPrioridadCambiada('req_prioridad', 'Prioridad de requerimiento cambiada'),
 
   // Deadline de tickets
   ticketDeadlineAmber('ticket_deadline_amber', 'Ticket próximo a vencer'),
@@ -38,7 +39,13 @@ enum NotificationType {
     'compromiso_deadline_orange',
     'Compromiso vence hoy/mañana',
   ),
-  compromisoDeadlineRed('compromiso_deadline_red', 'Compromiso vencido');
+  compromisoDeadlineRed('compromiso_deadline_red', 'Compromiso vencido'),
+
+  // Citas
+  citaCreada('cita_creada', 'Cita creada'),
+  citaActualizada('cita_actualizada', 'Cita actualizada'),
+  citaCancelada('cita_cancelada', 'Cita cancelada'),
+  citaRecordatorio('cita_recordatorio', 'Recordatorio de cita');
 
   const NotificationType(this.value, this.label);
   final String value;

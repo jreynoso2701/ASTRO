@@ -34,7 +34,8 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(tareaRepositoryProvider);
-      await repo.updateStatus(widget.tareaId, newStatus.name);
+      final uid = ref.read(authStateProvider).value?.uid ?? '';
+      await repo.updateStatus(widget.tareaId, newStatus.name, updatedBy: uid);
 
       // Sincronizar compromiso en la minuta vinculada (Gap 1).
       final tarea = ref.read(tareaByIdProvider(widget.tareaId)).value;
@@ -142,7 +143,12 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(tareaRepositoryProvider);
-      await repo.restore(widget.tareaId, newStatus: newStatus.name);
+      final uid = ref.read(authStateProvider).value?.uid ?? '';
+      await repo.restore(
+        widget.tareaId,
+        newStatus: newStatus.name,
+        updatedBy: uid,
+      );
 
       // Sincronizar compromiso en la minuta vinculada.
       final tarea = ref.read(tareaByIdProvider(widget.tareaId)).value;

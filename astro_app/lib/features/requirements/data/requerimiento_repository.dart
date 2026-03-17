@@ -105,8 +105,10 @@ class RequerimientoRepository {
   }
 
   /// Actualiza un requerimiento (merge).
-  Future<void> update(Requerimiento req) async {
-    await _ref.doc(req.id).set(req.toFirestore(), SetOptions(merge: true));
+  Future<void> update(Requerimiento req, {required String updatedBy}) async {
+    final data = req.toFirestore();
+    data['updatedBy'] = updatedBy;
+    await _ref.doc(req.id).set(data, SetOptions(merge: true));
   }
 
   /// Añade una referencia de minuta a un requerimiento.
@@ -118,9 +120,14 @@ class RequerimientoRepository {
   }
 
   /// Actualiza el estado.
-  Future<void> updateStatus(String id, RequerimientoStatus newStatus) async {
+  Future<void> updateStatus(
+    String id,
+    RequerimientoStatus newStatus, {
+    required String updatedBy,
+  }) async {
     await _ref.doc(id).update({
       'status': newStatus.label,
+      'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
@@ -190,11 +197,13 @@ class RequerimientoRepository {
   Future<void> assign(
     String id,
     String assignedTo,
-    String assignedToName,
-  ) async {
+    String assignedToName, {
+    required String updatedBy,
+  }) async {
     await _ref.doc(id).update({
       'assignedTo': assignedTo,
       'assignedToName': assignedToName,
+      'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
@@ -213,6 +222,28 @@ class RequerimientoRepository {
       'isActive': true,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
+  }
+
+  /// Hard delete.
+  Future<void> delete(String id) async {
+    await _ref.doc(id).delete();
+  }
+
+  /// Stream de requerimientos archivados (isActive == false) de un proyecto.
+  Stream<List<Requerimiento>> watchArchivedByProject(String projectName) {
+    return _ref
+        .where('projectName', isEqualTo: projectName)
+        .where('isActive', isEqualTo: false)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(Requerimiento.fromFirestore).toList();
+          list.sort(
+            (a, b) => (b.updatedAt ?? DateTime(2000)).compareTo(
+              a.updatedAt ?? DateTime(2000),
+            ),
+          );
+          return list;
+        });
   }
 
   // ── Comentarios ────────────────────────────────────────

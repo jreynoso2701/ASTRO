@@ -96,17 +96,23 @@ class CitaRepository {
   }
 
   /// Actualiza una cita (merge).
-  Future<void> update(Cita cita) async {
+  Future<void> update(Cita cita, {required String updatedBy}) async {
     final data = cita.toFirestore();
     data['participantUids'] = _buildParticipantUids(cita);
+    data['updatedBy'] = updatedBy;
     await _ref.doc(cita.id).set(data, SetOptions(merge: true));
   }
 
   /// Cambia el estado de una cita.
-  Future<void> updateStatus(String citaId, CitaStatus newStatus) async {
+  Future<void> updateStatus(
+    String citaId,
+    CitaStatus newStatus, {
+    required String updatedBy,
+  }) async {
     final now = DateTime.now();
     await _ref.doc(citaId).update({
       'status': newStatus.label,
+      'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(now),
     });
   }

@@ -716,6 +716,7 @@ class _RequerimientoFormScreenState
                 ? _observacionesController.text.trim()
                 : null,
           ),
+          updatedBy: profile.uid,
         );
 
         // Sincronización bidireccional

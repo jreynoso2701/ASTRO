@@ -652,7 +652,63 @@ class _MembersSection extends ConsumerWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                trailing: _RoleBadge(role: role),
+                trailing: isRoot && role != UserRole.root
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _RoleBadge(role: role),
+                          const SizedBox(width: 4),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, size: 20),
+                            tooltip: 'Opciones',
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showEditRoleDialog(
+                                  context,
+                                  ref,
+                                  assignment,
+                                  name,
+                                );
+                              } else if (value == 'remove') {
+                                _showRemoveMemberDialog(
+                                  context,
+                                  ref,
+                                  assignment,
+                                  name,
+                                );
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit_outlined, size: 20),
+                                  title: Text('Cambiar rol'),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'remove',
+                                child: ListTile(
+                                  leading: Icon(
+                                    Icons.person_remove_outlined,
+                                    size: 20,
+                                    color: Color(0xFFD32F2F),
+                                  ),
+                                  title: Text(
+                                    'Quitar del proyecto',
+                                    style: TextStyle(color: Color(0xFFD32F2F)),
+                                  ),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      )
+                    : _RoleBadge(role: role),
               ),
             );
           }),
@@ -691,6 +747,132 @@ class _MembersSection extends ConsumerWidget {
           role: result.role,
           assignedBy: currentUser.uid,
         );
+  }
+
+  Future<void> _showEditRoleDialog(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic assignment,
+    String memberName,
+  ) async {
+    final currentRole = assignment.role as UserRole;
+    UserRole selectedRole = currentRole;
+
+    final newRole = await showDialog<UserRole>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final theme = Theme.of(ctx);
+            // Roles asignables (excluir Root)
+            final assignableRoles = [
+              UserRole.usuario,
+              UserRole.supervisor,
+              UserRole.soporte,
+            ];
+
+            return AlertDialog(
+              title: const Text('Cambiar rol'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(memberName, style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<UserRole>(
+                    value: selectedRole,
+                    decoration: const InputDecoration(
+                      labelText: 'Nuevo rol',
+                      prefixIcon: Icon(Icons.shield_outlined),
+                    ),
+                    items: assignableRoles
+                        .map(
+                          (r) =>
+                              DropdownMenuItem(value: r, child: Text(r.label)),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedRole = v);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: selectedRole == currentRole
+                      ? null
+                      : () => Navigator.pop(ctx, selectedRole),
+                  child: const Text('Guardar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (newRole == null || !context.mounted) return;
+
+    await ref
+        .read(projectAssignmentRepositoryProvider)
+        .updateRole(assignment.id as String, newRole);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Rol de $memberName actualizado a ${newRole.label}'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showRemoveMemberDialog(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic assignment,
+    String memberName,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Quitar miembro'),
+        content: Text(
+          '¿Estás seguro de quitar a $memberName del proyecto?\n\n'
+          'El usuario perderá acceso a este proyecto.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFD32F2F),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    await ref
+        .read(projectAssignmentRepositoryProvider)
+        .deactivateAssignment(assignment.id as String);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$memberName fue removido del proyecto')),
+      );
+    }
   }
 
   String _initials(String name) {

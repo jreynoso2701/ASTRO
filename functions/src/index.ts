@@ -29,6 +29,10 @@ interface NotificationConfig {
   scopeTickets: "participante" | "proyecto" | "todos";
   recibirRequerimientos: boolean;
   scopeRequerimientos: "participante" | "proyecto" | "todos";
+  recibirTareas: boolean;
+  scopeTareas: "participante" | "proyecto" | "todos";
+  recibirCitas: boolean;
+  scopeCitas: "participante" | "proyecto" | "todos";
 }
 
 type UserRole = "Root" | "Supervisor" | "Soporte" | "Usuario";
@@ -82,6 +86,10 @@ async function getNotifConfig(
     scopeTickets: scope,
     recibirRequerimientos: true,
     scopeRequerimientos: scope,
+    recibirTareas: true,
+    scopeTareas: scope,
+    recibirCitas: true,
+    scopeCitas: scope,
   };
 }
 
@@ -558,6 +566,25 @@ export const onReqUpdated = onDocumentUpdated(
         projectName,
       });
     }
+
+    // Cambio de prioridad
+    if (before.prioridad !== after.prioridad && after.prioridad) {
+      const updatedBy = after.updatedBy as string | undefined;
+      const recipients = await getReqRecipients(
+        projectId,
+        participantUids,
+        updatedBy
+      );
+      await sendNotifications(recipients, {
+        titulo: `${folio} — prioridad cambiada`,
+        cuerpo: `Nueva prioridad: ${after.prioridad}`,
+        tipo: "req_prioridad",
+        refType: "requerimiento",
+        refId: reqId,
+        projectId,
+        projectName,
+      });
+    }
   }
 );
 
@@ -616,6 +643,120 @@ export const onReqCommentCreated = onDocumentCreated(
       projectId,
       projectName,
     });
+  }
+);
+
+// ── Triggers: CITAS ──────────────────────────────────────
+
+/**
+ * Cita creada → notificar a los participantes y destinatarios elegibles.
+ */
+export const onCitaCreated = onDocumentCreated(
+  "Citas/{citaId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const projectId = data.projectId as string | undefined;
+    const projectName = data.projectName as string ?? "";
+    const createdBy = data.createdBy as string | undefined;
+    const titulo = data.titulo as string ?? "Nueva cita";
+    const folio = data.folio as string ?? "";
+
+    if (!projectId) return;
+
+    const participantUids = (data.participantUids as string[]) ?? [];
+    const recipients = await getCitaRecipients(
+      projectId,
+      participantUids,
+      createdBy
+    );
+
+    await sendNotifications(recipients, {
+      titulo: `Nueva cita: ${folio}`,
+      cuerpo: titulo,
+      tipo: "cita_creada",
+      refType: "cita",
+      refId: event.params.citaId,
+      projectId,
+      projectName,
+    });
+  }
+);
+
+/**
+ * Cita actualizada → detectar cambios de status, fecha, cancelación.
+ */
+export const onCitaUpdated = onDocumentUpdated(
+  "Citas/{citaId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const projectId = after.projectId as string | undefined;
+    if (!projectId) return;
+
+    const projectName = after.projectName as string ?? "";
+    const folio = after.folio as string ?? "";
+    const citaId = event.params.citaId;
+    const participantUids = (after.participantUids as string[]) ?? [];
+    const updatedBy = after.updatedBy as string | undefined;
+
+    // Cambio de status
+    if (before.status !== after.status) {
+      const newStatus = after.status as string ?? "";
+      const isCancelled = newStatus.toLowerCase() === "cancelada";
+
+      const recipients = await getCitaRecipients(
+        projectId,
+        participantUids,
+        updatedBy
+      );
+
+      if (isCancelled) {
+        await sendNotifications(recipients, {
+          titulo: `${folio} cancelada`,
+          cuerpo: `La cita "${after.titulo ?? ""}" ha sido cancelada`,
+          tipo: "cita_cancelada",
+          refType: "cita",
+          refId: citaId,
+          projectId,
+          projectName,
+        });
+      } else {
+        await sendNotifications(recipients, {
+          titulo: `${folio} → ${newStatus}`,
+          cuerpo: `El estado de la cita cambió a "${newStatus}"`,
+          tipo: "cita_actualizada",
+          refType: "cita",
+          refId: citaId,
+          projectId,
+          projectName,
+        });
+      }
+    }
+
+    // Cambio de fecha u hora
+    const fechaChanged = JSON.stringify(before.fecha) !== JSON.stringify(after.fecha);
+    const horaChanged = before.horaInicio !== after.horaInicio || before.horaFin !== after.horaFin;
+
+    if ((fechaChanged || horaChanged) && before.status === after.status) {
+      const recipients = await getCitaRecipients(
+        projectId,
+        participantUids,
+        updatedBy
+      );
+      await sendNotifications(recipients, {
+        titulo: `${folio} — horario actualizado`,
+        cuerpo: `La cita "${after.titulo ?? ""}" cambió de fecha/hora`,
+        tipo: "cita_actualizada",
+        refType: "cita",
+        refId: citaId,
+        projectId,
+        projectName,
+      });
+    }
   }
 );
 
@@ -1076,7 +1217,7 @@ export const checkCompromisoDeadlines = onSchedule(
 
 /**
  * Determina los destinatarios de una notificación de tareas.
- * Root/Supervisor/Soporte reciben siempre, Usuario solo si es participante.
+ * Usa NotificationConfig (recibirTareas / scopeTareas).
  */
 async function getTareaRecipients(
   projectId: string,
@@ -1089,14 +1230,57 @@ async function getTareaRecipients(
   for (const a of assignments) {
     if (a.userId === excludeUid) continue;
 
-    if (
-      a.role === "Root" ||
-      a.role === "Supervisor" ||
-      a.role === "Soporte"
-    ) {
+    const config = await getNotifConfig(projectId, a.userId, a.role);
+    if (!config.pushEnabled || !config.recibirTareas) continue;
+
+    switch (config.scopeTareas) {
+    case "todos":
       recipients.add(a.userId);
-    } else if (participantUids.includes(a.userId)) {
+      break;
+    case "proyecto":
       recipients.add(a.userId);
+      break;
+    case "participante":
+      if (participantUids.includes(a.userId)) {
+        recipients.add(a.userId);
+      }
+      break;
+    }
+  }
+
+  return Array.from(recipients);
+}
+
+/**
+ * Determina los destinatarios de una notificación de citas.
+ * Usa NotificationConfig (recibirCitas / scopeCitas).
+ */
+async function getCitaRecipients(
+  projectId: string,
+  participantUids: string[],
+  excludeUid?: string
+): Promise<string[]> {
+  const assignments = await getProjectAssignments(projectId);
+  const recipients = new Set<string>();
+
+  for (const a of assignments) {
+    if (a.userId === excludeUid) continue;
+
+    const config = await getNotifConfig(projectId, a.userId, a.role);
+    if (!config.pushEnabled || !config.recibirCitas) continue;
+
+    switch (config.scopeCitas) {
+    case "todos":
+      recipients.add(a.userId);
+      break;
+    case "proyecto":
+      recipients.add(a.userId);
+      break;
+    case "participante":
+      if (participantUids.includes(a.userId)) {
+        recipients.add(a.userId);
+      }
+      break;
     }
   }
 

@@ -298,6 +298,68 @@ class _MemberNotifCard extends ConsumerWidget {
                         _save(ref, config.copyWith(scopeRequerimientos: scope)),
                   ),
                 ),
+
+              const SizedBox(height: 12),
+
+              // ── Tareas ──
+              Text(
+                'TAREAS',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('Recibir notificaciones de tareas'),
+                value: config.recibirTareas,
+                onChanged: (val) =>
+                    _save(ref, config.copyWith(recibirTareas: val)),
+              ),
+              if (config.recibirTareas)
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: _ScopeSelector(
+                    label: 'Alcance de tareas',
+                    currentScope: config.scopeTareas,
+                    defaultScope: NotificationScope.defaultForRole(role),
+                    onChanged: (scope) =>
+                        _save(ref, config.copyWith(scopeTareas: scope)),
+                  ),
+                ),
+
+              const SizedBox(height: 12),
+
+              // ── Citas ──
+              Text(
+                'CITAS',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: const Text('Recibir notificaciones de citas'),
+                value: config.recibirCitas,
+                onChanged: (val) =>
+                    _save(ref, config.copyWith(recibirCitas: val)),
+              ),
+              if (config.recibirCitas)
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: _ScopeSelector(
+                    label: 'Alcance de citas',
+                    currentScope: config.scopeCitas,
+                    defaultScope: NotificationScope.defaultForRole(role),
+                    onChanged: (scope) =>
+                        _save(ref, config.copyWith(scopeCitas: scope)),
+                  ),
+                ),
             ],
 
             // ── Reset a defaults ──

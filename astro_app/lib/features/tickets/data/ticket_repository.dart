@@ -99,10 +99,10 @@ class TicketRepository {
   }
 
   /// Actualiza un ticket (merge para preservar campos V1).
-  Future<void> update(Ticket ticket) async {
-    await _ref
-        .doc(ticket.id)
-        .set(ticket.toFirestore(), SetOptions(merge: true));
+  Future<void> update(Ticket ticket, {required String updatedBy}) async {
+    final data = ticket.toFirestore();
+    data['updatedBy'] = updatedBy;
+    await _ref.doc(ticket.id).set(data, SetOptions(merge: true));
   }
 
   /// Actualiza solo las evidencias de un ticket.

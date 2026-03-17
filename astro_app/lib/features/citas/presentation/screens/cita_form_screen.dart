@@ -471,7 +471,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
       );
 
       if (_isEditing) {
-        await repo.update(cita);
+        await repo.update(cita, updatedBy: profile?.uid ?? '');
         if (mounted) {
           context.pop();
         }

@@ -53,6 +53,10 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   String _selectedModuleName = '';
   TicketPriority _priority = TicketPriority.media;
 
+  // Asignado
+  String? _assignedToUid;
+  String? _assignedToName;
+
   // Campos adicionales
   double _porcentajeAvance = 0;
   int? _impacto;
@@ -113,6 +117,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           _selectedModuleId = ticket.moduleId;
           _selectedModuleName = ticket.moduleName;
           _priority = ticket.priority;
+          _assignedToUid = ticket.assignedTo;
+          _assignedToName = ticket.assignedToName;
           _porcentajeAvance = ticket.porcentajeAvance;
           _impacto = ticket.impacto;
           _cobertura = ticket.cobertura;
@@ -298,6 +304,19 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                 ),
                 const Divider(),
                 const SizedBox(height: 8),
+
+                // Asignado a (miembros del proyecto)
+                _AssigneeDropdown(
+                  projectId: widget.projectId,
+                  selectedUid: _assignedToUid,
+                  onChanged: (uid, name) {
+                    setState(() {
+                      _assignedToUid = uid;
+                      _assignedToName = name;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
 
                 // Porcentaje de avance
                 Row(
@@ -730,6 +749,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
             moduleId: _selectedModuleId,
             moduleName: _selectedModuleName,
             priority: _priority,
+            assignedTo: _assignedToUid,
+            assignedToName: _assignedToName,
             empresaName: empresaName,
             porcentajeAvance: _porcentajeAvance,
             impacto: _impacto,
@@ -739,6 +760,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
             refMinutas: _refMinutas,
             refCitas: _refCitas,
           ),
+          updatedBy: profile.uid,
         );
 
         // Sincronización bidireccional: cada minuta vinculada debe saber de este ticket
@@ -765,6 +787,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           projectId: widget.projectId,
           moduleId: _selectedModuleId!,
           createdBy: profile.uid,
+          assignedTo: _assignedToUid,
+          assignedToName: _assignedToName,
           empresaName: empresaName,
           porcentajeAvance: _porcentajeAvance,
           impacto: _impacto,
@@ -838,6 +862,54 @@ IconData _fileIcon(String filename) {
     'xls' || 'xlsx' => Icons.table_chart_outlined,
     _ => Icons.insert_drive_file_outlined,
   };
+}
+
+class _AssigneeDropdown extends ConsumerWidget {
+  const _AssigneeDropdown({
+    required this.projectId,
+    required this.selectedUid,
+    required this.onChanged,
+  });
+
+  final String projectId;
+  final String? selectedUid;
+  final void Function(String? uid, String? name) onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final members = ref.watch(projectMembersProvider(projectId));
+    final activeMembers = members.where((m) => m.user != null).toList()
+      ..sort((a, b) => (a.user!.displayName).compareTo(b.user!.displayName));
+
+    return DropdownButtonFormField<String>(
+      initialValue: activeMembers.any((m) => m.user!.uid == selectedUid)
+          ? selectedUid
+          : null,
+      decoration: const InputDecoration(
+        labelText: 'Asignado a',
+        prefixIcon: Icon(Icons.person_outline),
+      ),
+      items: [
+        const DropdownMenuItem<String>(value: null, child: Text('Sin asignar')),
+        ...activeMembers.map((m) {
+          final user = m.user!;
+          final role = m.assignment.role;
+          return DropdownMenuItem<String>(
+            value: user.uid,
+            child: Text('${user.displayName} ($role)'),
+          );
+        }),
+      ],
+      onChanged: (uid) {
+        if (uid == null) {
+          onChanged(null, null);
+        } else {
+          final member = activeMembers.firstWhere((m) => m.user!.uid == uid);
+          onChanged(uid, member.user!.displayName);
+        }
+      },
+    );
+  }
 }
 
 class _EvidenceChip extends StatelessWidget {

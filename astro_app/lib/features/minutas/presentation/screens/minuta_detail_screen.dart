@@ -12,6 +12,7 @@ import 'package:astro/core/services/minuta_pdf_service.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/auth/providers/auth_providers.dart';
 
 /// Pantalla de detalle de una minuta de reunión.
 class MinutaDetailScreen extends ConsumerStatefulWidget {
@@ -71,7 +72,12 @@ class _MinutaDetailScreenState extends ConsumerState<MinutaDetailScreen> {
         final newTareaStatus = newStatus == CompromisoStatus.cumplido
             ? TareaStatus.completada
             : TareaStatus.pendiente;
-        await tareaRepo.updateStatus(linkedTarea.id, newTareaStatus.name);
+        final uid = ref.read(authStateProvider).value?.uid ?? '';
+        await tareaRepo.updateStatus(
+          linkedTarea.id,
+          newTareaStatus.name,
+          updatedBy: uid,
+        );
       }
     } catch (e) {
       if (mounted) {

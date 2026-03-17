@@ -48,6 +48,10 @@ class NotificationConfig {
     this.scopeTickets = NotificationScope.participante,
     this.recibirRequerimientos = true,
     this.scopeRequerimientos = NotificationScope.participante,
+    this.recibirTareas = true,
+    this.scopeTareas = NotificationScope.participante,
+    this.recibirCitas = true,
+    this.scopeCitas = NotificationScope.participante,
     this.updatedAt,
     this.updatedBy,
   });
@@ -71,6 +75,18 @@ class NotificationConfig {
   /// Alcance de notificaciones de requerimientos.
   final NotificationScope scopeRequerimientos;
 
+  /// Recibir notificaciones de tareas.
+  final bool recibirTareas;
+
+  /// Alcance de notificaciones de tareas.
+  final NotificationScope scopeTareas;
+
+  /// Recibir notificaciones de citas.
+  final bool recibirCitas;
+
+  /// Alcance de notificaciones de citas.
+  final NotificationScope scopeCitas;
+
   final DateTime? updatedAt;
   final String? updatedBy;
 
@@ -90,6 +106,10 @@ class NotificationConfig {
       scopeTickets: scope,
       recibirRequerimientos: true,
       scopeRequerimientos: scope,
+      recibirTareas: true,
+      scopeTareas: scope,
+      recibirCitas: true,
+      scopeCitas: scope,
     );
   }
 
@@ -110,6 +130,14 @@ class NotificationConfig {
       scopeRequerimientos: NotificationScope.fromString(
         data['scopeRequerimientos'] as String? ?? 'participante',
       ),
+      recibirTareas: data['recibirTareas'] as bool? ?? true,
+      scopeTareas: NotificationScope.fromString(
+        data['scopeTareas'] as String? ?? 'participante',
+      ),
+      recibirCitas: data['recibirCitas'] as bool? ?? true,
+      scopeCitas: NotificationScope.fromString(
+        data['scopeCitas'] as String? ?? 'participante',
+      ),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       updatedBy: data['updatedBy'] as String?,
     );
@@ -124,6 +152,10 @@ class NotificationConfig {
       'scopeTickets': scopeTickets.value,
       'recibirRequerimientos': recibirRequerimientos,
       'scopeRequerimientos': scopeRequerimientos.value,
+      'recibirTareas': recibirTareas,
+      'scopeTareas': scopeTareas.value,
+      'recibirCitas': recibirCitas,
+      'scopeCitas': scopeCitas.value,
       'updatedAt': FieldValue.serverTimestamp(),
       if (updatedBy != null) 'updatedBy': updatedBy,
     };
@@ -135,6 +167,10 @@ class NotificationConfig {
     NotificationScope? scopeTickets,
     bool? recibirRequerimientos,
     NotificationScope? scopeRequerimientos,
+    bool? recibirTareas,
+    NotificationScope? scopeTareas,
+    bool? recibirCitas,
+    NotificationScope? scopeCitas,
     String? updatedBy,
   }) {
     return NotificationConfig(
@@ -147,6 +183,10 @@ class NotificationConfig {
       recibirRequerimientos:
           recibirRequerimientos ?? this.recibirRequerimientos,
       scopeRequerimientos: scopeRequerimientos ?? this.scopeRequerimientos,
+      recibirTareas: recibirTareas ?? this.recibirTareas,
+      scopeTareas: scopeTareas ?? this.scopeTareas,
+      recibirCitas: recibirCitas ?? this.recibirCitas,
+      scopeCitas: scopeCitas ?? this.scopeCitas,
       updatedAt: DateTime.now(),
       updatedBy: updatedBy ?? this.updatedBy,
     );

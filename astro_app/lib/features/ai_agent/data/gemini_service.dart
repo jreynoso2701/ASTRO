@@ -238,7 +238,7 @@ class GeminiService {
       'projectName': Schema.string(description: 'Nombre del proyecto'),
       'status': Schema.string(
         description:
-            'Estado: PROPUESTO, EN_REVISION, APROBADO, DIFERIDO, RECHAZADO, EN_DESARROLLO, IMPLEMENTADO, CERRADO',
+            'Estado: Propuesto, En Revisión, En Desarrollo, Implementado, Completado, Descartado',
         nullable: true,
       ),
       'busqueda': Schema.string(
@@ -866,15 +866,12 @@ class GeminiService {
         .where('projectName', isEqualTo: projectName)
         .get();
 
-    const pendingStatuses = {
-      'PROPUESTO',
-      'EN_REVISION',
-      'APROBADO',
-      'EN_DESARROLLO',
-    };
-    final pendingReqs = reqSnap.docs
-        .where((d) => pendingStatuses.contains(d.data()['status'] ?? ''))
-        .toList();
+    const pendingStatuses = {'Propuesto', 'En Revisión', 'En Desarrollo'};
+    final pendingReqs = reqSnap.docs.where((d) {
+      final data = d.data();
+      if (data['isActive'] == false) return false;
+      return pendingStatuses.contains(data['status'] ?? '');
+    }).toList();
 
     // Próximas citas
     final citaSnap = await _db
