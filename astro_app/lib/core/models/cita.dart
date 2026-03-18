@@ -4,24 +4,17 @@ import 'package:astro/core/models/minuta_modalidad.dart';
 
 /// Participante de una cita programada.
 class ParticipanteCita {
-  const ParticipanteCita({
-    required this.uid,
-    required this.nombre,
-    this.rol,
-    this.confirmado = false,
-  });
+  const ParticipanteCita({required this.uid, required this.nombre, this.rol});
 
   final String uid;
   final String nombre;
   final String? rol;
-  final bool confirmado;
 
   factory ParticipanteCita.fromMap(Map<String, dynamic> data) {
     return ParticipanteCita(
       uid: data['uid'] as String? ?? '',
       nombre: data['nombre'] as String? ?? '',
       rol: data['rol'] as String?,
-      confirmado: data['confirmado'] as bool? ?? false,
     );
   }
 
@@ -29,20 +22,13 @@ class ParticipanteCita {
     'uid': uid,
     'nombre': nombre,
     if (rol != null) 'rol': rol,
-    'confirmado': confirmado,
   };
 
-  ParticipanteCita copyWith({
-    String? uid,
-    String? nombre,
-    String? rol,
-    bool? confirmado,
-  }) {
+  ParticipanteCita copyWith({String? uid, String? nombre, String? rol}) {
     return ParticipanteCita(
       uid: uid ?? this.uid,
       nombre: nombre ?? this.nombre,
       rol: rol ?? this.rol,
-      confirmado: confirmado ?? this.confirmado,
     );
   }
 }
@@ -157,7 +143,7 @@ class Cita {
       empresaName: data['empresaName'] as String? ?? '',
       createdByName: data['createdByName'] as String? ?? '',
       descripcion: data['descripcion'] as String?,
-      fecha: parseDate(data['fecha']),
+      fecha: parseDate(data['fecha']) ?? parseDate(data['fechaHora']),
       horaInicio: data['horaInicio'] as String?,
       horaFin: data['horaFin'] as String?,
       modalidad: MinutaModalidad.fromString(data['modalidad'] as String?),

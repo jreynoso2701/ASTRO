@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/funcionalidad.dart';
 import 'package:astro/features/modules/data/funcionalidad_repository.dart';
-import 'package:astro/features/modules/providers/module_providers.dart';
 
 // ── Repository ───────────────────────────────────────────
 
@@ -37,22 +36,3 @@ final funcProgressProvider =
     ) {
       return ref.watch(funcionalidadRepositoryProvider).watchProgress(moduleId);
     });
-
-/// Auto-sync: actualiza porcentCompletaModulo cuando cambia el progreso.
-///
-/// Debe ser watcheado en module_detail_screen para que permanezca activo.
-final moduleProgressSyncProvider = Provider.family<void, String>((
-  ref,
-  moduleId,
-) {
-  final progress = ref.watch(funcProgressProvider(moduleId));
-
-  progress.whenData((data) {
-    if (data.total == 0) return;
-    final percent = (data.completed / data.total) * 100;
-
-    // Leer repo directamente y actualizar si el valor cambió.
-    final moduloRepo = ref.read(moduloRepositoryProvider);
-    moduloRepo.updateProgress(moduleId, percent);
-  });
-});

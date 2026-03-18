@@ -59,21 +59,28 @@ final projectSearchProvider = NotifierProvider<ProjectSearchNotifier, String>(
   ProjectSearchNotifier.new,
 );
 
-/// Proyectos filtrados por búsqueda.
+/// Proyectos filtrados por búsqueda y ordenados A-Z.
 final filteredProjectsProvider = Provider<List<Proyecto>>((ref) {
   final projects = ref.watch(myProjectsProvider);
   final query = ref.watch(projectSearchProvider).toUpperCase();
 
-  if (query.isEmpty) return projects;
+  final filtered = query.isEmpty
+      ? [...projects]
+      : projects
+            .where(
+              (p) =>
+                  p.nombreProyecto.toUpperCase().contains(query) ||
+                  p.folioProyecto.toUpperCase().contains(query) ||
+                  p.fkEmpresa.toUpperCase().contains(query),
+            )
+            .toList();
 
-  return projects
-      .where(
-        (p) =>
-            p.nombreProyecto.toUpperCase().contains(query) ||
-            p.folioProyecto.toUpperCase().contains(query) ||
-            p.fkEmpresa.toUpperCase().contains(query),
-      )
-      .toList();
+  filtered.sort(
+    (a, b) => a.nombreProyecto.toLowerCase().compareTo(
+      b.nombreProyecto.toLowerCase(),
+    ),
+  );
+  return filtered;
 });
 
 // ── Helpers para obtener info de miembros ────────────────

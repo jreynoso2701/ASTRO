@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
@@ -200,7 +201,7 @@ class _CitaInfoSection extends StatelessWidget {
                 _InfoRow(label: 'Modalidad', value: cita.modalidad.label),
                 if (cita.urlVideoconferencia != null &&
                     cita.urlVideoconferencia!.isNotEmpty)
-                  _InfoRow(label: 'URL', value: cita.urlVideoconferencia!),
+                  _UrlRow(url: cita.urlVideoconferencia!),
                 if (cita.direccion != null && cita.direccion!.isNotEmpty)
                   _InfoRow(label: 'Dirección', value: cita.direccion!),
                 _InfoRow(label: 'Empresa', value: cita.empresaName),
@@ -265,12 +266,12 @@ class _CitaInfoSection extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(
-                            p.confirmado
-                                ? Icons.check_circle_outline
-                                : Icons.radio_button_unchecked,
+                            p.uid.isNotEmpty
+                                ? Icons.person
+                                : Icons.person_outline,
                             size: 18,
-                            color: p.confirmado
-                                ? const Color(0xFF4CAF50)
+                            color: p.uid.isNotEmpty
+                                ? theme.colorScheme.primary
                                 : theme.colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 8),
@@ -292,14 +293,6 @@ class _CitaInfoSection extends StatelessWidget {
                                     ),
                                   ),
                               ],
-                            ),
-                          ),
-                          Text(
-                            p.confirmado ? 'Confirmado' : 'Pendiente',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: p.confirmado
-                                  ? const Color(0xFF4CAF50)
-                                  : theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -401,6 +394,69 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
+        ],
+      ),
+    );
+  }
+}
+
+class _UrlRow extends StatelessWidget {
+  const _UrlRow({required this.url});
+
+  final String url;
+
+  Future<void> _openUrl(BuildContext context) async {
+    final uri = Uri.tryParse(url.startsWith('http') ? url : 'https://$url');
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No se pudo abrir la URL')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              'URL',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _openUrl(context),
+              child: Text(
+                url,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: theme.colorScheme.primary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () => _openUrl(context),
+            child: Icon(
+              Icons.open_in_new,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+          ),
         ],
       ),
     );

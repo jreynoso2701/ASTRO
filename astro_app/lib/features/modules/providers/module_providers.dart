@@ -49,7 +49,7 @@ final moduleSearchProvider = NotifierProvider<ModuleSearchNotifier, String>(
   ModuleSearchNotifier.new,
 );
 
-/// Módulos de un proyecto filtrados por búsqueda.
+/// Módulos de un proyecto filtrados por búsqueda y ordenados A-Z.
 /// Requiere pasar el nombre del proyecto como parámetro.
 final filteredModulesProvider = Provider.family<List<Modulo>, String>((
   ref,
@@ -58,20 +58,26 @@ final filteredModulesProvider = Provider.family<List<Modulo>, String>((
   final modules = ref.watch(modulosByProjectProvider(projectName)).value ?? [];
   final query = ref.watch(moduleSearchProvider).toUpperCase();
 
-  if (query.isEmpty) return modules;
+  final filtered = query.isEmpty
+      ? [...modules]
+      : modules
+            .where(
+              (m) =>
+                  m.nombreModulo.toUpperCase().contains(query) ||
+                  m.folioModulo.toUpperCase().contains(query),
+            )
+            .toList();
 
-  return modules
-      .where(
-        (m) =>
-            m.nombreModulo.toUpperCase().contains(query) ||
-            m.folioModulo.toUpperCase().contains(query),
-      )
-      .toList();
+  filtered.sort(
+    (a, b) =>
+        a.nombreModulo.toLowerCase().compareTo(b.nombreModulo.toLowerCase()),
+  );
+  return filtered;
 });
 
 // ── Progreso del proyecto ────────────────────────────────
 
-/// Progreso base del módulo (funcionalidades completadas — sin ajuste).
+/// Progreso base del módulo (editado manualmente — sin ajuste).
 final moduleBaseProgressProvider =
     Provider.family<
       double,

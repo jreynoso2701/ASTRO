@@ -7,7 +7,9 @@ import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/constants/app_typography.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/models/cita_status.dart';
+import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
+import 'package:astro/features/projects/providers/project_providers.dart';
 
 /// Pantalla de Calendario global — muestra citas de todos los proyectos
 /// del usuario actual. Toggle entre vista mensual y agenda.
@@ -43,48 +45,89 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final citasAsync = ref.watch(myCitasProvider);
     final allCitas = citasAsync.value ?? [];
 
+    final myProjects = ref.watch(myProjectsProvider);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) context.go('/');
       },
-      child: SafeArea(
-        child: Column(
-          children: [
-            // ── Header ───────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'CALENDARIO',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontFamily: AppTypography.fontFamilyDisplay,
-                        letterSpacing: 2,
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              // ── Header ───────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'CALENDARIO',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontFamily: AppTypography.fontFamilyDisplay,
+                          letterSpacing: 2,
+                        ),
                       ),
                     ),
-                  ),
-                  _ViewToggle(
-                    showCalendar: _showCalendar,
-                    onToggle: () =>
-                        setState(() => _showCalendar = !_showCalendar),
-                  ),
-                ],
+                    _ViewToggle(
+                      showCalendar: _showCalendar,
+                      onToggle: () =>
+                          setState(() => _showCalendar = !_showCalendar),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Content ──────────────────────────────────
-            Expanded(
-              child: citasAsync.isLoading && allCitas.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
-                  : _showCalendar
-                  ? _buildCalendarView(theme, allCitas)
-                  : _buildAgendaView(theme, allCitas),
-            ),
-          ],
+              // ── Content ──────────────────────────────────
+              Expanded(
+                child: citasAsync.isLoading && allCitas.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : _showCalendar
+                    ? _buildCalendarView(theme, allCitas)
+                    : _buildAgendaView(theme, allCitas),
+              ),
+            ],
+          ),
         ),
+        floatingActionButton: myProjects.isNotEmpty
+            ? FloatingActionButton(
+                heroTag: 'calendar_fab',
+                onPressed: () => _showProjectPicker(context, myProjects),
+                tooltip: 'Nueva cita',
+                child: const Icon(Icons.add),
+              )
+            : null,
+      ),
+    );
+  }
+
+  // ── Project picker for FAB ──────────────────────────────
+
+  void _showProjectPicker(BuildContext context, List<Proyecto> projects) {
+    if (projects.length == 1) {
+      context.push('/projects/${projects.first.id}/citas/new');
+      return;
+    }
+
+    // Ordenar A-Z por defecto
+    final sorted = [...projects]
+      ..sort(
+        (a, b) => a.nombreProyecto.toLowerCase().compareTo(
+          b.nombreProyecto.toLowerCase(),
+        ),
+      );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _ProjectPickerSheet(
+        projects: sorted,
+        onSelected: (p) {
+          Navigator.pop(ctx);
+          context.push('/projects/${p.id}/citas/new');
+        },
       ),
     );
   }
@@ -462,6 +505,94 @@ class _ViewToggle extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet con búsqueda para seleccionar proyecto.
+class _ProjectPickerSheet extends StatefulWidget {
+  const _ProjectPickerSheet({required this.projects, required this.onSelected});
+
+  final List<Proyecto> projects;
+  final ValueChanged<Proyecto> onSelected;
+
+  @override
+  State<_ProjectPickerSheet> createState() => _ProjectPickerSheetState();
+}
+
+class _ProjectPickerSheetState extends State<_ProjectPickerSheet> {
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final filtered = _search.isEmpty
+        ? widget.projects
+        : widget.projects.where((p) {
+            final q = _search.toLowerCase();
+            return p.nombreProyecto.toLowerCase().contains(q) ||
+                p.fkEmpresa.toLowerCase().contains(q);
+          }).toList();
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+            child: Text(
+              'Selecciona un proyecto',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontFamily: AppTypography.fontFamilyDisplay,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar proyecto...',
+                prefixIcon: Icon(Icons.search, size: 20),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _search = v),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+            ),
+            child: filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Sin resultados',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final p = filtered[i];
+                      return ListTile(
+                        leading: const Icon(Icons.folder_outlined),
+                        title: Text(p.nombreProyecto),
+                        subtitle: Text(p.fkEmpresa),
+                        onTap: () => widget.onSelected(p),
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

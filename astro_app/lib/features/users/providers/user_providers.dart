@@ -141,19 +141,25 @@ final userSearchProvider = NotifierProvider<UserSearchNotifier, String>(
   UserSearchNotifier.new,
 );
 
-/// Usuarios filtrados por el término de búsqueda.
+/// Usuarios filtrados por el término de búsqueda y ordenados A-Z.
 final filteredUsersProvider = Provider<List<AppUser>>((ref) {
   final users = ref.watch(allUsersProvider);
   final query = ref.watch(userSearchProvider).toUpperCase();
 
   final list = users.value ?? [];
-  if (query.isEmpty) return list;
+  final filtered = query.isEmpty
+      ? [...list]
+      : list
+            .where(
+              (u) =>
+                  u.displayName.toUpperCase().contains(query) ||
+                  u.email.toUpperCase().contains(query),
+            )
+            .toList();
 
-  return list
-      .where(
-        (u) =>
-            u.displayName.toUpperCase().contains(query) ||
-            u.email.toUpperCase().contains(query),
-      )
-      .toList();
+  filtered.sort(
+    (a, b) =>
+        a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+  );
+  return filtered;
 });

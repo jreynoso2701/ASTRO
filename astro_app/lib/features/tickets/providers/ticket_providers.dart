@@ -374,7 +374,11 @@ final globalTicketsByDeadlineProvider =
         final tickets =
             ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
         for (final t in tickets) {
-          if (!t.status.isKanbanVisible) continue;
+          // Excluir resueltos y archivados — solo tickets realmente abiertos.
+          if (t.status == TicketStatus.resuelto ||
+              t.status == TicketStatus.archivado) {
+            continue;
+          }
           final target = parseDeadlineDate(t.solucionProgramada);
           if (target == null) continue;
 
@@ -399,5 +403,27 @@ final globalTicketsByDeadlineProvider =
         }
       }
 
+      return result;
+    });
+
+/// Tickets activos sin fecha compromiso, agrupados por proyecto.
+final globalTicketsWithoutDeadlineProvider =
+    Provider<List<({Proyecto project, Ticket ticket})>>((ref) {
+      final projects = ref.watch(myProjectsProvider);
+      final result = <({Proyecto project, Ticket ticket})>[];
+      for (final p in projects) {
+        final tickets =
+            ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
+        for (final t in tickets) {
+          if (t.status == TicketStatus.resuelto ||
+              t.status == TicketStatus.archivado) {
+            continue;
+          }
+          final deadline = t.solucionProgramada;
+          if (deadline == null || deadline.trim().isEmpty) {
+            result.add((project: p, ticket: t));
+          }
+        }
+      }
       return result;
     });

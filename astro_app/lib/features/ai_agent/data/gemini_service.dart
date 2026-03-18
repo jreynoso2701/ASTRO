@@ -177,7 +177,7 @@ class GeminiService {
 
   FunctionDeclaration get _searchTicketsFn => FunctionDeclaration(
     'buscarTickets',
-    'Busca tickets/incidentes de un proyecto. Puede filtrar por estado, prioridad o texto. Por defecto solo busca activos; usa archivados=true para buscar en los archivados.',
+    'Busca tickets/incidentes de un proyecto. Puede filtrar por estado, prioridad o texto. Retorna fechaCompromiso (fecha de compromiso de solución). Por defecto solo busca activos; usa archivados=true para buscar en los archivados.',
     parameters: {
       'projectName': Schema.string(
         description: 'Nombre del proyecto en Firestore',
@@ -394,6 +394,7 @@ class GeminiService {
         'impacto': data['impactoIncidente'] ?? 0,
         'reporto': data['nombreReportante'] ?? '',
         'soporte': data['soporteAsignado'] ?? '',
+        'fechaCompromiso': data['fhCompromisoSol'] as String? ?? '',
         'createdAt':
             (data['fhCreacion'] as Timestamp?)?.toDate().toIso8601String() ??
             (data['createdAt'] as Timestamp?)?.toDate().toIso8601String() ??
@@ -689,19 +690,20 @@ class GeminiService {
     }
 
     final snap = await query
-        .orderBy('fechaHora', descending: true)
+        .orderBy('fecha', descending: true)
         .limit(limit)
         .get();
 
     final citas = snap.docs.map((d) {
       final data = d.data();
+      final fechaTs =
+          data['fecha'] as Timestamp? ?? data['fechaHora'] as Timestamp?;
       return {
         'id': d.id,
         'folio': data['folio'] ?? '',
         'titulo': data['titulo'] ?? '',
         'status': data['status'] ?? '',
-        'fecha':
-            (data['fechaHora'] as Timestamp?)?.toDate().toIso8601String() ?? '',
+        'fecha': fechaTs?.toDate().toIso8601String() ?? '',
         'modalidad': data['modalidad'] ?? '',
       };
     }).toList();
@@ -879,17 +881,18 @@ class GeminiService {
         .where('projectName', isEqualTo: projectName)
         .where('status', isEqualTo: 'programada')
         .where('isActive', isEqualTo: true)
-        .orderBy('fechaHora')
+        .orderBy('fecha')
         .limit(3)
         .get();
 
     final citas = citaSnap.docs.map((d) {
       final data = d.data();
+      final fechaTs =
+          data['fecha'] as Timestamp? ?? data['fechaHora'] as Timestamp?;
       return {
         'folio': data['folio'] ?? '',
         'titulo': data['titulo'] ?? '',
-        'fecha':
-            (data['fechaHora'] as Timestamp?)?.toDate().toIso8601String() ?? '',
+        'fecha': fechaTs?.toDate().toIso8601String() ?? '',
       };
     }).toList();
 
@@ -970,6 +973,8 @@ Tu rol:
 - Si el usuario pregunta por "mis tareas" o tareas pendientes, usa buscarTareas con status pendiente o enProgreso.
 - Tanto buscarTickets como buscarTareas soportan el parámetro archivados=true para buscar elementos archivados (isActive=false). Por defecto solo muestran activos.
 - Si el usuario pregunta por tickets/tareas archivados, usa archivados=true.
+- Los tickets incluyen el campo "fechaCompromiso" (fecha de compromiso de solución). Si está vacío significa que el ticket no tiene fecha compromiso asignada.
+- Si el usuario pregunta por tickets sin fecha compromiso, vencidos, próximos a vencer, o con urgencia de fecha, revisa el campo fechaCompromiso en los resultados.
 
 Personalidad:
 - Profesional pero amigable.

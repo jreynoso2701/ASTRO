@@ -8,6 +8,29 @@ import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
+// ── Ordenamiento de módulos ──────────────────────────────
+
+enum ModuleSortOption {
+  nameAsc('A → Z'),
+  nameDesc('Z → A'),
+  progressAsc('Progreso ↑'),
+  progressDesc('Progreso ↓');
+
+  const ModuleSortOption(this.label);
+  final String label;
+}
+
+class _ModuleSortNotifier extends Notifier<ModuleSortOption> {
+  @override
+  ModuleSortOption build() => ModuleSortOption.nameAsc;
+  void set(ModuleSortOption option) => state = option;
+}
+
+final moduleSortProvider =
+    NotifierProvider<_ModuleSortNotifier, ModuleSortOption>(
+      _ModuleSortNotifier.new,
+    );
+
 /// Pantalla de listado de módulos de un proyecto.
 class ModuleListScreen extends ConsumerWidget {
   const ModuleListScreen({required this.projectId, super.key});
@@ -39,7 +62,9 @@ class ModuleListScreen extends ConsumerWidget {
         final projectName = proyecto.nombreProyecto;
         final modulesAsync = ref.watch(modulosByProjectProvider(projectName));
         final searchQuery = ref.watch(moduleSearchProvider);
-        final filteredModules = ref.watch(filteredModulesProvider(projectName));
+        final sortOption = ref.watch(moduleSortProvider);
+        final baseFiltered = ref.watch(filteredModulesProvider(projectName));
+        final filteredModules = _sortModules(baseFiltered, sortOption);
         final progress = ref.watch(projectProgressProvider(projectName));
 
         return Scaffold(
@@ -94,6 +119,8 @@ class ModuleListScreen extends ConsumerWidget {
                           '${filteredModules.length} módulo${filteredModules.length == 1 ? '' : 's'}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
+                        const Spacer(),
+                        if (filteredModules.length > 1) _ModuleSortButton(),
                       ],
                     ),
                   ),
@@ -330,4 +357,76 @@ class _ModuleCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Sort Button ─────────────────────────────────────────
+
+class _ModuleSortButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(moduleSortProvider);
+    return PopupMenuButton<ModuleSortOption>(
+      tooltip: 'Ordenar módulos',
+      icon: Icon(
+        Icons.sort,
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      onSelected: (option) => ref.read(moduleSortProvider.notifier).set(option),
+      itemBuilder: (_) => ModuleSortOption.values
+          .map(
+            (o) => PopupMenuItem(
+              value: o,
+              child: Row(
+                children: [
+                  if (o == current)
+                    Icon(
+                      Icons.check,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    )
+                  else
+                    const SizedBox(width: 18),
+                  const SizedBox(width: 8),
+                  Text(o.label),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+/// Ordena módulos según la opción seleccionada.
+List<Modulo> _sortModules(List<Modulo> modules, ModuleSortOption option) {
+  final sorted = [...modules];
+  switch (option) {
+    case ModuleSortOption.nameAsc:
+      sorted.sort(
+        (a, b) => a.nombreModulo.toLowerCase().compareTo(
+          b.nombreModulo.toLowerCase(),
+        ),
+      );
+    case ModuleSortOption.nameDesc:
+      sorted.sort(
+        (a, b) => b.nombreModulo.toLowerCase().compareTo(
+          a.nombreModulo.toLowerCase(),
+        ),
+      );
+    case ModuleSortOption.progressAsc:
+      sorted.sort(
+        (a, b) => (a.porcentCompletaModulo ?? 0).compareTo(
+          b.porcentCompletaModulo ?? 0,
+        ),
+      );
+    case ModuleSortOption.progressDesc:
+      sorted.sort(
+        (a, b) => (b.porcentCompletaModulo ?? 0).compareTo(
+          a.porcentCompletaModulo ?? 0,
+        ),
+      );
+  }
+  return sorted;
 }

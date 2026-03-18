@@ -3,10 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
-import 'package:astro/core/models/funcionalidad.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
-import 'package:astro/features/modules/providers/funcionalidad_providers.dart';
-import 'package:astro/features/modules/presentation/widgets/funcionalidad_form_dialog.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de detalle de un módulo.
@@ -175,10 +172,14 @@ class ModuleDetailScreen extends ConsumerWidget {
 
               const SizedBox(height: 24),
 
-              // Progreso
+              // Progreso — editable para Root/Soporte
               Text('Progreso', style: theme.textTheme.titleSmall),
               const SizedBox(height: 12),
-              _ProgressSection(percent: percent),
+              _ProgressSection(
+                percent: percent,
+                canManage: canManage,
+                moduleId: modulo.id,
+              ),
 
               // Root: toggle status
               if (isRoot) ...[
@@ -202,54 +203,21 @@ class ModuleDetailScreen extends ConsumerWidget {
             ],
           );
 
-          // Activar auto-sync de progreso del módulo.
-          ref.watch(moduleProgressSyncProvider(moduleId));
-
-          final funcsAsync = ref.watch(
-            funcionalidadesByModuleProvider(moduleId),
-          );
-
-          // Sección de funcionalidades — checklist real
-          final functionalitiesSection = _FuncionalidadesSection(
-            moduleId: moduleId,
-            funcsAsync: funcsAsync,
-            canManage: canManage,
-          );
-
           if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 400,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: infoSection,
-                  ),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: infoSection,
                 ),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: functionalitiesSection,
-                  ),
-                ),
-              ],
+              ),
             );
           }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                infoSection,
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
-                functionalitiesSection,
-              ],
-            ),
+            child: infoSection,
           );
         },
       ),
@@ -296,317 +264,63 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ── Sección de funcionalidades ──────────────────────────
-
-class _FuncionalidadesSection extends ConsumerWidget {
-  const _FuncionalidadesSection({
-    required this.moduleId,
-    required this.funcsAsync,
+class _ProgressSection extends ConsumerStatefulWidget {
+  const _ProgressSection({
+    required this.percent,
     required this.canManage,
-  });
-
-  final String moduleId;
-  final AsyncValue<List<Funcionalidad>> funcsAsync;
-  final bool canManage;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header
-        Row(
-          children: [
-            Text('Funcionalidades', style: theme.textTheme.titleSmall),
-            const Spacer(),
-            if (canManage)
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline, size: 22),
-                tooltip: 'Agregar funcionalidad',
-                onPressed: () => _showCreateDialog(context, ref),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        // Progreso mini
-        funcsAsync.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (e, _) => Text('Error: $e'),
-          data: (funcs) {
-            final active = funcs.where((f) => f.estatus).toList();
-            final inactive = funcs.where((f) => !f.estatus).toList();
-            final completed = active.where((f) => f.completada).length;
-            final total = active.length;
-
-            if (total == 0) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.checklist_outlined,
-                        size: 48,
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Sin funcionalidades',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.5,
-                          ),
-                        ),
-                      ),
-                      if (canManage) ...[
-                        const SizedBox(height: 12),
-                        FilledButton.icon(
-                          onPressed: () => _showCreateDialog(context, ref),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Agregar primera'),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Barra de progreso + contador
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: total > 0 ? completed / total : 0,
-                          minHeight: 6,
-                          backgroundColor: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            progressColor(
-                              total > 0 ? (completed / total) * 100 : 0,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '$completed / $total',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Lista de funcionalidades
-                ...active.map(
-                  (func) => _FuncionalidadTile(
-                    func: func,
-                    moduleId: moduleId,
-                    canManage: canManage,
-                  ),
-                ),
-
-                // Inactivas (solo para quien gestiona)
-                if (canManage && inactive.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    'Inactivas (${inactive.length})',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  ...inactive.map(
-                    (func) => _FuncionalidadTile(
-                      func: func,
-                      moduleId: moduleId,
-                      canManage: canManage,
-                    ),
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
-    final funcs =
-        ref.read(funcionalidadesByModuleProvider(moduleId)).value ?? [];
-    final nextOrder = funcs.isEmpty
-        ? 0
-        : funcs.map((f) => f.orden).reduce((a, b) => a > b ? a : b) + 1;
-
-    final result = await showDialog<Funcionalidad>(
-      context: context,
-      builder: (_) => FuncionalidadFormDialog(nextOrder: nextOrder),
-    );
-
-    if (result != null) {
-      await ref.read(funcionalidadRepositoryProvider).create(moduleId, result);
-    }
-  }
-}
-
-// ── Tile de funcionalidad individual ────────────────────
-
-class _FuncionalidadTile extends ConsumerWidget {
-  const _FuncionalidadTile({
-    required this.func,
     required this.moduleId,
-    required this.canManage,
   });
-
-  final Funcionalidad func;
-  final String moduleId;
-  final bool canManage;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final repo = ref.read(funcionalidadRepositoryProvider);
-    final isInactive = !func.estatus;
-
-    return Opacity(
-      opacity: isInactive ? 0.5 : 1.0,
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 4),
-        child: InkWell(
-          onTap: canManage ? () => _showEditDialog(context, ref) : null,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 12, 4),
-            child: Row(
-              children: [
-                // Checkbox (Root puede toggle; otros solo ven)
-                Checkbox(
-                  value: func.completada,
-                  onChanged: canManage && !isInactive
-                      ? (val) => repo.toggleCompletada(
-                          moduleId,
-                          func.id,
-                          val ?? false,
-                        )
-                      : null,
-                  activeColor: theme.colorScheme.onSurface,
-                ),
-                // Nombre + descripción
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        func.nombre,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          decoration: func.completada
-                              ? TextDecoration.lineThrough
-                              : null,
-                          color: func.completada
-                              ? theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.5,
-                                )
-                              : null,
-                        ),
-                      ),
-                      if (func.descripcion != null &&
-                          func.descripcion!.isNotEmpty)
-                        Text(
-                          func.descripcion!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
-                // Root: popup menu
-                if (canManage)
-                  PopupMenuButton<String>(
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                      PopupMenuItem(
-                        value: 'toggle_status',
-                        child: Text(isInactive ? 'Reactivar' : 'Desactivar'),
-                      ),
-                    ],
-                    onSelected: (action) {
-                      switch (action) {
-                        case 'edit':
-                          _showEditDialog(context, ref);
-                        case 'toggle_status':
-                          if (isInactive) {
-                            repo.activate(moduleId, func.id);
-                          } else {
-                            repo.deactivate(moduleId, func.id);
-                          }
-                      }
-                    },
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: 18,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showEditDialog(BuildContext context, WidgetRef ref) async {
-    final result = await showDialog<Funcionalidad>(
-      context: context,
-      builder: (_) => FuncionalidadFormDialog(funcionalidad: func),
-    );
-
-    if (result != null) {
-      await ref.read(funcionalidadRepositoryProvider).update(moduleId, result);
-    }
-  }
-}
-
-class _ProgressSection extends StatelessWidget {
-  const _ProgressSection({required this.percent});
 
   final double percent;
+  final bool canManage;
+  final String moduleId;
+
+  @override
+  ConsumerState<_ProgressSection> createState() => _ProgressSectionState();
+}
+
+class _ProgressSectionState extends ConsumerState<_ProgressSection> {
+  late double _value;
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.percent;
+  }
+
+  @override
+  void didUpdateWidget(_ProgressSection old) {
+    super.didUpdateWidget(old);
+    if (!_editing) _value = widget.percent;
+  }
+
+  Future<void> _save() async {
+    final rounded = _value.roundToDouble();
+    await ref
+        .read(moduloRepositoryProvider)
+        .updateProgress(widget.moduleId, rounded);
+    if (mounted) {
+      setState(() => _editing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Progreso actualizado a ${rounded.toInt()}%')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final displayPercent = _value.clamp(0, 100).toDouble();
 
     return Column(
       children: [
         // Gran número de porcentaje
         Center(
           child: Text(
-            '${percent.toStringAsFixed(0)}%',
+            '${displayPercent.toStringAsFixed(0)}%',
             style: theme.textTheme.displaySmall?.copyWith(
-              color: progressColor(percent),
+              color: progressColor(displayPercent),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -615,12 +329,37 @@ class _ProgressSection extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(
-            value: percent / 100,
+            value: displayPercent / 100,
             minHeight: 10,
             backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-            valueColor: AlwaysStoppedAnimation<Color>(progressColor(percent)),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              progressColor(displayPercent),
+            ),
           ),
         ),
+        if (widget.canManage) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Text('0%'),
+              Expanded(
+                child: Slider(
+                  value: displayPercent,
+                  min: 0,
+                  max: 100,
+                  divisions: 100,
+                  label: '${displayPercent.toStringAsFixed(0)}%',
+                  onChanged: (v) => setState(() {
+                    _editing = true;
+                    _value = v;
+                  }),
+                  onChangeEnd: (_) => _save(),
+                ),
+              ),
+              const Text('100%'),
+            ],
+          ),
+        ],
       ],
     );
   }

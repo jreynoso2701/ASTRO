@@ -23,6 +23,29 @@ import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.
     show deadlineInfo;
 import 'package:astro/features/ai_agent/presentation/screens/ai_agent_sheet.dart';
 
+// ── Ordenamiento de Mis Proyectos ────────────────────────
+
+enum ProjectSortOption {
+  nameAsc('A → Z'),
+  nameDesc('Z → A'),
+  progressAsc('Progreso ↑'),
+  progressDesc('Progreso ↓');
+
+  const ProjectSortOption(this.label);
+  final String label;
+}
+
+class _ProjectSortNotifier extends Notifier<ProjectSortOption> {
+  @override
+  ProjectSortOption build() => ProjectSortOption.nameAsc;
+  void set(ProjectSortOption option) => state = option;
+}
+
+final projectSortProvider =
+    NotifierProvider<_ProjectSortNotifier, ProjectSortOption>(
+      _ProjectSortNotifier.new,
+    );
+
 /// Pantalla de Dashboard — vista principal tras login.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -168,12 +191,18 @@ class DashboardScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'MIS PROYECTOS',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    letterSpacing: 1,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      'MIS PROYECTOS',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        letterSpacing: 1,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (projects.length > 1) _ProjectSortButton(),
+                  ],
                 ),
               ),
             ),
@@ -211,25 +240,31 @@ class DashboardScreen extends ConsumerWidget {
                 ),
               )
             else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: adaptiveGridColumns(width),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    mainAxisExtent: 180,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _ProjectCard(
-                      proyecto: projects[index],
-                      ref: ref,
-                      onTap: () =>
-                          context.push('/projects/${projects[index].id}'),
+              Builder(
+                builder: (context) {
+                  final sortOption = ref.watch(projectSortProvider);
+                  final sorted = _sortProjects(projects, sortOption, ref);
+                  return SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: adaptiveGridColumns(width),
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        mainAxisExtent: 180,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _ProjectCard(
+                          proyecto: sorted[index],
+                          ref: ref,
+                          onTap: () =>
+                              context.push('/projects/${sorted[index].id}'),
+                        ),
+                        childCount: sorted.length,
+                      ),
                     ),
-                    childCount: projects.length,
-                  ),
-                ),
+                  );
+                },
               ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
@@ -1106,6 +1141,83 @@ class _DonutChartPainter extends CustomPainter {
       oldDelegate.counts != counts || oldDelegate.total != total;
 }
 
+// ── Project Sort Button ──────────────────────────────────
+
+class _ProjectSortButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final current = ref.watch(projectSortProvider);
+    return PopupMenuButton<ProjectSortOption>(
+      tooltip: 'Ordenar proyectos',
+      icon: Icon(
+        Icons.sort,
+        size: 20,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      onSelected: (option) =>
+          ref.read(projectSortProvider.notifier).set(option),
+      itemBuilder: (_) => ProjectSortOption.values
+          .map(
+            (o) => PopupMenuItem(
+              value: o,
+              child: Row(
+                children: [
+                  if (o == current)
+                    Icon(
+                      Icons.check,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    )
+                  else
+                    const SizedBox(width: 18),
+                  const SizedBox(width: 8),
+                  Text(o.label),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+/// Ordena la lista de proyectos según la opción seleccionada.
+List<Proyecto> _sortProjects(
+  List<Proyecto> projects,
+  ProjectSortOption option,
+  WidgetRef ref,
+) {
+  final sorted = [...projects];
+  switch (option) {
+    case ProjectSortOption.nameAsc:
+      sorted.sort(
+        (a, b) => a.nombreProyecto.toLowerCase().compareTo(
+          b.nombreProyecto.toLowerCase(),
+        ),
+      );
+    case ProjectSortOption.nameDesc:
+      sorted.sort(
+        (a, b) => b.nombreProyecto.toLowerCase().compareTo(
+          a.nombreProyecto.toLowerCase(),
+        ),
+      );
+    case ProjectSortOption.progressAsc:
+      sorted.sort((a, b) {
+        final pa = ref.read(projectProgressProvider(a.nombreProyecto));
+        final pb = ref.read(projectProgressProvider(b.nombreProyecto));
+        return pa.compareTo(pb);
+      });
+    case ProjectSortOption.progressDesc:
+      sorted.sort((a, b) {
+        final pa = ref.read(projectProgressProvider(a.nombreProyecto));
+        final pb = ref.read(projectProgressProvider(b.nombreProyecto));
+        return pb.compareTo(pa);
+      });
+  }
+  return sorted;
+}
+
 // ── Project Card ─────────────────────────────────────────
 
 class _ProjectCard extends StatelessWidget {
@@ -1287,9 +1399,12 @@ class _TicketDeadlineOverview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final byDeadline = ref.watch(globalTicketsByDeadlineProvider);
+    final withoutDeadline = ref.watch(globalTicketsWithoutDeadlineProvider);
     final width = MediaQuery.sizeOf(context).width;
 
-    final total = byDeadline.values.fold<int>(0, (a, list) => a + list.length);
+    final total =
+        byDeadline.values.fold<int>(0, (a, list) => a + list.length) +
+        withoutDeadline.length;
     if (total == 0) return const SizedBox.shrink();
 
     void onZoneTap(DeadlineZone zone) {
@@ -1298,11 +1413,15 @@ class _TicketDeadlineOverview extends ConsumerWidget {
       _showTicketsByDeadlineSheet(context, zone, entries);
     }
 
+    final cardWidth = width >= AppBreakpoints.medium
+        ? (width - 48 - 20) / 3 - 10
+        : (width - 48 - 20) / 3;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'SEMÁFORO DE FECHAS',
+          'SEMÁFORO DE FECHAS COMPROMISO - TICKETS',
           style: theme.textTheme.labelLarge?.copyWith(
             letterSpacing: 1,
             color: theme.colorScheme.onSurfaceVariant,
@@ -1312,20 +1431,29 @@ class _TicketDeadlineOverview extends ConsumerWidget {
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: DeadlineZone.values.map((zone) {
-            final count = byDeadline[zone]?.length ?? 0;
-            final cardWidth = width >= AppBreakpoints.medium
-                ? (width - 48 - 20) / 3 - 10
-                : (width - 48 - 20) / 3;
-            return SizedBox(
+          children: [
+            ...DeadlineZone.values.map((zone) {
+              final count = byDeadline[zone]?.length ?? 0;
+              return SizedBox(
+                width: cardWidth,
+                child: _DeadlineZoneCard(
+                  zone: zone,
+                  count: count,
+                  onTap: () => onZoneTap(zone),
+                ),
+              );
+            }),
+            SizedBox(
               width: cardWidth,
-              child: _DeadlineZoneCard(
-                zone: zone,
-                count: count,
-                onTap: () => onZoneTap(zone),
+              child: _NoDeadlineCard(
+                count: withoutDeadline.length,
+                onTap: () {
+                  if (withoutDeadline.isEmpty) return;
+                  _showTicketsWithoutDeadlineSheet(context, withoutDeadline);
+                },
               ),
-            );
-          }).toList(),
+            ),
+          ],
         ),
       ],
     );
@@ -1406,6 +1534,254 @@ class _DeadlineZoneCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _NoDeadlineCard extends StatelessWidget {
+  const _NoDeadlineCard({required this.count, this.onTap});
+
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.onSurfaceVariant;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: count > 0 ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: color.withValues(alpha: 0.25)),
+                ),
+                child: Text(
+                  'SIN FECHA',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.event_busy_outlined, color: color, size: 20),
+                  const Spacer(),
+                  Text(
+                    '$count',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: count > 0
+                          ? color
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom Sheet: tickets sin fecha compromiso ────────────
+
+void _showTicketsWithoutDeadlineSheet(
+  BuildContext context,
+  List<({Proyecto project, Ticket ticket})> entries,
+) {
+  final theme = Theme.of(context);
+  final color = theme.colorScheme.onSurfaceVariant;
+
+  // Agrupar por proyecto
+  final grouped = <String, ({Proyecto project, List<Ticket> items})>{};
+  for (final e in entries) {
+    final key = e.project.id;
+    if (grouped.containsKey(key)) {
+      grouped[key]!.items.add(e.ticket);
+    } else {
+      grouped[key] = (project: e.project, items: [e.ticket]);
+    }
+  }
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scrollController) => Column(
+        children: [
+          // ─ Handle ─
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // ─ Header ─
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.event_busy_outlined, color: color, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Sin fecha compromiso',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${entries.length}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // ─ Lista agrupada ─
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: grouped.length,
+              itemBuilder: (ctx, i) {
+                final entry = grouped.values.elementAt(i);
+                final project = entry.project;
+                final items = entry.items;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        context.push('/projects/${project.id}/tickets');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                project.nombreProyecto,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${items.length}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ...items.map((t) {
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                        ),
+                        leading: Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        title: Text(
+                          t.titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        subtitle: Text(
+                          '${t.folio} · ${t.priority.label} · Sin fecha',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final pid = t.projectId ?? project.id;
+                          context.push('/projects/$pid/tickets/${t.id}');
+                        },
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Bottom Sheet: tickets por deadline zone ───────────────

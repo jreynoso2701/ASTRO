@@ -121,14 +121,21 @@ class _EmpresaListScreenState extends ConsumerState<EmpresaListScreen> {
   }
 
   List<Empresa> _filter(List<Empresa> all) {
-    if (_search.isEmpty) return all;
-    final q = _search.toUpperCase();
-    return all.where((e) {
-      return e.nombreEmpresa.toUpperCase().contains(q) ||
-          (e.rfc?.toUpperCase().contains(q) ?? false) ||
-          (e.contacto?.toUpperCase().contains(q) ?? false) ||
-          (e.email?.toUpperCase().contains(q) ?? false);
-    }).toList();
+    final list = _search.isEmpty
+        ? [...all]
+        : all.where((e) {
+            final q = _search.toUpperCase();
+            return e.nombreEmpresa.toUpperCase().contains(q) ||
+                (e.rfc?.toUpperCase().contains(q) ?? false) ||
+                (e.contacto?.toUpperCase().contains(q) ?? false) ||
+                (e.email?.toUpperCase().contains(q) ?? false);
+          }).toList();
+    list.sort(
+      (a, b) => a.nombreEmpresa.toLowerCase().compareTo(
+        b.nombreEmpresa.toLowerCase(),
+      ),
+    );
+    return list;
   }
 }
 

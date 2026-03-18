@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/models/app_user.dart';
+import 'package:astro/core/models/project_assignment.dart';
 import 'package:astro/core/models/minuta_modalidad.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
@@ -267,10 +269,20 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
                 ),
               ),
 
-              TextButton.icon(
-                onPressed: _addParticipante,
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar participante'),
+              Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _addFromProject(),
+                    icon: const Icon(Icons.group_outlined, size: 18),
+                    label: const Text('Del proyecto'),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: _addExternal,
+                    icon: const Icon(Icons.person_add_outlined, size: 18),
+                    label: const Text('Externo'),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -371,14 +383,55 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
     }
   }
 
-  void _addParticipante() async {
+  void _addFromProject() {
+    final members = ref.read(projectMembersProvider(widget.projectId));
+    final addedUids = _participantes.map((p) => p.uid).toSet();
+
+    // Filtrar miembros ya agregados
+    final available = members.where((m) {
+      final u = m.user;
+      return u != null && !addedUids.contains(u.uid);
+    }).toList();
+
+    if (available.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Todos los miembros del proyecto ya fueron agregados'),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return _ProjectMemberPicker(
+          members: available,
+          onSelected: (user, rolLabel) {
+            setState(() {
+              _participantes.add(
+                ParticipanteCita(
+                  uid: user.uid,
+                  nombre: user.displayName,
+                  rol: rolLabel,
+                ),
+              );
+            });
+          },
+        );
+      },
+    );
+  }
+
+  void _addExternal() async {
     final nombreCtrl = TextEditingController();
     final rolCtrl = TextEditingController();
 
     final result = await showDialog<ParticipanteCita>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nuevo participante'),
+        title: const Text('Participante externo'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -406,7 +459,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
               Navigator.pop(
                 ctx,
                 ParticipanteCita(
-                  uid: '', // Sin UID por ahora
+                  uid: '',
                   nombre: nombreCtrl.text.trim(),
                   rol: rolCtrl.text.trim().isNotEmpty
                       ? rolCtrl.text.trim()
@@ -519,20 +572,156 @@ class _ParticipanteRow extends StatelessWidget {
   final ParticipanteCita participante;
   final VoidCallback onRemove;
 
+  bool get _isSystemUser => participante.uid.isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: const Icon(Icons.person_outline),
+        leading: Icon(
+          _isSystemUser ? Icons.person : Icons.person_outline,
+          color: _isSystemUser
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+        ),
         title: Text(participante.nombre),
-        subtitle: participante.rol != null && participante.rol!.isNotEmpty
-            ? Text(participante.rol!)
-            : null,
+        subtitle: Row(
+          children: [
+            if (participante.rol != null && participante.rol!.isNotEmpty)
+              Flexible(child: Text(participante.rol!)),
+            if (participante.rol != null && participante.rol!.isNotEmpty)
+              const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color:
+                    (_isSystemUser
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant)
+                        .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                _isSystemUser ? 'Sistema' : 'Externo',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: _isSystemUser
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ],
+        ),
         trailing: IconButton(
           icon: const Icon(Icons.close),
           onPressed: onRemove,
         ),
+      ),
+    );
+  }
+}
+
+// ── Project Member Picker ────────────────────────────────
+
+class _ProjectMemberPicker extends StatefulWidget {
+  const _ProjectMemberPicker({required this.members, required this.onSelected});
+
+  final List<({ProjectAssignment assignment, AppUser? user})> members;
+  final void Function(AppUser user, String? rolLabel) onSelected;
+
+  @override
+  State<_ProjectMemberPicker> createState() => _ProjectMemberPickerState();
+}
+
+class _ProjectMemberPickerState extends State<_ProjectMemberPicker> {
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final filtered = _search.isEmpty
+        ? widget.members
+        : widget.members.where((m) {
+            final name = m.user?.displayName.toLowerCase() ?? '';
+            return name.contains(_search.toLowerCase());
+          }).toList();
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+            child: Text(
+              'Miembros del proyecto',
+              style: theme.textTheme.titleMedium,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar...',
+                prefixIcon: Icon(Icons.search, size: 20),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _search = v),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+            ),
+            child: filtered.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Sin resultados',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final m = filtered[i];
+                      final user = m.user!;
+                      final rolLabel = m.assignment.role.label;
+                      return ListTile(
+                        leading: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          child: Text(
+                            user.displayName.isNotEmpty
+                                ? user.displayName[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        title: Text(user.displayName),
+                        subtitle: Text(rolLabel),
+                        onTap: () {
+                          Navigator.pop(context);
+                          widget.onSelected(user, rolLabel);
+                        },
+                      );
+                    },
+                  ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
