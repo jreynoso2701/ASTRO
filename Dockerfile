@@ -8,7 +8,7 @@ COPY astro_app/ .
 
 # Obtener dependencias y compilar web
 RUN flutter pub get
-RUN flutter build web --release --base-href "/"
+RUN flutter build web --release --base-href "/" --pwa-strategy none
 
 # ── Etapa 2: Servir con Nginx ──
 FROM nginx:alpine
