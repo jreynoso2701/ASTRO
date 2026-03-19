@@ -40,6 +40,22 @@ class TicketRepository {
         });
   }
 
+  /// Stream de **todos** los tickets de un proyecto (activos + archivados +
+  /// desactivados). Usado para estadísticas.
+  Stream<List<Ticket>> watchAllByProject(String projectName) {
+    return _ref.where('fkxProyecto', isEqualTo: projectName).snapshots().map((
+      snap,
+    ) {
+      final tickets = snap.docs.map(Ticket.fromFirestore).toList();
+      tickets.sort(
+        (a, b) => (b.updatedAt ?? DateTime(2000)).compareTo(
+          a.updatedAt ?? DateTime(2000),
+        ),
+      );
+      return tickets;
+    });
+  }
+
   /// Stream de un ticket individual.
   Stream<Ticket?> watchTicket(String ticketId) {
     return _ref.doc(ticketId).snapshots().map((doc) {

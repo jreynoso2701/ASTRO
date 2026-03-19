@@ -324,3 +324,15 @@ final canArchiveTareaProvider = Provider.family<bool, String>((ref, projectId) {
         a.projectId == projectId && a.isActive && a.role == UserRole.supervisor,
   );
 });
+
+/// True si el usuario puede ver tareas de otros (Root, Supervisor o Soporte en algún proyecto).
+final canSeeOthersTasksProvider = Provider<bool>((ref) {
+  final isRoot = ref.watch(isCurrentUserRootProvider);
+  if (isRoot) return true;
+
+  final uid = ref.watch(authStateProvider).value?.uid;
+  if (uid == null) return false;
+
+  final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
+  return assignments.any((a) => a.isActive && a.role != UserRole.usuario);
+});

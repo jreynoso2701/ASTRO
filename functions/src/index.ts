@@ -106,6 +106,32 @@ async function getFcmTokens(userId: string): Promise<string[]> {
 }
 
 /**
+ * Parsea un valor de Firestore (Timestamp, ISO string, "año/mes/día") a Date.
+ * Retorna null si no se puede parsear.
+ */
+function parseDate(raw: unknown): Date | null {
+  if (!raw) return null;
+  if (typeof (raw as {toDate?: () => Date}).toDate === "function") {
+    return (raw as {toDate: () => Date}).toDate();
+  }
+  if (typeof raw === "string" && raw.length > 0) {
+    // ISO directo
+    const iso = new Date(raw);
+    if (!isNaN(iso.getTime()) && raw.includes("-")) return iso;
+    // Formato "año/mes/día" o "año/mes/día hora:min"
+    const dateTimeParts = raw.split(" ");
+    const parts = dateTimeParts[0].split("/");
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d)) return new Date(y, m - 1, d);
+    }
+  }
+  return null;
+}
+
+/**
  * Determina los destinatarios de una notificación de tickets.
  *
  * @param projectId - ID del proyecto.
@@ -194,7 +220,7 @@ async function sendNotifications(
     titulo: string;
     cuerpo: string;
     tipo: string;
-    refType: "ticket" | "requerimiento" | "cita" | "minuta" | "tarea";
+    refType: "ticket" | "requerimiento" | "cita" | "minuta" | "tarea" | "proyecto" | "user";
     refId: string;
     projectId: string;
     projectName: string;
@@ -760,6 +786,67 @@ export const onCitaUpdated = onDocumentUpdated(
   }
 );
 
+// ── Trigger: MÓDULOS — Progreso actualizado ──────────────
+
+/**
+ * Cuando se actualiza un módulo y su porcentaje de progreso cambia,
+ * notifica a los usuarios Root del proyecto.
+ */
+export const onModuloUpdated = onDocumentUpdated(
+  "Modulos/{moduloId}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    // Solo disparar si cambió porcentCompletaModulo
+    const oldPercent = (before.porcentCompletaModulo as number) ?? 0;
+    const newPercent = (after.porcentCompletaModulo as number) ?? 0;
+    if (oldPercent === newPercent) return;
+
+    const projectId = after.projectId as string | undefined;
+    const projectName = (after.fkProyecto as string) ?? "";
+    const moduleName = (after.nombreModulo as string) ?? "Módulo";
+    const updatedBy = after.updatedBy as string | undefined;
+
+    if (!projectId) return;
+
+    // Buscar el nombre de quien actualizó
+    let updatedByName = "Alguien";
+    if (updatedBy) {
+      const userDoc = await db.collection("users").doc(updatedBy).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data()!;
+        updatedByName = (userData.displayName as string) ??
+          (userData.nombre as string) ?? "Alguien";
+      }
+    }
+
+    // Obtener los Root y Soporte del proyecto
+    const assignments = await getProjectAssignments(projectId);
+    const recipientUids: string[] = [];
+    for (const a of assignments) {
+      if ((a.role === "Root" || a.role === "Soporte") && a.userId !== updatedBy) {
+        recipientUids.push(a.userId);
+      }
+    }
+
+    if (recipientUids.length === 0) return;
+
+    const roundedPercent = Math.round(newPercent);
+
+    await sendNotifications(recipientUids, {
+      titulo: `📊 ${moduleName} — ${roundedPercent}%`,
+      cuerpo: `${updatedByName} actualizó el progreso del módulo "${moduleName}" a ${roundedPercent}% en ${projectName}.`,
+      tipo: "modulo_progreso_actualizado",
+      refType: "proyecto",
+      refId: projectId,
+      projectId,
+      projectName,
+    });
+  }
+);
+
 // ── Scheduled: RECORDATORIO DE CITAS ─────────────────────
 
 /**
@@ -781,13 +868,12 @@ export const checkCitaReminders = onSchedule(
     const now = Date.now();
     const windowMs = 7.5 * 60 * 1000; // 7.5 minutos en ms
 
-    // Consultar citas programadas activas en los próximos 24h + 1h (para recordatorios largos).
-    const maxAhead = new Date(now + 25 * 60 * 60 * 1000); // 25h adelante
+    // Consultar citas programadas activas (sin filtro de fecha para cubrir
+    // tanto el campo "fecha" como "fechaHora" de citas legadas).
     const snap = await db
       .collection("Citas")
       .where("status", "==", "programada")
       .where("isActive", "==", true)
-      .where("fecha", "<=", maxAhead)
       .get();
 
     if (snap.empty) return;
@@ -799,15 +885,11 @@ export const checkCitaReminders = onSchedule(
       const citaId = doc.id;
 
       // Parsear fecha + horaInicio → timestamp exacto
-      const fechaRaw = data.fecha;
+      const fechaRaw = data.fecha ?? data.fechaHora;
       if (!fechaRaw) continue;
 
-      let citaDate: Date;
-      if (fechaRaw.toDate) {
-        citaDate = fechaRaw.toDate();
-      } else {
-        citaDate = new Date(fechaRaw);
-      }
+      const citaDate = parseDate(fechaRaw);
+      if (!citaDate) continue;
 
       const horaInicio = data.horaInicio as string | undefined;
       if (horaInicio) {
@@ -1041,74 +1123,22 @@ export const onNewUserCreated = auth.user().onCreate(
 
     const displayName =
       userRecord.displayName || userRecord.email || "Nuevo usuario";
-    const cuerpo = `${displayName} se ha registrado en ASTRO.`;
 
-    const notifPromises: Promise<void>[] = [];
+    const recipientUids = rootSnap.docs
+      .map((doc) => doc.id)
+      .filter((id) => id !== uid);
 
-    for (const rootDoc of rootSnap.docs) {
-      // No notificar al propio usuario si es Root (caso teórico).
-      if (rootDoc.id === uid) continue;
+    if (recipientUids.length === 0) return;
 
-      notifPromises.push(
-        (async () => {
-          // Notificación in-app
-          await db.collection("Notificaciones").add({
-            userId: rootDoc.id,
-            titulo: "Nuevo usuario registrado",
-            cuerpo,
-            tipo: "nuevo_usuario",
-            refType: "user",
-            refId: uid,
-            projectId: "",
-            projectName: "",
-            leida: false,
-            createdAt: FieldValue.serverTimestamp(),
-          });
-
-          // Push notification
-          const tokens = await getFcmTokens(rootDoc.id);
-          if (tokens.length === 0) return;
-
-          const response = await messaging.sendEachForMulticast({
-            tokens,
-            notification: {
-              title: "Nuevo usuario registrado",
-              body: cuerpo,
-            },
-            data: {
-              tipo: "nuevo_usuario",
-              refType: "user",
-              refId: uid,
-            },
-            android: {
-              priority: "high",
-              notification: {channelId: "astro_default"},
-            },
-          });
-
-          // Limpiar tokens inválidos
-          const tokensToRemove: string[] = [];
-          response.responses.forEach((resp, i) => {
-            if (!resp.success) {
-              const code = resp.error?.code;
-              if (
-                code === "messaging/invalid-registration-token" ||
-                code === "messaging/registration-token-not-registered"
-              ) {
-                tokensToRemove.push(tokens[i]);
-              }
-            }
-          });
-          if (tokensToRemove.length > 0) {
-            await db.collection("users").doc(rootDoc.id).update({
-              fcmTokens: FieldValue.arrayRemove(tokensToRemove),
-            });
-          }
-        })()
-      );
-    }
-
-    await Promise.all(notifPromises);
+    await sendNotifications(recipientUids, {
+      titulo: "Nuevo usuario registrado",
+      cuerpo: `${displayName} se ha registrado en ASTRO.`,
+      tipo: "nuevo_usuario",
+      refType: "user",
+      refId: uid,
+      projectId: "",
+      projectName: "",
+    });
   }
 );
 
@@ -1491,6 +1521,241 @@ export const checkTareaDeadlines = onSchedule(
           tipo: `tarea_deadline_${zone}`,
           refType: "tarea",
           refId: tareaId,
+          projectId,
+          projectName,
+        })
+      );
+    }
+
+    await Promise.all(promises);
+  }
+);
+
+// ── Scheduled: RESUMEN DIARIO ────────────────────────────
+
+/**
+ * Lunes a Sábado a las 09:00 (CDMX).
+ * Envía un resumen diario por proyecto a cada miembro con push habilitado.
+ *
+ * Incluye por proyecto:
+ *  - Tickets pendientes (con conteo de vencidos).
+ *  - Tareas pendientes / en progreso.
+ *  - Citas programadas para hoy.
+ */
+export const dailyMorningSummary = onSchedule(
+  {
+    schedule: "0 9 * * 1-6",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    // 1. Obtener todos los projectAssignments activos → agrupar por proyecto.
+    const assignSnap = await db
+      .collection("projectAssignments")
+      .where("isActive", "==", true)
+      .get();
+
+    if (assignSnap.empty) return;
+
+    const projectMap = new Map<string, Array<{userId: string; role: UserRole}>>();
+    for (const doc of assignSnap.docs) {
+      const d = doc.data();
+      const pid = d.projectId as string;
+      const uid = d.userId as string;
+      const role = d.role as UserRole;
+      if (!pid || !uid) continue;
+      if (!projectMap.has(pid)) projectMap.set(pid, []);
+      projectMap.get(pid)!.push({userId: uid, role});
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const closedStatuses = ["RESUELTO", "CERRADO", "ARCHIVADO"];
+    const promises: Promise<void>[] = [];
+
+    for (const [projectId, members] of projectMap) {
+      // --- Tickets pendientes ---
+      const ticketsSnap = await db
+        .collection("Incidentes")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .get();
+
+      let ticketsPendientes = 0;
+      let ticketsVencidos = 0;
+
+      for (const t of ticketsSnap.docs) {
+        const d = t.data();
+        const status = (
+          (d.status as string) ?? (d.estatusIncidente as string) ?? ""
+        ).toUpperCase().trim();
+        if (closedStatuses.includes(status)) continue;
+        ticketsPendientes++;
+
+        // ¿Vencido?
+        const target = parseDate(d.fhCompromisoSol);
+        if (target && target < today) ticketsVencidos++;
+      }
+
+      // --- Tareas pendientes ---
+      const tareasSnap = await db
+        .collection("Tareas")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .get();
+
+      let tareasPendientes = 0;
+      for (const t of tareasSnap.docs) {
+        const st = (t.data().status as string ?? "").toLowerCase();
+        if (st !== "completada" && st !== "cancelada") tareasPendientes++;
+      }
+
+      // --- Citas hoy ---
+      const citasSnap = await db
+        .collection("Citas")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .where("status", "==", "programada")
+        .get();
+
+      let citasHoy = 0;
+      for (const c of citasSnap.docs) {
+        const d = c.data();
+        const citaDate = parseDate(d.fecha ?? d.fechaHora);
+        if (!citaDate) continue;
+        const citaDay = new Date(
+          citaDate.getFullYear(), citaDate.getMonth(), citaDate.getDate()
+        );
+        if (citaDay.getTime() === today.getTime()) citasHoy++;
+      }
+
+      // ¿Nada que reportar?
+      if (ticketsPendientes === 0 && tareasPendientes === 0 && citasHoy === 0) {
+        continue;
+      }
+
+      // Obtener nombre del proyecto
+      const projDoc = await db.collection("Proyectos").doc(projectId).get();
+      const projectName = projDoc.exists
+        ? ((projDoc.data()!.nombreProyecto as string) ?? projectId)
+        : projectId;
+
+      // Construir mensaje
+      const lines: string[] = [];
+      if (ticketsPendientes > 0) {
+        let line = `\u{2022} ${ticketsPendientes} ticket(s) pendiente(s)`;
+        if (ticketsVencidos > 0) {
+          line += ` (${ticketsVencidos} vencido(s) \u{1F534})`;
+        }
+        lines.push(line);
+      }
+      if (tareasPendientes > 0) {
+        lines.push(`\u{2022} ${tareasPendientes} tarea(s) pendiente(s)`);
+      }
+      if (citasHoy > 0) {
+        lines.push(`\u{2022} ${citasHoy} cita(s) programada(s) hoy`);
+      }
+      const cuerpo = lines.join("\n");
+
+      // Enviar a cada miembro del proyecto con push habilitado
+      for (const m of members) {
+        const config = await getNotifConfig(projectId, m.userId, m.role);
+        if (!config.pushEnabled) continue;
+
+        promises.push(
+          sendNotifications([m.userId], {
+            titulo: `\u{1F4CA} Resumen del d\u{00ED}a \u{2014} ${projectName}`,
+            cuerpo,
+            tipo: "resumen_diario",
+            refType: "proyecto",
+            refId: projectId,
+            projectId,
+            projectName,
+          })
+        );
+      }
+    }
+
+    await Promise.all(promises);
+  }
+);
+
+// ── Scheduled: TICKETS SIN FECHA COMPROMISO ──────────────
+
+/**
+ * Lunes, Miércoles y Viernes a las 10:00 (CDMX).
+ * Notifica a Root y Soporte de cada proyecto sobre tickets activos
+ * que no tienen fecha de solución programada (fhCompromisoSol).
+ */
+export const ticketsWithoutDeadlineReminder = onSchedule(
+  {
+    schedule: "0 10 * * 1,3,5",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const assignSnap = await db
+      .collection("projectAssignments")
+      .where("isActive", "==", true)
+      .get();
+
+    if (assignSnap.empty) return;
+
+    const projectMap = new Map<string, Array<{userId: string; role: UserRole}>>();
+    for (const doc of assignSnap.docs) {
+      const d = doc.data();
+      const pid = d.projectId as string;
+      const uid = d.userId as string;
+      const role = d.role as UserRole;
+      if (!pid || !uid) continue;
+      if (!projectMap.has(pid)) projectMap.set(pid, []);
+      projectMap.get(pid)!.push({userId: uid, role});
+    }
+
+    const closedStatuses = ["RESUELTO", "CERRADO", "ARCHIVADO"];
+    const promises: Promise<void>[] = [];
+
+    for (const [projectId, members] of projectMap) {
+      const ticketsSnap = await db
+        .collection("Incidentes")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .get();
+
+      let sinFecha = 0;
+      for (const t of ticketsSnap.docs) {
+        const d = t.data();
+        const status = (
+          (d.status as string) ?? (d.estatusIncidente as string) ?? ""
+        ).toUpperCase().trim();
+        if (closedStatuses.includes(status)) continue;
+        if (!d.fhCompromisoSol) sinFecha++;
+      }
+
+      if (sinFecha === 0) continue;
+
+      // Obtener nombre del proyecto
+      const projDoc = await db.collection("Proyectos").doc(projectId).get();
+      const projectName = projDoc.exists
+        ? ((projDoc.data()!.nombreProyecto as string) ?? projectId)
+        : projectId;
+
+      // Solo notificar a Root y Soporte con push habilitado
+      const enabledRecipients: string[] = [];
+      for (const m of members) {
+        if (m.role !== "Root" && m.role !== "Soporte") continue;
+        const config = await getNotifConfig(projectId, m.userId, m.role);
+        if (config.pushEnabled) enabledRecipients.push(m.userId);
+      }
+
+      if (enabledRecipients.length === 0) continue;
+
+      promises.push(
+        sendNotifications(enabledRecipients, {
+          titulo: `\u{26A0}\u{FE0F} ${sinFecha} ticket(s) sin fecha compromiso`,
+          cuerpo: `Proyecto: ${projectName}`,
+          tipo: "tickets_sin_fecha",
+          refType: "proyecto",
+          refId: projectId,
           projectId,
           projectName,
         })

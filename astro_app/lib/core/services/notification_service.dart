@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:astro/core/constants/fcm_config.dart';
 
@@ -28,6 +30,11 @@ class NotificationService {
   ///
   /// Llama a este método después de que el usuario se autentique.
   Future<void> initialize(String uid) async {
+    // 0. Crear canal de notificación en Android (requerido API 26+)
+    if (!kIsWeb && Platform.isAndroid) {
+      await _createAndroidChannel();
+    }
+
     // 1. Solicitar permiso (Android 13+ y web lo requieren)
     final settings = await _messaging.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
@@ -87,9 +94,27 @@ class NotificationService {
   /// Los push ya aparecen como notificación del SO en background/terminated.
   void _handleForegroundMessage(RemoteMessage message) {
     // En foreground, Firebase no muestra la notificación automáticamente.
-    // Se puede usar un paquete como flutter_local_notifications para mostrarla,
+    // Se puede usar flutter_local_notifications para mostrarla,
     // pero por ahora el inbox in-app captura todo vía Firestore.
     // Si en el futuro se quiere un banner overlay, se integra aquí.
+  }
+
+  /// Crea el canal de notificaciones en Android (API 26+).
+  /// Debe coincidir con el `default_notification_channel_id` del AndroidManifest
+  /// y el `channelId` enviado desde Cloud Functions.
+  Future<void> _createAndroidChannel() async {
+    const channel = AndroidNotificationChannel(
+      'astro_default',
+      'Notificaciones ASTRO',
+      description: 'Canal principal de notificaciones de ASTRO.',
+      importance: Importance.high,
+    );
+    final flnPlugin = FlutterLocalNotificationsPlugin();
+    await flnPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(channel);
   }
 
   /// Libera recursos.

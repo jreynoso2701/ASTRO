@@ -98,7 +98,9 @@
 - [x] Navegación: `/projects/:id/tickets`, `tickets/new`, `tickets/:ticketId`, `tickets/:ticketId/edit`.
 - [x] Visibilidad por rol: Usuario solo ve sus propios tickets; Root/Supervisor/Soporte ven todos.
 - [x] **Kanban enriquecido**: tarjetas con folio, badge de prioridad, título, módulo, reportó, soporte, fecha, barra de progreso con porcentaje.
+- [x] **Archivado masivo desde Kanban** — botón "Archivar todos" en la columna Resuelto del tablero Kanban. Solo Root/Soporte. Diálogo de confirmación con conteo. Archiva todos los tickets resueltos en lote.
 - [x] **Ordenamiento Kanban**: barra global de FilterChips con 7 criterios (reciente, antiguo, prioridad ↑↓, reportó, soporte, % avance) aplicados a todas las columnas.
+- [x] **Bugfix — Kanban drag & drop desde Bugs**: el filtro de estado persistía al cambiar de vista lista → kanban, causando que tickets desaparecieran al ser movidos. Fix: `filteredTicketsProvider` ahora acepta `skipStatusFilter` (true en kanban). UX: menú contextual de cambio de estado (clic derecho web, botón "Mover a…" en tarjeta).
 - [x] **Gestión de archivados (Root + Soporte)**: botón en AppBar → bottom sheet con búsqueda por folio/título/descripción/nombre, filtros de prioridad, listado de tickets archivados con detalle y acción rápida de desarchivar.
 - [x] **Archivado con justificación**: Root y Soporte pueden archivar desde el detalle del ticket con justificación obligatoria (mín. 10 chars). Campos `archiveReason` y `archivedByName` en modelo. Razón visible en detalle y en bottom sheet de archivados.
 - [x] **Indicadores en tarjetas**: ícono de adjuntos (clip + cantidad) cuando el ticket tiene evidencias, ícono de comentarios (burbuja + cantidad) con contador desnormalizado `commentCount`. Visible en vista lista (móvil) y Kanban (tablet/web/fold).
@@ -127,6 +129,7 @@
   - [x] Dashboard: `_ProjectCard` con indicador naranja de penalización por tickets.
   - [x] Migración Cloud Function: 78 tickets Resuelto actualizados de 0% a 100%.
   - [x] Auto-progreso: Resuelto → 100%, Pendiente → 0% (aplica en cambio de status y drag & drop Kanban).
+- [x] **Estadísticas de tickets** — botón en AppBar (solo Root/Soporte) que abre bottom sheet con rankings: módulos con más incidentes y usuarios que más reportan. Incluye **todos** los tickets (activos + archivados + desactivados). Barras visuales proporcionales con conteo. Provider `allTicketsByProjectProvider` sin filtro `isActive`.
 - [x] Notificaciones push al asignar/cambiar estado (implementado en Fase 1.8).
 
 ### 1.7 Levantamiento de Requerimientos
@@ -211,6 +214,15 @@
 - [x] Deploy de Cloud Functions a Firebase (`firebase deploy --only functions`) — 15 triggers v2 en us-central1.
 - [x] Configurar VAPID key para notificaciones push web — service worker `firebase-messaging-sw.js`, constante `fcmVapidKey` en `fcm_config.dart` (pendiente: pegar key real de Firebase Console).
 - [x] Notificaciones push al asignar/cambiar estado en tickets, requerimientos, tareas y citas (completo).
+- [x] **Notificaciones programadas (scheduled):**
+  - [x] `checkCitaReminders` — cada 15 min, recordatorios de citas según campo `recordatorios[]` (±7.5 min window). Fix: soporte de `fecha` y `fechaHora` (compat FlutterFlow).
+  - [x] `checkTicketDeadlines` — diario 08:00 CDMX, semáforo (🟡 2-5d / 🟠 hoy-mañana / 🔴 vencido) con anti-spam (`_lastDeadlineAlert`).
+  - [x] `checkTareaDeadlines` — diario 08:00 CDMX, semáforo de tareas con anti-spam.
+  - [x] `checkCompromisoDeadlines` — diario 08:00 CDMX, compromisos de minutas pendientes.
+  - [x] `dailyMorningSummary` — L-S 09:00 CDMX, resumen diario por proyecto: tickets pendientes (con vencidos), tareas pendientes, citas hoy. Se envía a todos los miembros con push habilitado.
+  - [x] `ticketsWithoutDeadlineReminder` — L/Mi/V 10:00 CDMX, alerta de tickets activos sin fecha compromiso. Se envía solo a Root y Soporte.
+- [x] **Notificación push al modificar progreso de módulo** — Cloud Function `onModuloUpdated` (trigger `onDocumentUpdated("Modulos/{moduloId}")`). Detecta cambio en `porcentCompletaModulo`, consulta `updatedBy` para nombre del usuario que modificó, envía push + notificación in-app a todos los Root del proyecto (excluyendo al autor). Título: `📊 {módulo} — {percent}%`. Campo `updatedBy` añadido a `ModuloRepository.updateProgress`. `module_detail_screen.dart` pasa UID del usuario autenticado.
+- [x] Deploy Cloud Functions — **18 funciones** (12 triggers + 6 schedulers) en us-central1.
 
 ### 1.9 Documentación del Proyecto
 
@@ -335,6 +347,12 @@
 
 ---
 
+### 1.12 Tareas Post-Release — CRÍTICAS
+
+- [ ] **🔴 CRÍTICO — Endurecimiento de Firestore Security Rules** — Las reglas actuales otorgan acceso amplio a usuarios autenticados. Se deben restringir por rol y pertenencia a proyecto siguiendo el principio de mínimo privilegio. Incluye: validar que el usuario pertenezca al proyecto antes de leer/escribir, restringir escritura de campos sensibles (isRoot, roles) a Root, limitar operaciones de borrado lógico/físico por rol, y agregar validación de esquema en reglas de escritura. Impacto: seguridad de datos de todos los proyectos y usuarios.
+
+---
+
 ## Fase 2 — Funcionalidades Avanzadas
 
 **Estado:** � En progreso
@@ -453,6 +471,23 @@
 - [x] **Flag visual de tarea archivada en minuta** — si la tarea vinculada a un compromiso está archivada, el compromiso se muestra con estilo atenuado, icono de archivado, texto tachado y badge "Archivada". El toggle queda deshabilitado.
 - [x] **Diálogo de archivado consciente de minuta** — al archivar una tarea vinculada a minuta, el diálogo advierte que el compromiso en la minuta se mostrará como archivado. No bloquea el archivado.
 
+### 2.4.2 UX Mejorada — Pantalla Global de Tareas
+
+- [x] **Agrupación por tiempo** — las tareas se agrupan automáticamente en secciones: Vencidas, Hoy, Mañana, Esta semana, Próximamente, Sin fecha. Cada sección con icono, color y contador.
+- [x] **Identificación visual de proyecto** — cada tarea muestra un dot de color determinista según `projectId` (paleta de 10 colores). El nombre del proyecto se resalta con el color correspondiente.
+- [x] **Indicador de urgencia de deadline** — las tareas vencidas, con vencimiento hoy o mañana muestran etiqueta de urgencia con color (rojo/naranja/amarillo) en lugar de la fecha cruda.
+- [x] **Archivado masivo de completadas y canceladas** — botones "Archivar N completadas" y "Archivar N canceladas" visibles en sus respectivas secciones cuando hay tareas con status Completada o Cancelada (solo Root/Supervisor). Diálogo de confirmación. Archiva todas en lote.
+- [x] Helpers reutilizables: `_TimeGroup` enum, `_GroupedTareaList`, `_SectionHeader`, `_BulkArchiveButton`, `_projectColor`, `_deadlineLabel`.
+
+### 2.4.3 Pestañas "Mis tareas" / "Compañeros" + Agrupación por Proyecto
+
+- [x] **Pestañas condicionales** — TabBar con "Mis tareas" y "Compañeros" visible solo para roles Root, Supervisor y Soporte (`canSeeOthersTasksProvider`). Usuarios con rol Usuario solo ven la vista de sus tareas sin tabs.
+- [x] **Separación de tareas** — "Mis tareas" muestra solo tareas donde `assignedToUid == uid`. "Compañeros" muestra tareas asignadas a otros usuarios.
+- [x] **Agrupación por proyecto** — dentro de cada pestaña, las tareas se agrupan primero por proyecto (header con dot de color + nombre + conteo) y dentro de cada proyecto por sub-grupos temporales (Vencidas, Hoy, Mañana, Esta semana, Próximamente, Sin fecha, Completadas, Canceladas).
+- [x] **Widgets nuevos** — `_ProjectGroupedTareaList` (lista con agrupación proyecto → tiempo), `_ProjectSectionHeader` (header de proyecto con color determinista).
+- [x] **Archivado masivo preservado** — botones de archivar completadas/canceladas dentro de cada sub-grupo temporal, por proyecto.
+- [x] Filtros de búsqueda, status y prioridad compartidos entre ambas pestañas.
+
 ### 2.5 Auto-generación de PDF de Minuta como Documento Formal
 
 - [x] Categoría `minuta` añadida a `DocumentoCategoria` enum.
@@ -501,4 +536,4 @@
 
 ---
 
-*Última actualización: Compatibilidad web del Visor de Archivos — PDF viewer con fallback a navegador nativo en web, descarga vía nueva pestaña en web, sin cambios en móvil. Eliminados items de Google Calendar/videoconferencia del roadmap. Versión 2.1.2+11.*
+*Última actualización: Notificación push al modificar progreso de módulo (Cloud Function `onModuloUpdated`). Pestañas "Mis tareas" / "Compañeros" con agrupación por proyecto. Estadísticas de tickets. Versión 2.1.2+11.*

@@ -5,6 +5,7 @@ import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/auth/providers/auth_providers.dart';
 
 /// Pantalla de detalle de un módulo.
 class ModuleDetailScreen extends ConsumerWidget {
@@ -297,9 +298,10 @@ class _ProgressSectionState extends ConsumerState<_ProgressSection> {
 
   Future<void> _save() async {
     final rounded = _value.roundToDouble();
+    final uid = ref.read(authStateProvider).value?.uid;
     await ref
         .read(moduloRepositoryProvider)
-        .updateProgress(widget.moduleId, rounded);
+        .updateProgress(widget.moduleId, rounded, updatedBy: uid);
     if (mounted) {
       setState(() => _editing = false);
       ScaffoldMessenger.of(context).showSnackBar(

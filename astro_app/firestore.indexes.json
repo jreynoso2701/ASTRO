@@ -574,6 +574,32 @@
         { "fieldPath": "participantUids", "arrayConfig": "CONTAINS" },
         { "fieldPath": "isActive", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "Tareas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedToUid", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Tareas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refMinutaId", "order": "ASCENDING" },
+        { "fieldPath": "refCompromisoNumero", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Minutas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectName", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "participantUids", "arrayConfig": "CONTAINS" }
+      ]
     }
   ],
   "fieldOverrides": []

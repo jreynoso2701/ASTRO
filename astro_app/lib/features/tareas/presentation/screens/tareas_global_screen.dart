@@ -18,20 +18,27 @@ class TareasGlobalScreen extends ConsumerStatefulWidget {
   ConsumerState<TareasGlobalScreen> createState() => _TareasGlobalScreenState();
 }
 
-class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen> {
+class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
+    with SingleTickerProviderStateMixin {
   String _search = '';
   TareaStatus? _statusFilter;
   TareaPrioridad? _prioridadFilter;
+  late final TabController _tabController;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final allTareas = ref.watch(myAllTareasProvider);
-    final projects = ref.watch(myProjectsProvider);
-    final canArchive = ref.watch(canArchiveAnyProvider);
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
-    // Filtrar localmente
-    final filtered = allTareas.where((item) {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<TareaConProyecto> _applyFilters(List<TareaConProyecto> items) {
+    return items.where((item) {
       final t = item.tarea;
       if (_statusFilter != null && t.status != _statusFilter) return false;
       if (_prioridadFilter != null && t.prioridad != _prioridadFilter) {
@@ -48,6 +55,26 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen> {
       }
       return true;
     }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final uid = ref.watch(authStateProvider).value?.uid;
+    final allTareas = ref.watch(myAllTareasProvider);
+    final projects = ref.watch(myProjectsProvider);
+    final canArchive = ref.watch(canArchiveAnyProvider);
+    final canSeeOthers = ref.watch(canSeeOthersTasksProvider);
+
+    // Separar: mis tareas vs tareas de compañeros
+    final myTareas = _applyFilters(
+      allTareas.where((t) => t.tarea.assignedToUid == uid).toList(),
+    );
+    final othersTareas = canSeeOthers
+        ? _applyFilters(
+            allTareas.where((t) => t.tarea.assignedToUid != uid).toList(),
+          )
+        : <TareaConProyecto>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -60,6 +87,15 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen> {
               onPressed: () => _showArchivedSheet(context),
             ),
         ],
+        bottom: canSeeOthers
+            ? TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'Mis tareas'),
+                  Tab(text: 'Compañeros'),
+                ],
+              )
+            : null,
       ),
       floatingActionButton: projects.isNotEmpty
           ? FloatingActionButton(
@@ -112,7 +148,7 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen> {
                         label: s.label,
                         selected: _statusFilter == s,
                         onSelected: (_) => setState(() => _statusFilter = s),
-                        color: _statusColor(s),
+                        color: statusColor(s),
                       ),
                     ),
                 ],
@@ -138,62 +174,43 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen> {
                         label: p.label,
                         selected: _prioridadFilter == p,
                         onSelected: (_) => setState(() => _prioridadFilter = p),
-                        color: _prioridadColor(p),
+                        color: prioridadColor(p),
                       ),
                     ),
                 ],
               ),
             ),
 
-            // Contador
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(
-                children: [
-                  Text(
-                    '${filtered.length} tarea${filtered.length == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-
-            // Lista
-            Expanded(
-              child: filtered.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.task_alt,
-                            size: 48,
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No hay tareas',
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final item = filtered[index];
-                        return _GlobalTareaTile(
-                          tarea: item.tarea,
-                          projectId: item.projectId,
-                          projectName: item.projectName,
-                        );
-                      },
+            // Contenido con tabs
+            if (canSeeOthers)
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _ProjectGroupedTareaList(
+                      items: myTareas,
+                      canArchive: canArchive,
+                      onBulkArchive: _bulkArchiveTareas,
+                      emptyMessage: 'No tienes tareas asignadas',
                     ),
-            ),
+                    _ProjectGroupedTareaList(
+                      items: othersTareas,
+                      canArchive: canArchive,
+                      onBulkArchive: _bulkArchiveTareas,
+                      emptyMessage: 'No hay tareas de compañeros',
+                    ),
+                  ],
+                ),
+              )
+            else
+              Expanded(
+                child: _ProjectGroupedTareaList(
+                  items: myTareas,
+                  canArchive: canArchive,
+                  onBulkArchive: _bulkArchiveTareas,
+                  emptyMessage: 'No hay tareas',
+                ),
+              ),
           ],
         ),
       ),
@@ -269,14 +286,56 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen> {
     );
   }
 
-  static Color _statusColor(TareaStatus s) => switch (s) {
+  Future<void> _bulkArchiveTareas(
+    List<TareaConProyecto> tareas,
+    String statusLabel,
+  ) async {
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.archive_rounded, size: 36),
+        title: Text('Archivar tareas $statusLabel'),
+        content: Text(
+          '¿Archivar las ${tareas.length} tarea(s) $statusLabel?\n\n'
+          'Podrás restaurarlas desde la sección de archivadas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.archive_rounded, size: 18),
+            label: Text('Archivar ${tareas.length}'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final repo = ref.read(tareaRepositoryProvider);
+    for (final item in tareas) {
+      await repo.archive(item.tarea.id);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${tareas.length} tarea(s) archivada(s)')),
+      );
+    }
+  }
+
+  static Color statusColor(TareaStatus s) => switch (s) {
     TareaStatus.pendiente => const Color(0xFFFFC107),
     TareaStatus.enProgreso => const Color(0xFF42A5F5),
     TareaStatus.completada => const Color(0xFF4CAF50),
     TareaStatus.cancelada => const Color(0xFF9E9E9E),
   };
 
-  static Color _prioridadColor(TareaPrioridad p) => switch (p) {
+  static Color prioridadColor(TareaPrioridad p) => switch (p) {
     TareaPrioridad.baja => const Color(0xFF4CAF50),
     TareaPrioridad.media => const Color(0xFFFFC107),
     TareaPrioridad.alta => const Color(0xFFFF9800),
@@ -328,14 +387,18 @@ class _GlobalTareaTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = _TareasGlobalScreenState._statusColor(tarea.status);
-    final prioridadColor = _TareasGlobalScreenState._prioridadColor(
+    final statusColor = _TareasGlobalScreenState.statusColor(tarea.status);
+    final prioridadColor = _TareasGlobalScreenState.prioridadColor(
       tarea.prioridad,
     );
+    final projColor = _projectColor(projectId);
 
     final fechaStr = tarea.fechaEntrega != null
         ? DateFormat('dd/MM/yyyy').format(tarea.fechaEntrega!)
         : null;
+
+    // Deadline urgency
+    final deadlineInfo = _deadlineLabel(tarea.fechaEntrega, tarea.status);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -350,7 +413,7 @@ class _GlobalTareaTile extends StatelessWidget {
                 // Status bar
                 Container(
                   width: 4,
-                  height: 50,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: statusColor,
                     borderRadius: BorderRadius.circular(2),
@@ -361,6 +424,7 @@ class _GlobalTareaTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Título
                       Text(
                         tarea.titulo,
                         style: theme.textTheme.bodyMedium?.copyWith(
@@ -369,12 +433,31 @@ class _GlobalTareaTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$projectName • ${tarea.folio}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                      const SizedBox(height: 3),
+                      // Proyecto (con color) + folio
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: projColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              '$projectName • ${tarea.folio}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: projColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -403,13 +486,20 @@ class _GlobalTareaTile extends StatelessWidget {
                             Icon(
                               Icons.calendar_today_outlined,
                               size: 14,
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color:
+                                  deadlineInfo?.color ??
+                                  theme.colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              fechaStr,
+                              deadlineInfo?.label ?? fechaStr,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color:
+                                    deadlineInfo?.color ??
+                                    theme.colorScheme.onSurfaceVariant,
+                                fontWeight: deadlineInfo != null
+                                    ? FontWeight.w600
+                                    : null,
                               ),
                             ),
                           ],
@@ -626,7 +716,7 @@ class _GlobalArchivedTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = _TareasGlobalScreenState._statusColor(tarea.status);
+    final statusColor = _TareasGlobalScreenState.statusColor(tarea.status);
     final fechaStr = tarea.updatedAt != null
         ? DateFormat('dd/MM/yyyy').format(tarea.updatedAt!)
         : '';
@@ -702,4 +792,384 @@ class _GlobalArchivedTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Agrupación por tiempo ────────────────────────────────
+
+enum _TimeGroup {
+  overdue('Vencidas', Icons.warning_amber_rounded, Color(0xFFD32F2F)),
+  today('Hoy', Icons.today, Color(0xFFFF9800)),
+  tomorrow('Mañana', Icons.event, Color(0xFFFFC107)),
+  thisWeek('Esta semana', Icons.date_range, Color(0xFF42A5F5)),
+  upcoming('Próximamente', Icons.event_note, Color(0xFF66BB6A)),
+  noDate('Sin fecha', Icons.event_busy, Color(0xFF9E9E9E)),
+  completed('Completadas', Icons.task_alt, Color(0xFF4CAF50)),
+  cancelled('Canceladas', Icons.cancel_outlined, Color(0xFF9E9E9E));
+
+  const _TimeGroup(this.label, this.icon, this.color);
+  final String label;
+  final IconData icon;
+  final Color color;
+}
+
+Map<_TimeGroup, List<TareaConProyecto>> _groupByTime(
+  List<TareaConProyecto> items,
+) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final tomorrow = today.add(const Duration(days: 1));
+  final daysUntilSunday = DateTime.sunday - today.weekday;
+  final endOfWeek = today.add(
+    Duration(days: daysUntilSunday > 0 ? daysUntilSunday : 7),
+  );
+
+  final groups = <_TimeGroup, List<TareaConProyecto>>{};
+
+  for (final item in items) {
+    final fecha = item.tarea.fechaEntrega;
+    final status = item.tarea.status;
+
+    // Completadas y canceladas van a sus secciones propias
+    if (status == TareaStatus.completada) {
+      (groups[_TimeGroup.completed] ??= []).add(item);
+      continue;
+    }
+    if (status == TareaStatus.cancelada) {
+      (groups[_TimeGroup.cancelled] ??= []).add(item);
+      continue;
+    }
+
+    _TimeGroup group;
+    if (fecha == null) {
+      group = _TimeGroup.noDate;
+    } else {
+      final d = DateTime(fecha.year, fecha.month, fecha.day);
+      if (d.isBefore(today)) {
+        group = _TimeGroup.overdue;
+      } else if (d.isAtSameMomentAs(today)) {
+        group = _TimeGroup.today;
+      } else if (d.isAtSameMomentAs(tomorrow)) {
+        group = _TimeGroup.tomorrow;
+      } else if (d.isBefore(endOfWeek) || d.isAtSameMomentAs(endOfWeek)) {
+        group = _TimeGroup.thisWeek;
+      } else {
+        group = _TimeGroup.upcoming;
+      }
+    }
+
+    (groups[group] ??= []).add(item);
+  }
+
+  return groups;
+}
+
+/// Lista agrupada por proyecto, con sub-agrupación temporal.
+class _ProjectGroupedTareaList extends StatelessWidget {
+  const _ProjectGroupedTareaList({
+    required this.items,
+    required this.canArchive,
+    required this.onBulkArchive,
+    required this.emptyMessage,
+  });
+
+  final List<TareaConProyecto> items;
+  final bool canArchive;
+  final void Function(List<TareaConProyecto> items, String statusLabel)
+  onBulkArchive;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (items.isEmpty) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('0 tareas', style: theme.textTheme.bodySmall),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.task_alt,
+                    size: 48,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    emptyMessage,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Agrupar por proyecto
+    final byProject = <String, List<TareaConProyecto>>{};
+    for (final item in items) {
+      (byProject[item.projectId] ??= []).add(item);
+    }
+
+    // Ordenar proyectos alfabéticamente
+    final sortedEntries = byProject.entries.toList()
+      ..sort(
+        (a, b) =>
+            a.value.first.projectName.compareTo(b.value.first.projectName),
+      );
+
+    final widgets = <Widget>[];
+
+    for (final entry in sortedEntries) {
+      final projectId = entry.key;
+      final projectTareas = entry.value;
+      final projectName = projectTareas.first.projectName;
+      final projColor = _projectColor(projectId);
+
+      // Header de proyecto
+      widgets.add(
+        _ProjectSectionHeader(
+          projectName: projectName,
+          count: projectTareas.length,
+          color: projColor,
+        ),
+      );
+
+      // Sub-grupos de tiempo dentro del proyecto
+      final timeGroups = _groupByTime(projectTareas);
+      for (final group in _TimeGroup.values) {
+        final tareas = timeGroups[group];
+        if (tareas == null || tareas.isEmpty) continue;
+
+        final showArchiveBtn =
+            canArchive &&
+            (group == _TimeGroup.completed || group == _TimeGroup.cancelled);
+
+        // Sub-header temporal (indentado bajo el proyecto)
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 8, 16, 4),
+            child: Row(
+              children: [
+                Icon(group.icon, size: 14, color: group.color),
+                const SizedBox(width: 5),
+                Text(
+                  group.label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: group.color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: group.color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${tareas.length}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: group.color,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (showArchiveBtn) ...[
+                  const Spacer(),
+                  _BulkArchiveButton(
+                    count: tareas.length,
+                    statusLabel: group.label.toLowerCase(),
+                    onPressed: () =>
+                        onBulkArchive(tareas, group.label.toLowerCase()),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+
+        for (final item in tareas) {
+          widgets.add(
+            _GlobalTareaTile(
+              tarea: item.tarea,
+              projectId: item.projectId,
+              projectName: item.projectName,
+            ),
+          );
+        }
+      }
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              '${items.length} tarea${items.length == 1 ? '' : 's'}',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            children: widgets,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProjectSectionHeader extends StatelessWidget {
+  const _ProjectSectionHeader({
+    required this.projectName,
+    required this.count,
+    required this.color,
+  });
+
+  final String projectName;
+  final int count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 16, 16, 4),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              projectName,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Botón de archivado masivo ────────────────────────────
+
+class _BulkArchiveButton extends StatelessWidget {
+  const _BulkArchiveButton({
+    required this.count,
+    required this.onPressed,
+    required this.statusLabel,
+  });
+
+  final int count;
+  final VoidCallback onPressed;
+  final String statusLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.archive_rounded, size: 16),
+      label: Text(
+        'Archivar $count',
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      style: TextButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+      ),
+    );
+  }
+}
+
+// ── Color de proyecto (paleta determinista) ──────────────
+
+const _kProjectPalette = [
+  Color(0xFF42A5F5), // Blue
+  Color(0xFFAB47BC), // Purple
+  Color(0xFF26A69A), // Teal
+  Color(0xFFEF5350), // Red
+  Color(0xFFFF7043), // Deep Orange
+  Color(0xFF66BB6A), // Green
+  Color(0xFFFFA726), // Orange
+  Color(0xFF78909C), // Blue Grey
+  Color(0xFFEC407A), // Pink
+  Color(0xFF5C6BC0), // Indigo
+];
+
+Color _projectColor(String projectId) {
+  return _kProjectPalette[projectId.hashCode.abs() % _kProjectPalette.length];
+}
+
+// ── Deadline label helper ────────────────────────────────
+
+({String label, Color color})? _deadlineLabel(
+  DateTime? fecha,
+  TareaStatus status,
+) {
+  if (fecha == null) return null;
+  if (status == TareaStatus.completada || status == TareaStatus.cancelada) {
+    return null;
+  }
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final d = DateTime(fecha.year, fecha.month, fecha.day);
+  final days = d.difference(today).inDays;
+
+  if (days < 0) {
+    return (label: 'Vencida (${-days}d)', color: const Color(0xFFD32F2F));
+  } else if (days == 0) {
+    return (label: 'Hoy', color: const Color(0xFFFF9800));
+  } else if (days == 1) {
+    return (label: 'Mañana', color: const Color(0xFFFFC107));
+  }
+  return null;
 }

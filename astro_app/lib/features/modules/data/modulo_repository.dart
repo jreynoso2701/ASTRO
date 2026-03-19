@@ -57,10 +57,15 @@ class ModuloRepository {
   }
 
   /// Actualiza el porcentaje de completado de un módulo.
-  Future<void> updateProgress(String id, double percent) async {
+  Future<void> updateProgress(
+    String id,
+    double percent, {
+    String? updatedBy,
+  }) async {
     await _ref.doc(id).update({
       'porcentCompletaModulo': percent,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
+      if (updatedBy != null) 'updatedBy': updatedBy,
     });
   }
 

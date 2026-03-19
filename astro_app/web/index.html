@@ -108,11 +108,15 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
-  <!-- Desregistrar Service Worker existente y prevenir caché stale en deploys -->
+  <!-- Desregistrar Service Workers de caché Flutter (preservar Firebase Messaging SW) -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
         for (var registration of registrations) {
+          // Solo desregistrar SWs de caché Flutter, NO el de Firebase Messaging
+          if (registration.active && registration.active.scriptURL.includes('firebase-messaging-sw')) {
+            continue;
+          }
           registration.unregister();
         }
       });

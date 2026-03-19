@@ -59,14 +59,19 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
 
         final projectName = proyecto.nombreProyecto;
         final ticketsAsync = ref.watch(ticketsByProjectProvider(projectName));
-        final filteredTickets = ref.watch(filteredTicketsProvider(projectId));
+        final width = MediaQuery.sizeOf(context).width;
+        final kanban = _isKanban(width);
+        final filteredTickets = ref.watch(
+          filteredTicketsProvider((
+            projectId: projectId,
+            skipStatusFilter: kanban,
+          )),
+        );
         final searchQuery = ref.watch(ticketSearchProvider);
         final statusFilter = ref.watch(ticketStatusFilterProvider);
         final priorityFilter = ref.watch(ticketPriorityFilterNotifier);
         final impactFilter = ref.watch(ticketImpactFilterProvider);
         final canManage = ref.watch(canManageProjectProvider(projectId));
-        final width = MediaQuery.sizeOf(context).width;
-        final kanban = _isKanban(width);
 
         return Scaffold(
           appBar: AppBar(
@@ -76,6 +81,13 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
               onPressed: () => context.pop(),
             ),
             actions: [
+              // Estadísticas (Root + Soporte)
+              if (canManage)
+                IconButton(
+                  icon: const Icon(Icons.bar_chart_rounded),
+                  tooltip: 'Estadísticas',
+                  onPressed: () => _showStatsSheet(context, projectName),
+                ),
               // Archivados (Root + Soporte)
               if (canManage)
                 IconButton(
@@ -289,6 +301,28 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     );
   }
 
+  void _showStatsSheet(BuildContext context, String projectName) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => _TicketStatsSheet(
+          projectName: projectName,
+          scrollController: scrollController,
+        ),
+      ),
+    );
+  }
+
   Widget _buildKanban(
     BuildContext context,
     List<Ticket> tickets,
@@ -298,8 +332,46 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     return TicketKanbanBoard(
       tickets: tickets,
       showDeadline: canManage,
+      canManage: canManage,
       onTicketTap: (ticket) =>
           context.push('/projects/$projectId/tickets/${ticket.id}'),
+      onBulkArchive: !canManage
+          ? null
+          : (resolvedTickets) async {
+              final repo = ref.read(ticketRepositoryProvider);
+              final profile = ref.read(currentUserProfileProvider).value;
+              if (profile == null) return;
+
+              for (final ticket in resolvedTickets) {
+                await repo.archiveTicket(
+                  ticket.id,
+                  reason: 'Archivado masivo desde Kanban',
+                  archivedByName: profile.displayName,
+                  updatedBy: profile.uid,
+                );
+                await repo.addComment(
+                  ticket.id,
+                  TicketComment(
+                    id: '',
+                    text:
+                        'Cambió estado de "${TicketStatus.resuelto.label}" a "${TicketStatus.archivado.label}" (archivado masivo)',
+                    authorId: profile.uid,
+                    authorName: profile.displayName,
+                    type: CommentType.statusChange,
+                  ),
+                );
+              }
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '${resolvedTickets.length} ticket(s) archivado(s)',
+                    ),
+                  ),
+                );
+              }
+            },
       onStatusChange: (ticket, newStatus) async {
         final repo = ref.read(ticketRepositoryProvider);
         final profile = ref.read(currentUserProfileProvider).value;
@@ -1332,6 +1404,305 @@ class _ArchivedInfoRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Estadísticas de tickets ──────────────────────────────
+
+class _TicketStatsSheet extends ConsumerWidget {
+  const _TicketStatsSheet({
+    required this.projectName,
+    required this.scrollController,
+  });
+
+  final String projectName;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final allTicketsAsync = ref.watch(allTicketsByProjectProvider(projectName));
+    final moduleStats = ref.watch(ticketStatsByModuleProvider(projectName));
+    final creatorStats = ref.watch(ticketStatsByCreatorProvider(projectName));
+    final coverageStats = ref.watch(ticketStatsByCoverageProvider(projectName));
+
+    return Column(
+      children: [
+        // Drag handle
+        Center(
+          child: Container(
+            margin: const EdgeInsets.only(top: 8, bottom: 8),
+            width: 32,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              const Icon(Icons.bar_chart_rounded, size: 20),
+              const SizedBox(width: 8),
+              Text('Estadísticas', style: theme.textTheme.titleMedium),
+              const Spacer(),
+              allTicketsAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (tickets) => Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${tickets.length} tickets totales',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+        Expanded(
+          child: allTicketsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('Error: $e')),
+            data: (_) => ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                // ── Módulos con más incidentes ──
+                _StatsSectionHeader(
+                  icon: Icons.widgets_outlined,
+                  title: 'Módulos con más incidentes',
+                  color: const Color(0xFF42A5F5),
+                ),
+                if (moduleStats.isEmpty)
+                  const _StatsEmptyMessage(text: 'Sin datos de módulos')
+                else
+                  ...moduleStats.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final item = entry.value;
+                    final maxCount = moduleStats.first.count.toDouble();
+                    return _StatsBarItem(
+                      rank: i + 1,
+                      label: item.moduleName,
+                      count: item.count,
+                      fraction: maxCount > 0 ? item.count / maxCount : 0,
+                      color: const Color(0xFF42A5F5),
+                    );
+                  }),
+
+                const SizedBox(height: 24),
+
+                // ── Usuarios que más reportan ──
+                _StatsSectionHeader(
+                  icon: Icons.person_outline,
+                  title: 'Usuarios que más reportan',
+                  color: const Color(0xFFAB47BC),
+                ),
+                if (creatorStats.isEmpty)
+                  const _StatsEmptyMessage(text: 'Sin datos de usuarios')
+                else
+                  ...creatorStats.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final item = entry.value;
+                    final maxCount = creatorStats.first.count.toDouble();
+                    return _StatsBarItem(
+                      rank: i + 1,
+                      label: item.creatorName,
+                      count: item.count,
+                      fraction: maxCount > 0 ? item.count / maxCount : 0,
+                      color: const Color(0xFFAB47BC),
+                    );
+                  }),
+
+                const SizedBox(height: 24),
+
+                // ── Tickets por tipo de cobertura ──
+                _StatsSectionHeader(
+                  icon: Icons.shield_outlined,
+                  title: 'Tickets por tipo de cobertura',
+                  color: const Color(0xFF26A69A),
+                ),
+                if (coverageStats.isEmpty)
+                  const _StatsEmptyMessage(text: 'Sin datos de cobertura')
+                else
+                  ...coverageStats.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final item = entry.value;
+                    final maxCount = coverageStats.first.count.toDouble();
+                    return _StatsBarItem(
+                      rank: i + 1,
+                      label: item.coverage,
+                      count: item.count,
+                      fraction: maxCount > 0 ? item.count / maxCount : 0,
+                      color: const Color(0xFF26A69A),
+                    );
+                  }),
+
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatsSectionHeader extends StatelessWidget {
+  const _StatsSectionHeader({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatsBarItem extends StatelessWidget {
+  const _StatsBarItem({
+    required this.rank,
+    required this.label,
+    required this.count,
+    required this.fraction,
+    required this.color,
+  });
+
+  final int rank;
+  final String label;
+  final int count;
+  final double fraction;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 24,
+            child: Text(
+              '$rank.',
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: fraction,
+                    minHeight: 4,
+                    backgroundColor: color.withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation(
+                      color.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatsEmptyMessage extends StatelessWidget {
+  const _StatsEmptyMessage({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }

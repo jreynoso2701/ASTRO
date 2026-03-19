@@ -780,7 +780,7 @@ class _MembersSection extends ConsumerWidget {
                   Text(memberName, style: theme.textTheme.titleSmall),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<UserRole>(
-                    value: selectedRole,
+                    initialValue: selectedRole,
                     decoration: const InputDecoration(
                       labelText: 'Nuevo rol',
                       prefixIcon: Icon(Icons.shield_outlined),

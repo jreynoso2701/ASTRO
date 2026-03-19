@@ -1,5 +1,5 @@
 # ── Etapa 1: Build Flutter Web ──
-FROM ghcr.io/cirruslabs/flutter:stable AS build
+FROM ghcr.io/cirruslabs/flutter:3.35.7 AS build
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN flutter pub get
 RUN flutter build web --release --base-href "/" --pwa-strategy none
 
 # ── Etapa 2: Servir con Nginx ──
-FROM nginx:alpine
+FROM nginx:1.27-alpine
 
 # Copiar build de Flutter al directorio de Nginx
 COPY --from=build /app/build/web /usr/share/nginx/html

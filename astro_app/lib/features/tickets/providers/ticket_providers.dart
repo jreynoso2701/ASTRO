@@ -120,68 +120,81 @@ final ticketImpactFilterProvider =
 
 /// Tickets filtrados para un proyecto dado.
 ///
+/// [skipStatusFilter]: `true` en modo kanban — las columnas YA actúan
+/// como filtro de estado, así que no se aplica `ticketStatusFilterProvider`.
+///
 /// Visibilidad por rol:
 /// - Root / Supervisor / Soporte → todos los tickets del proyecto.
 /// - Usuario → solo sus propios tickets (V1 por nombre, V2 por UID).
-final filteredTicketsProvider = Provider.family<List<Ticket>, String>((
-  ref,
-  projectId,
-) {
-  // Resolver nombre del proyecto para consulta V1.
-  final proyecto = ref.watch(proyectoByIdProvider(projectId)).value;
-  if (proyecto == null) return [];
-  final projectName = proyecto.nombreProyecto;
+final filteredTicketsProvider =
+    Provider.family<List<Ticket>, ({String projectId, bool skipStatusFilter})>((
+      ref,
+      params,
+    ) {
+      final projectId = params.projectId;
+      final skipStatusFilter = params.skipStatusFilter;
 
-  final isRoot = ref.watch(isCurrentUserRootProvider);
-  final uid = ref.watch(authStateProvider).value?.uid;
-  final profile = ref.watch(currentUserProfileProvider).value;
-  final userName = profile?.displayName ?? '';
+      // Resolver nombre del proyecto para consulta V1.
+      final proyecto = ref.watch(proyectoByIdProvider(projectId)).value;
+      if (proyecto == null) return [];
+      final projectName = proyecto.nombreProyecto;
 
-  // Determinar el rol del usuario en este proyecto.
-  final List<ProjectAssignment> assignments = uid != null
-      ? (ref.watch(userAssignmentsProvider(uid)).value ?? [])
-      : [];
-  final projectAssignment = assignments.where(
-    (a) => a.projectId == projectId && a.isActive,
-  );
-  final isUsuarioOnly =
-      !isRoot &&
-      projectAssignment.isNotEmpty &&
-      projectAssignment.every((a) => a.role == UserRole.usuario);
+      final isRoot = ref.watch(isCurrentUserRootProvider);
+      final uid = ref.watch(authStateProvider).value?.uid;
+      final profile = ref.watch(currentUserProfileProvider).value;
+      final userName = profile?.displayName ?? '';
 
-  List<Ticket> allTickets =
-      ref.watch(ticketsByProjectProvider(projectName)).value ?? [];
+      // Determinar el rol del usuario en este proyecto.
+      final List<ProjectAssignment> assignments = uid != null
+          ? (ref.watch(userAssignmentsProvider(uid)).value ?? [])
+          : [];
+      final projectAssignment = assignments.where(
+        (a) => a.projectId == projectId && a.isActive,
+      );
+      final isUsuarioOnly =
+          !isRoot &&
+          projectAssignment.isNotEmpty &&
+          projectAssignment.every((a) => a.role == UserRole.usuario);
 
-  // Rol Usuario → solo sus propios tickets (V1 por nombre, V2 por UID).
-  if (isUsuarioOnly && uid != null) {
-    allTickets = allTickets
-        .where(
-          (t) =>
-              t.createdBy == uid ||
-              t.createdByName.toUpperCase() == userName.toUpperCase(),
-        )
-        .toList();
-  }
+      List<Ticket> allTickets =
+          ref.watch(ticketsByProjectProvider(projectName)).value ?? [];
 
-  final query = ref.watch(ticketSearchProvider).toUpperCase();
-  final statusFilter = ref.watch(ticketStatusFilterProvider);
-  final priorityFilter = ref.watch(ticketPriorityFilterNotifier);
-  final impactFilter = ref.watch(ticketImpactFilterProvider);
+      // Rol Usuario → solo sus propios tickets (V1 por nombre, V2 por UID).
+      if (isUsuarioOnly && uid != null) {
+        allTickets = allTickets
+            .where(
+              (t) =>
+                  t.createdBy == uid ||
+                  t.createdByName.toUpperCase() == userName.toUpperCase(),
+            )
+            .toList();
+      }
 
-  return allTickets.where((t) {
-    if (statusFilter != null && t.status != statusFilter) return false;
-    if (priorityFilter != null && t.priority != priorityFilter) return false;
-    if (impactFilter != null && !impactFilter.matches(t.impacto)) return false;
-    if (query.isNotEmpty) {
-      final matchesQuery =
-          t.titulo.toUpperCase().contains(query) ||
-          t.folio.toUpperCase().contains(query) ||
-          t.descripcion.toUpperCase().contains(query);
-      if (!matchesQuery) return false;
-    }
-    return true;
-  }).toList();
-});
+      final query = ref.watch(ticketSearchProvider).toUpperCase();
+      final statusFilter = skipStatusFilter
+          ? null
+          : ref.watch(ticketStatusFilterProvider);
+      final priorityFilter = ref.watch(ticketPriorityFilterNotifier);
+      final impactFilter = ref.watch(ticketImpactFilterProvider);
+
+      return allTickets.where((t) {
+        if (statusFilter != null && t.status != statusFilter) return false;
+        if (priorityFilter != null && t.priority != priorityFilter) {
+          return false;
+        }
+        if (impactFilter != null && !impactFilter.matches(t.impacto)) {
+          return false;
+        }
+        if (query.isNotEmpty) {
+          final matchesQuery =
+              t.titulo.toUpperCase().contains(query) ||
+              t.folio.toUpperCase().contains(query) ||
+              t.descripcion.toUpperCase().contains(query);
+          if (!matchesQuery) return false;
+        }
+        return true;
+      }).toList();
+    });
 
 // ── Contadores rápidos ───────────────────────────────────
 
@@ -426,4 +439,76 @@ final globalTicketsWithoutDeadlineProvider =
         }
       }
       return result;
+    });
+
+// ── Estadísticas de tickets (todos, incluyendo archivados/desactivados) ─────
+
+/// Stream de **todos** los tickets de un proyecto (activos + archivados +
+/// desactivados). Para estadísticas.
+final allTicketsByProjectProvider = StreamProvider.family<List<Ticket>, String>(
+  (ref, projectName) {
+    return ref.watch(ticketRepositoryProvider).watchAllByProject(projectName);
+  },
+);
+
+/// Ranking de módulos con más incidentes reportados (mayor a menor).
+final ticketStatsByModuleProvider =
+    Provider.family<List<({String moduleName, int count})>, String>((
+      ref,
+      projectName,
+    ) {
+      final tickets =
+          ref.watch(allTicketsByProjectProvider(projectName)).value ?? [];
+      final counts = <String, int>{};
+      for (final t in tickets) {
+        final mod = t.moduleName;
+        counts[mod] = (counts[mod] ?? 0) + 1;
+      }
+      final list = counts.entries
+          .map((e) => (moduleName: e.key, count: e.value))
+          .toList();
+      list.sort((a, b) => b.count.compareTo(a.count));
+      return list;
+    });
+
+/// Ranking de usuarios que más reportan tickets (mayor a menor).
+final ticketStatsByCreatorProvider =
+    Provider.family<List<({String creatorName, int count})>, String>((
+      ref,
+      projectName,
+    ) {
+      final tickets =
+          ref.watch(allTicketsByProjectProvider(projectName)).value ?? [];
+      final counts = <String, int>{};
+      for (final t in tickets) {
+        final name = t.createdByName;
+        counts[name] = (counts[name] ?? 0) + 1;
+      }
+      final list = counts.entries
+          .map((e) => (creatorName: e.key, count: e.value))
+          .toList();
+      list.sort((a, b) => b.count.compareTo(a.count));
+      return list;
+    });
+
+/// Conteo de tickets por tipo de cobertura (mayor a menor).
+final ticketStatsByCoverageProvider =
+    Provider.family<List<({String coverage, int count})>, String>((
+      ref,
+      projectName,
+    ) {
+      final tickets =
+          ref.watch(allTicketsByProjectProvider(projectName)).value ?? [];
+      final counts = <String, int>{};
+      for (final t in tickets) {
+        final cov = (t.cobertura != null && t.cobertura!.isNotEmpty)
+            ? t.cobertura!
+            : 'Sin definir';
+        counts[cov] = (counts[cov] ?? 0) + 1;
+      }
+      final list = counts.entries
+          .map((e) => (coverage: e.key, count: e.value))
+          .toList();
+      list.sort((a, b) => b.count.compareTo(a.count));
+      return list;
     });

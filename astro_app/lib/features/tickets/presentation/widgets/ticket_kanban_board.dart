@@ -29,6 +29,8 @@ class TicketKanbanBoard extends StatefulWidget {
     required this.onTicketTap,
     required this.onStatusChange,
     this.showDeadline = false,
+    this.canManage = false,
+    this.onBulkArchive,
     super.key,
   });
 
@@ -36,6 +38,8 @@ class TicketKanbanBoard extends StatefulWidget {
   final ValueChanged<Ticket> onTicketTap;
   final void Function(Ticket ticket, TicketStatus newStatus) onStatusChange;
   final bool showDeadline;
+  final bool canManage;
+  final Future<void> Function(List<Ticket> tickets)? onBulkArchive;
 
   @override
   State<TicketKanbanBoard> createState() => _TicketKanbanBoardState();
@@ -164,6 +168,8 @@ class _TicketKanbanBoardState extends State<TicketKanbanBoard> {
                         onTicketTap: widget.onTicketTap,
                         onStatusChange: widget.onStatusChange,
                         showDeadline: widget.showDeadline,
+                        canManage: widget.canManage,
+                        onBulkArchive: widget.onBulkArchive,
                       ),
                     ),
                 ],
@@ -193,6 +199,8 @@ class _KanbanColumn extends StatelessWidget {
     required this.onTicketTap,
     required this.onStatusChange,
     this.showDeadline = false,
+    this.canManage = false,
+    this.onBulkArchive,
   });
 
   final TicketStatus status;
@@ -200,6 +208,8 @@ class _KanbanColumn extends StatelessWidget {
   final ValueChanged<Ticket> onTicketTap;
   final void Function(Ticket ticket, TicketStatus newStatus) onStatusChange;
   final bool showDeadline;
+  final bool canManage;
+  final Future<void> Function(List<Ticket> tickets)? onBulkArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -281,6 +291,18 @@ class _KanbanColumn extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // ── Botón archivar masivo (solo Resuelto, Root/Soporte) ──
+                    if (status == TicketStatus.resuelto &&
+                        canManage &&
+                        tickets.isNotEmpty &&
+                        onBulkArchive != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: _BulkArchiveButton(
+                          ticketCount: tickets.length,
+                          onConfirmed: () => onBulkArchive!(tickets),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -306,7 +328,8 @@ class _KanbanColumn extends StatelessWidget {
                           final ticket = tickets[index];
                           return LongPressDraggable<Ticket>(
                             data: ticket,
-                            delay: const Duration(milliseconds: 150),
+                            delay: const Duration(milliseconds: 200),
+                            hapticFeedbackOnStart: true,
                             feedback: Material(
                               elevation: 8,
                               borderRadius: BorderRadius.circular(8),
@@ -328,9 +351,30 @@ class _KanbanColumn extends StatelessWidget {
                             ),
                             child: GestureDetector(
                               onTap: () => onTicketTap(ticket),
+                              onSecondaryTapDown: (details) {
+                                _showStatusMenu(
+                                  context,
+                                  details.globalPosition,
+                                  ticket,
+                                  status,
+                                  onStatusChange,
+                                );
+                              },
                               child: _KanbanCard(
                                 ticket: ticket,
                                 showDeadline: showDeadline,
+                                onMovePressed: () {
+                                  final box =
+                                      context.findRenderObject() as RenderBox;
+                                  final offset = box.localToGlobal(Offset.zero);
+                                  _showStatusMenu(
+                                    context,
+                                    offset,
+                                    ticket,
+                                    status,
+                                    onStatusChange,
+                                  );
+                                },
                               ),
                             ),
                           );
@@ -343,6 +387,52 @@ class _KanbanColumn extends StatelessWidget {
       },
     );
   }
+
+  void _showStatusMenu(
+    BuildContext context,
+    Offset position,
+    Ticket ticket,
+    TicketStatus currentStatus,
+    void Function(Ticket, TicketStatus) onStatusChange,
+  ) {
+    final targets = TicketStatus.kanbanValues
+        .where((s) => s != currentStatus)
+        .toList();
+
+    showMenu<TicketStatus>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: [
+        for (final s in targets)
+          PopupMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: ticketStatusColor(s),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(s.label),
+              ],
+            ),
+          ),
+      ],
+    ).then((newStatus) {
+      if (newStatus != null) {
+        onStatusChange(ticket, newStatus);
+      }
+    });
+  }
 }
 
 // ── Tarjeta Kanban Compacta ──────────────────────────────
@@ -352,11 +442,13 @@ class _KanbanCard extends StatelessWidget {
     required this.ticket,
     this.isDragging = false,
     this.showDeadline = false,
+    this.onMovePressed,
   });
 
   final Ticket ticket;
   final bool isDragging;
   final bool showDeadline;
+  final VoidCallback? onMovePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -374,7 +466,7 @@ class _KanbanCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Folio + Priority badge ──
+            // ── Folio + Priority badge + Move ──
             Row(
               children: [
                 Text(
@@ -385,6 +477,19 @@ class _KanbanCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
+                if (onMovePressed != null)
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      iconSize: 14,
+                      tooltip: 'Mover a…',
+                      onPressed: onMovePressed,
+                      icon: Icon(Icons.swap_horiz_rounded, color: muted),
+                    ),
+                  ),
+                if (onMovePressed != null) const SizedBox(width: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -532,6 +637,83 @@ class _KanbanCard extends StatelessWidget {
     return '${dt.day.toString().padLeft(2, '0')}/'
         '${dt.month.toString().padLeft(2, '0')}/'
         '${dt.year}';
+  }
+}
+
+// ── Botón de archivado masivo ─────────────────────────────
+
+class _BulkArchiveButton extends StatefulWidget {
+  const _BulkArchiveButton({
+    required this.ticketCount,
+    required this.onConfirmed,
+  });
+
+  final int ticketCount;
+  final VoidCallback onConfirmed;
+
+  @override
+  State<_BulkArchiveButton> createState() => _BulkArchiveButtonState();
+}
+
+class _BulkArchiveButtonState extends State<_BulkArchiveButton> {
+  bool _loading = false;
+
+  Future<void> _handleTap() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.archive_rounded, size: 36),
+        title: const Text('Archivar tickets resueltos'),
+        content: Text(
+          '¿Archivar los ${widget.ticketCount} ticket(s) de la columna Resuelto?\n\n'
+          'Se asignará la justificación "Archivado masivo desde Kanban" '
+          'a cada ticket.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.archive_rounded, size: 18),
+            label: Text('Archivar ${widget.ticketCount}'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _loading = true);
+    try {
+      widget.onConfirmed();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: _loading
+          ? const Padding(
+              padding: EdgeInsets.all(4),
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : IconButton(
+              padding: EdgeInsets.zero,
+              iconSize: 16,
+              tooltip: 'Archivar todos',
+              onPressed: _handleTap,
+              icon: Icon(
+                Icons.archive_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+    );
   }
 }
 

@@ -75,5 +75,9 @@
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>ASTRO necesita permiso para guardar archivos descargados en tu biblioteca de fotos.</string>
 
+		<!-- Reconocimiento de voz (speech_to_text) -->
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>ASTRO necesita acceso al reconocimiento de voz para transcribir audio en texto.</string>
+
 	</dict>
 </plist>
