@@ -79,5 +79,21 @@
 		<key>NSSpeechRecognitionUsageDescription</key>
 		<string>ASTRO necesita acceso al reconocimiento de voz para transcribir audio en texto.</string>
 
+		<!-- URL schemes para Google Sign-In -->
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<!-- REVERSED_CLIENT_ID de GoogleService-Info.plist -->
+					<!-- TODO: Descarga un GoogleService-Info.plist actualizado desde Firebase Console
+					     que incluya CLIENT_ID y REVERSED_CLIENT_ID, luego reemplaza este valor -->
+					<string>com.googleusercontent.apps.124307506572-45hkn1kkdgmfv633sfofd265h5969abk</string>
+				</array>
+			</dict>
+		</array>
+
 	</dict>
 </plist>
