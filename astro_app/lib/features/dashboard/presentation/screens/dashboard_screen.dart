@@ -22,6 +22,9 @@ import 'package:astro/core/models/minuta_modalidad.dart';
 import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart'
     show deadlineInfo;
 import 'package:astro/features/ai_agent/presentation/screens/ai_agent_sheet.dart';
+import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/core/models/project_assignment.dart';
+import 'package:astro/core/models/user_role.dart';
 
 // ── Ordenamiento de Mis Proyectos ────────────────────────
 
@@ -58,9 +61,16 @@ class DashboardScreen extends ConsumerWidget {
     final profile = ref.watch(currentUserProfileProvider).value;
     final width = MediaQuery.sizeOf(context).width;
 
-    // El agente IA está disponible para todo usuario autenticado.
-    // El backend ya filtra los datos según permisos del usuario.
-    final showAiFab = profile != null;
+    // El agente IA está disponible para Root, Supervisor y Soporte.
+    // El rol "Usuario" no tiene acceso al asistente de momento.
+    final uid = ref.watch(authStateProvider).value?.uid;
+    final assignments = uid != null
+        ? ref.watch(userAssignmentsProvider(uid)).value ?? []
+        : <ProjectAssignment>[];
+    final hasAiAccess =
+        isRoot ||
+        assignments.any((a) => a.isActive && a.role != UserRole.usuario);
+    final showAiFab = profile != null && hasAiAccess;
 
     return Scaffold(
       floatingActionButton: showAiFab

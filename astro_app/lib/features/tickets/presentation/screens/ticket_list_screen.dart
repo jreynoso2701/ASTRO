@@ -429,7 +429,12 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     return AdaptiveBody(
       maxWidth: 960,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          0,
+          16,
+          MediaQuery.of(context).viewPadding.bottom + 16,
+        ),
         itemCount: tickets.length,
         itemBuilder: (context, index) {
           final ticket = tickets[index];

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/ai_chat_message.dart';
+import 'package:astro/core/models/user_role.dart';
 import 'package:astro/features/ai_agent/data/ai_chat_repository.dart';
 import 'package:astro/features/ai_agent/data/gemini_service.dart';
 import 'package:astro/features/ai_agent/data/voice_service.dart';
@@ -82,12 +83,46 @@ class AiChatNotifier extends Notifier<AiChatState> {
     final gemini = ref.read(geminiServiceProvider);
     final isRoot = ref.read(isCurrentUserRootProvider);
     final myProjects = ref.read(myProjectsProvider);
+    final profile = ref.read(currentUserProfileProvider).value;
+    final uid = ref.read(authStateProvider).value?.uid;
 
     final projectNames = myProjects.map((p) => p.nombreProyecto).toList();
+
+    // Obtener rol y nombre del usuario
+    final userDisplayName = profile?.displayName ?? '';
+    String userRole = isRoot ? 'Root' : 'Usuario';
+
+    // Construir mapa projectName → rol y projectName → projectId
+    final Map<String, UserRole> projectRoles = {};
+    final Map<String, String> projectIdMap = {};
+
+    if (uid != null) {
+      final assignmentsAsync = ref.read(userAssignmentsProvider(uid));
+      final assignments = assignmentsAsync.value ?? [];
+
+      for (final project in myProjects) {
+        projectIdMap[project.nombreProyecto] = project.id;
+        // Buscar assignment de este usuario en este proyecto
+        final assignment = assignments
+            .where((a) => a.projectId == project.id && a.isActive)
+            .firstOrNull;
+        if (assignment != null) {
+          projectRoles[project.nombreProyecto] = assignment.role;
+          // Usar el primer rol encontrado como userRole si no es Root
+          if (!isRoot && userRole == 'Usuario') {
+            userRole = assignment.role.label;
+          }
+        }
+      }
+    }
 
     await gemini.initWithUserContext(
       allowedProjectNames: projectNames,
       isRoot: isRoot,
+      userDisplayName: userDisplayName,
+      userRole: userRole,
+      projectRoles: projectRoles,
+      projectIdMap: projectIdMap,
     );
     _geminiReady = true;
   }

@@ -132,6 +132,24 @@ function parseDate(raw: unknown): Date | null {
 }
 
 /**
+ * Obtiene el offset en milisegundos de America/Mexico_City para una fecha dada.
+ * Devuelve el valor para restar a una hora local CDMX y obtener UTC.
+ * Ejemplo: CDMX es UTC-6 → retorna -6*3600*1000 = -21600000.
+ * En horario de verano (DST) → UTC-5 → retorna -18000000.
+ *
+ * Nota: México eliminó el horario de verano en 2022 (excepto franja fronteriza).
+ * CDMX es fija en UTC-6. Se mantiene el cálculo dinámico por robustez.
+ */
+function getCdmxOffsetMs(date: Date): number {
+  // Usar Intl para obtener el offset real de CDMX en la fecha dada
+  const utcStr = date.toLocaleString("en-US", {timeZone: "UTC"});
+  const cdmxStr = date.toLocaleString("en-US", {timeZone: "America/Mexico_City"});
+  const utcDate = new Date(utcStr);
+  const cdmxDate = new Date(cdmxStr);
+  return cdmxDate.getTime() - utcDate.getTime();
+}
+
+/**
  * Determina los destinatarios de una notificación de tickets.
  *
  * @param projectId - ID del proyecto.
@@ -884,7 +902,7 @@ export const checkCitaReminders = onSchedule(
       const data = doc.data();
       const citaId = doc.id;
 
-      // Parsear fecha + horaInicio → timestamp exacto
+      // Parsear fecha + horaInicio → timestamp exacto en CDMX
       const fechaRaw = data.fecha ?? data.fechaHora;
       if (!fechaRaw) continue;
 
@@ -899,7 +917,13 @@ export const checkCitaReminders = onSchedule(
         }
       }
 
-      const citaTimestamp = citaDate.getTime();
+      // horaInicio es hora local de México (CDMX).
+      // Cloud Functions corre en UTC, así que setHours puso la hora como UTC.
+      // Restamos el offset de CDMX para obtener la hora UTC real.
+      // Ej: 09:00 CDMX (UTC-6) → setHours puso 09:00 UTC →
+      //     restamos -6h = 09:00 - (-6h) = 15:00 UTC ✓
+      const cdmxOffset = getCdmxOffsetMs(citaDate);
+      const citaTimestamp = citaDate.getTime() - cdmxOffset;
       // Solo citas futuras
       if (citaTimestamp <= now) continue;
 

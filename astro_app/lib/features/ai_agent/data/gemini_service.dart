@@ -2,11 +2,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:astro/core/models/ai_chat_message.dart';
+import 'package:astro/core/models/user_role.dart';
 
 /// Servicio que interactúa con Gemini via Firebase AI Logic.
 ///
 /// Usa function calling para consultar datos del proyecto y ejecutar
-/// acciones dentro de la app.
+/// acciones dentro de la app. Solo consultas, nunca crear/editar/borrar.
 class GeminiService {
   GeminiService({FirebaseFirestore? firestore})
     : _db = firestore ?? FirebaseFirestore.instance;
@@ -24,19 +25,46 @@ class GeminiService {
   /// Si es Root, tiene acceso a todos los proyectos.
   bool _isRoot = false;
 
+  /// Rol global del usuario (Root si isRoot, o el rol de su primer assignment).
+  String _userRole = 'Usuario';
+
+  /// Nombre del usuario para contexto personalizado (usado en system prompt).
+  // ignore: unused_field
+  String _userDisplayName = '';
+
+  /// Mapa de projectName → rol del usuario en ese proyecto.
+  Map<String, UserRole> _projectRoles = {};
+
+  /// Mapa de projectName → projectId para lookups rápidos.
+  Map<String, String> _projectIdMap = {};
+
   /// Configura los proyectos permitidos y reinicializa el modelo
   /// con un system prompt personalizado.
   Future<void> initWithUserContext({
     required List<String> allowedProjectNames,
     required bool isRoot,
+    required String userDisplayName,
+    required String userRole,
+    Map<String, UserRole> projectRoles = const {},
+    Map<String, String> projectIdMap = const {},
   }) async {
     _allowedProjects = allowedProjectNames.toSet();
     _projectNameMap = {
       for (final name in allowedProjectNames) name.toLowerCase(): name,
     };
     _isRoot = isRoot;
+    _userRole = userRole;
+    _userDisplayName = userDisplayName;
+    _projectRoles = Map.of(projectRoles);
+    _projectIdMap = Map.of(projectIdMap);
 
-    final prompt = _buildSystemPrompt(allowedProjectNames, isRoot);
+    final prompt = _buildSystemPrompt(
+      allowedProjectNames,
+      isRoot,
+      userDisplayName,
+      userRole,
+      projectRoles,
+    );
     _model = FirebaseAI.googleAI().generativeModel(
       model: 'gemini-2.5-flash',
       systemInstruction: Content.system(prompt),
@@ -61,8 +89,8 @@ class GeminiService {
   }
 
   /// Resuelve el nombre real del proyecto en Firestore.
-  /// Busca por coincidencia case-insensitive en proyectos permitidos.
-  /// Si es Root y no encuentra, consulta Firestore directamente.
+  /// Usa matching flexible: exacto → case-insensitive → substring/parcial.
+  /// Si es Root y no encuentra localmente, consulta Firestore.
   Future<String> _resolveProjectName(String input) async {
     // Coincidencia exacta
     if (_allowedProjects.contains(input)) return input;
@@ -71,23 +99,72 @@ class GeminiService {
     final lower = input.toLowerCase();
     if (_projectNameMap.containsKey(lower)) return _projectNameMap[lower]!;
 
-    // Para Root: buscar en Firestore por nombre case-insensitive
+    // Matching parcial/fuzzy en proyectos del usuario
+    final localMatch = _fuzzyMatchLocal(lower);
+    if (localMatch != null) return localMatch;
+
+    // Para Root: buscar en Firestore
     if (_isRoot) {
-      final snap = await _db.collection('Proyectos').get();
+      final snap = await _db
+          .collection('Proyectos')
+          .where('isActive', isEqualTo: true)
+          .get();
       for (final doc in snap.docs) {
         final name = doc.data()['nombreProyecto'] as String? ?? '';
-        if (name.toLowerCase() == lower) {
-          // Cachear para futuras consultas
-          _projectNameMap[lower] = name;
+        final nameLower = name.toLowerCase();
+        // Cachear todos los proyectos de Firestore para futuros lookups
+        if (!_projectNameMap.containsKey(nameLower)) {
+          _projectNameMap[nameLower] = name;
           _allowedProjects.add(name);
-          return name;
         }
       }
+      // Re-intentar matching exacto y fuzzy con cache actualizado
+      if (_projectNameMap.containsKey(lower)) return _projectNameMap[lower]!;
+      final fsMatch = _fuzzyMatchLocal(lower);
+      if (fsMatch != null) return fsMatch;
     }
 
     // Si no se resolvió, devolver el input original
     return input;
   }
+
+  /// Matching parcial: busca en _projectNameMap por substring.
+  /// Primero intenta "contains" (el input está contenido en el nombre);
+  /// luego intenta que el nombre esté contenido en el input.
+  /// Si hay múltiples candidatos, retorna el más corto (más específico).
+  String? _fuzzyMatchLocal(String inputLower) {
+    final candidates = <String>[];
+    for (final entry in _projectNameMap.entries) {
+      final nameLower = entry.key;
+      // Input contenido en el nombre del proyecto (ej: "erp" match "ERP Personalizado")
+      if (nameLower.contains(inputLower) || inputLower.contains(nameLower)) {
+        candidates.add(entry.value);
+      }
+    }
+    if (candidates.isEmpty) {
+      // Intentar matching por palabras clave (ej: "ifeelmx" → "IFEELMX APP")
+      final inputWords = inputLower
+          .replaceAll(RegExp(r'[^a-záéíóúñü0-9]'), ' ')
+          .split(RegExp(r'\s+'))
+          .where((w) => w.length > 1)
+          .toList();
+      if (inputWords.isNotEmpty) {
+        for (final entry in _projectNameMap.entries) {
+          final nameLower = entry.key;
+          final allWordsMatch = inputWords.every((w) => nameLower.contains(w));
+          if (allWordsMatch) candidates.add(entry.value);
+        }
+      }
+    }
+    if (candidates.isEmpty) return null;
+    if (candidates.length == 1) return candidates.first;
+    // Múltiples: retornar el más corto (más específico)
+    candidates.sort((a, b) => a.length.compareTo(b.length));
+    return candidates.first;
+  }
+
+  /// Retorna la lista de nombres de proyectos disponibles para el usuario.
+  List<String> get _availableProjectNames => _allowedProjects.toList()..sort();
 
   /// Envía un mensaje del usuario y obtiene la respuesta completa del agente.
   ///
@@ -320,38 +397,97 @@ class GeminiService {
     required String userId,
     String? projectId,
   }) async {
-    // ── Resolver y validar nombre del proyecto ──
-    final rawName = args['projectName'] as String?;
-    if (rawName != null) {
-      final resolved = await _resolveProjectName(rawName);
-      args = {...args, 'projectName': resolved};
+    try {
+      // ── Resolver y validar nombre del proyecto ──
+      final rawName = args['projectName'] as String?;
+      if (rawName != null) {
+        final resolved = await _resolveProjectName(rawName);
+        args = {...args, 'projectName': resolved};
 
-      if (!_isProjectAllowed(resolved)) {
-        return {
-          'error': 'No tienes acceso al proyecto "$rawName".',
-          'allowed': false,
-        };
+        // Validar acceso al proyecto
+        if (!_isProjectAllowed(resolved)) {
+          return {
+            'error':
+                'No tienes permisos para consultar el proyecto "$rawName".',
+            'allowed': false,
+            'proyectosDisponibles': _availableProjectNames,
+            'sugerencia':
+                'Tu acceso está limitado a: ${_availableProjectNames.join(", ")}.',
+          };
+        }
+
+        // Verificar que el proyecto exista en Firestore
+        final exists = await _projectExistsInFirestore(resolved);
+        if (!exists) {
+          return {
+            'error': 'El proyecto "$rawName" no fue encontrado.',
+            'proyectosDisponibles': _availableProjectNames,
+            'sugerencia':
+                'Los proyectos disponibles son: ${_availableProjectNames.join(", ")}. ¿Cuál necesitas consultar?',
+          };
+        }
+
+        // Inyectar contexto de rol del usuario en este proyecto
+        final roleInProject = _getUserRoleInProject(resolved);
+        args = {...args, '_userRole': roleInProject};
+      }
+
+      switch (name) {
+        case 'buscarTickets':
+          return await _execSearchTickets(args);
+        case 'obtenerProgresoProyecto':
+          return await _execGetProgress(args);
+        case 'buscarMinutas':
+          return await _execSearchMinutas(args);
+        case 'buscarRequerimientos':
+          return await _execSearchRequerimientos(args);
+        case 'buscarCitas':
+          return await _execSearchCitas(args);
+        case 'buscarTareas':
+          return await _execSearchTareas(args);
+        case 'obtenerResumenProyecto':
+          return await _execGetSummary(args);
+        default:
+          return {'error': 'Función no reconocida: $name'};
+      }
+    } catch (e) {
+      return {
+        'error': 'Error al ejecutar la consulta: $e',
+        'proyectosDisponibles': _availableProjectNames,
+      };
+    }
+  }
+
+  /// Obtiene el rol del usuario en un proyecto específico.
+  String _getUserRoleInProject(String projectName) {
+    if (_isRoot) return 'Root';
+    final role = _projectRoles[projectName];
+    if (role != null) return role.label;
+    // Intentar por projectId
+    final pid = _projectIdMap[projectName];
+    if (pid != null) {
+      for (final entry in _projectRoles.entries) {
+        if (_projectIdMap[entry.key] == pid) return entry.value.label;
       }
     }
+    return _userRole;
+  }
 
-    switch (name) {
-      case 'buscarTickets':
-        return _execSearchTickets(args);
-      case 'obtenerProgresoProyecto':
-        return _execGetProgress(args);
-      case 'buscarMinutas':
-        return _execSearchMinutas(args);
-      case 'buscarRequerimientos':
-        return _execSearchRequerimientos(args);
-      case 'buscarCitas':
-        return _execSearchCitas(args);
-      case 'buscarTareas':
-        return _execSearchTareas(args);
-      case 'obtenerResumenProyecto':
-        return _execGetSummary(args);
-      default:
-        return {'error': 'Función no reconocida: $name'};
+  /// Verifica si un proyecto con ese nombre exacto existe en Firestore.
+  /// Cachea resultados positivos para evitar queries repetidas.
+  final Set<String> _verifiedProjects = {};
+  Future<bool> _projectExistsInFirestore(String projectName) async {
+    if (_verifiedProjects.contains(projectName)) return true;
+    final snap = await _db
+        .collection('Proyectos')
+        .where('nombreProyecto', isEqualTo: projectName)
+        .limit(1)
+        .get();
+    if (snap.docs.isNotEmpty) {
+      _verifiedProjects.add(projectName);
+      return true;
     }
+    return false;
   }
 
   Future<Map<String, dynamic>> _execSearchTickets(
@@ -942,49 +1078,99 @@ class GeminiService {
 
   // ── System prompt (dinámico según usuario) ──
 
-  static String _buildSystemPrompt(List<String> allowedProjects, bool isRoot) {
-    final roleDesc = isRoot
-        ? 'Eres administrador Root con acceso a TODOS los proyectos de la plataforma.'
-        : 'Solo tienes acceso a los siguientes proyectos: ${allowedProjects.join(', ')}.';
+  static String _buildSystemPrompt(
+    List<String> allowedProjects,
+    bool isRoot,
+    String userDisplayName,
+    String userRole,
+    Map<String, UserRole> projectRoles,
+  ) {
+    final greeting = userDisplayName.isNotEmpty
+        ? 'El usuario se llama **$userDisplayName**.'
+        : '';
 
-    final projectRule = isRoot
+    final roleDesc = isRoot
+        ? 'Este usuario es **Root** (administrador) con acceso total a TODOS los proyectos.'
+        : 'Este usuario tiene rol **$userRole**.';
+
+    final projectList = allowedProjects.isEmpty
+        ? 'Este usuario no tiene proyectos asignados aún.'
+        : 'Proyectos asignados: ${allowedProjects.map((p) {
+            final r = projectRoles[p]?.label ?? userRole;
+            return '$p (rol: $r)';
+          }).join(', ')}.';
+
+    final securityRules = isRoot
         ? ''
         : '''
 
-REGLA DE SEGURIDAD CRÍTICA:
-- SOLO puedes consultar datos de estos proyectos: ${allowedProjects.join(', ')}.
-- Si el usuario pide información de un proyecto fuera de esta lista, responde que no tiene acceso a ese proyecto.
-- NUNCA intentes consultar proyectos que no estén en la lista permitida.''';
+═══ SEGURIDAD Y PERMISOS ═══
+- Este usuario SOLO tiene acceso a: ${allowedProjects.join(', ')}.
+- Si pide info de otro proyecto → responde amablemente que no tiene acceso y muéstrale sus proyectos.
+- NUNCA consultes datos de proyectos no autorizados.
+- Roles por proyecto:
+${allowedProjects.map((p) {
+            final r = projectRoles[p]?.label ?? userRole;
+            return '  • $p → $r';
+          }).join('\n')}
+
+Permisos por rol:
+  • Supervisor: Ve todo el proyecto, progreso de usuarios, reporta tickets, participa en minutas.
+  • Usuario: Solo ve sus propios tickets, sus tareas, participa en minutas.
+  • Soporte: Ve todo del proyecto asignado, da soporte a tickets, levanta requerimientos.''';
 
     return '''
-Eres ASTRO AI, el asistente inteligente de la plataforma ASTRO para gestión de proyectos de desarrollo de software.
+═══ IDENTIDAD ═══
+Eres ASTRO AI, el asistente inteligente de la plataforma ASTRO.
+Eres un facilitador PRO de atención al cliente para gestión de proyectos de software.
 
-$roleDesc$projectRule
+$greeting
+$roleDesc
+$projectList
+$securityRules
 
-Tu rol:
-- Ayudar a los usuarios a consultar el estado de sus proyectos, tickets, tareas, minutas, requerimientos y citas.
-- Responder en español, de forma concisa y profesional.
-- Usar las funciones disponibles para obtener datos reales del proyecto antes de responder.
-- Cuando muestres datos, sé específico: incluye folios, estados, porcentajes.
-- Si no tienes suficiente información, pregunta al usuario qué proyecto o detalle necesita.
-- Si el usuario tiene un solo proyecto asignado, úsalo automáticamente sin preguntar.
-- Nunca inventes datos. Si una función no retorna resultados, informa al usuario.
-- Para tareas, puedes buscar por estado (pendiente, enProgreso, completada, cancelada), prioridad (baja, media, alta, urgente), asignado o texto libre.
-- Si el usuario pregunta por "mis tareas" o tareas pendientes, usa buscarTareas con status pendiente o enProgreso.
-- Tanto buscarTickets como buscarTareas soportan el parámetro archivados=true para buscar elementos archivados (isActive=false). Por defecto solo muestran activos.
-- Si el usuario pregunta por tickets/tareas archivados, usa archivados=true.
-- Los tickets incluyen el campo "fechaCompromiso" (fecha de compromiso de solución). Si está vacío significa que el ticket no tiene fecha compromiso asignada.
-- Si el usuario pregunta por tickets sin fecha compromiso, vencidos, próximos a vencer, o con urgencia de fecha, revisa el campo fechaCompromiso en los resultados.
+═══ MODO DE OPERACIÓN: SOLO CONSULTAS ═══
+- Tu función es EXCLUSIVAMENTE de consulta. NUNCA puedes crear, editar ni eliminar datos.
+- Si el usuario pide crear un ticket, modificar una tarea, borrar algo, etc. → responde amablemente que esas acciones se realizan directamente en la app, no a través del asistente.
+- Eres un facilitador: ayudas a encontrar información rápidamente.
 
-Personalidad:
-- Profesional pero amigable.
-- Directo y conciso, sin rodeos.
-- Proactivo: si detectas algo relevante (tickets críticos, citas próximas), menciónalo.
+═══ FLUJO DE ATENCIÓN AL CLIENTE ═══
+1. Si el usuario tiene UN SOLO proyecto → úsalo automáticamente, no preguntes.
+2. Si tiene MÚLTIPLES proyectos y no especifica cuál → pregunta: "¿Sobre cuál proyecto necesitas información?" y LISTA los proyectos disponibles.
+3. Si el nombre del proyecto no coincide exactamente → el sistema hace matching flexible ("ERP" → "ERP Personalizado", "ifeelmx" → "IFEELMX APP").
+4. Si aún así no se encuentra → muestra SIEMPRE la lista de proyectos disponibles y pide que elija.
+5. Una vez identificado el proyecto → ejecuta la consulta y muestra resultados con tarjetas.
+6. Si no hay resultados → informa claramente: "No se encontraron [tickets/tareas/etc.] en [proyecto]." Sin inventar datos.
+7. Sé proactivo: si encuentras algo relevante (tickets críticos, citas hoy, tareas vencidas), menciónalo.
 
-Formato de respuesta:
-- Usa texto breve y claro.
-- Cuando haya datos tabulares, resúmelos de forma legible.
-- Las cards de tickets/tareas/minutas/requerimientos/citas se renderizan automáticamente en la app, solo menciónalos en tu texto de forma natural.
+═══ REGLAS DE FILTROS (CRÍTICO) ═══
+- NO agregues filtros de status/prioridad a menos que el usuario lo pida EXPLÍCITAMENTE.
+- Ejemplos:
+  • "Hay tickets?" → buscarTickets SIN filtro (todos los activos)
+  • "Hay tickets pendientes?" → buscarTickets CON status=PENDIENTE
+  • "Hay nuevos tickets?" → buscarTickets SIN filtro ("nuevos" NO es un estado)
+  • "Hay tareas?" → buscarTareas SIN filtro
+  • "Hay tareas pendientes?" → buscarTareas CON status=pendiente
+  • "Tickets de alta prioridad" → buscarTickets CON prioridad=alta
+
+═══ DATOS TÉCNICOS DE REFERENCIA ═══
+Estados de tickets: PENDIENTE, EN_DESARROLLO, PRUEBAS_INTERNAS, PRUEBAS_CLIENTE, BUGS, RESUELTO, ARCHIVADO
+Estados de tareas: pendiente, enProgreso, completada, cancelada
+Prioridades de tareas: baja, media, alta, urgente
+Prioridades de tickets: baja, normal, alta, critica
+Estados de requerimientos: Propuesto, En Revisión, En Desarrollo, Implementado, Completado, Descartado
+Estados de citas: programada, enCurso, completada, cancelada
+- archivados=true → busca en inactivos (isActive=false). Por defecto busca activos.
+- fechaCompromiso en tickets: fecha de compromiso de solución (vacío = no asignada).
+- "mis tareas" → buscarTareas (status pendiente o enProgreso)
+
+═══ PERSONALIDAD ═══
+- Profesional, amigable y servicial.
+- Conciso: ve al grano, sin rodeos innecesarios.
+- Proactivo: si detectas tickets urgentes, citas próximas o tareas vencidas, menciónalo.
+- Cuando muestres datos, incluye folios, estados y porcentajes.
+- Las tarjetas (cards) de tickets/tareas/minutas/requerimientos/citas se renderizan automáticamente en la app. Menciónalos de forma natural en tu texto.
+- Si el usuario saluda, responde cordialmente y ofrece ayuda: "¡Hola${userDisplayName.isNotEmpty ? ' $userDisplayName' : ''}! ¿En qué puedo ayudarte hoy?"
 ''';
   }
 }
