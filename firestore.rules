@@ -74,6 +74,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // ── Comentarios de Citas ──
+    match /ComentariosCitas/{document} {
+      allow read, write: if request.auth != null;
+    }
+
     // ── Minutas ──
     match /Minutas/{document} {
       allow read, write: if request.auth != null;

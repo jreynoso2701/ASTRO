@@ -7,9 +7,17 @@ import 'package:intl/intl.dart';
 import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
+import 'package:astro/core/models/ticket.dart';
+import 'package:astro/core/models/requerimiento.dart';
+import 'package:astro/core/models/minuta.dart';
+import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
+import 'package:astro/features/tickets/providers/ticket_providers.dart';
+import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
+import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -64,10 +72,11 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   final List<String> _existingAdjuntos = [];
   final List<XFile> _newFiles = [];
 
-  // Referencias
-  String? _refTicketId;
-  String? _refRequerimientoId;
-  String? _refMinutaId;
+  // Referencias (listas)
+  final List<String> _refTickets = [];
+  final List<String> _refRequerimientos = [];
+  final List<String> _refMinutas = [];
+  final List<String> _refCitas = [];
   int? _refCompromisoNumero;
 
   bool _isSaving = false;
@@ -89,7 +98,9 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
       _assignedToUid = widget.initialAssignedToUid;
       _assignedToName = widget.initialAssignedToName;
       _fechaEntrega = widget.initialFechaEntrega;
-      _refMinutaId = widget.initialRefMinutaId;
+      if (widget.initialRefMinutaId != null) {
+        _refMinutas.add(widget.initialRefMinutaId!);
+      }
       _refCompromisoNumero = widget.initialRefCompromisoNumero;
     }
   }
@@ -121,6 +132,12 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
     // Miembros del proyecto
     final members = ref.watch(projectMembersProvider(widget.projectId));
 
+    // Pre-calentar providers de referencias para que estén listos al buscar
+    ref.watch(allTicketsByProjectProvider(projectName));
+    ref.watch(allRequerimientosByProjectProvider(projectName));
+    ref.watch(minutasByProjectProvider(projectName));
+    ref.watch(citasByProjectProvider(projectName));
+
     // Si estamos editando, cargar datos
     if (_isEditing && !_isLoaded) {
       final tareaAsync = ref.watch(tareaByIdProvider(widget.tareaId!));
@@ -136,9 +153,10 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
           _assignedToUid = tarea.assignedToUid;
           _assignedToName = tarea.assignedToName;
           _existingAdjuntos.addAll(tarea.adjuntos);
-          _refTicketId = tarea.refTicketId;
-          _refRequerimientoId = tarea.refRequerimientoId;
-          _refMinutaId = tarea.refMinutaId;
+          _refTickets.addAll(tarea.refTickets);
+          _refRequerimientos.addAll(tarea.refRequerimientos);
+          _refMinutas.addAll(tarea.refMinutas);
+          _refCitas.addAll(tarea.refCitas);
           _refCompromisoNumero = tarea.refCompromisoNumero;
           _isLoaded = true;
           if (mounted) setState(() {});
@@ -375,6 +393,58 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
 
               const SizedBox(height: 24),
 
+              // ── Referencias ───────────────────────────
+              Text(
+                'REFERENCIAS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // Tickets
+              _RefSubSection(
+                label: 'Tickets',
+                icon: Icons.confirmation_number_outlined,
+                ids: _refTickets,
+                onAdd: () => _searchTickets(projectName),
+                onRemove: (id) => setState(() => _refTickets.remove(id)),
+              ),
+              const SizedBox(height: 12),
+
+              // Requerimientos
+              _RefSubSection(
+                label: 'Requerimientos',
+                icon: Icons.assignment_outlined,
+                ids: _refRequerimientos,
+                onAdd: () => _searchRequerimientos(projectName),
+                onRemove: (id) => setState(() => _refRequerimientos.remove(id)),
+              ),
+              const SizedBox(height: 12),
+
+              // Minutas
+              _RefSubSection(
+                label: 'Minutas',
+                icon: Icons.description_outlined,
+                ids: _refMinutas,
+                onAdd: () => _searchMinutas(projectName),
+                onRemove: (id) => setState(() => _refMinutas.remove(id)),
+              ),
+              const SizedBox(height: 12),
+
+              // Citas
+              _RefSubSection(
+                label: 'Citas',
+                icon: Icons.event_outlined,
+                ids: _refCitas,
+                onAdd: () => _searchCitas(projectName),
+                onRemove: (id) => setState(() => _refCitas.remove(id)),
+              ),
+
+              const SizedBox(height: 24),
+
               // ── Adjuntos ──────────────────────────────
               Text(
                 'ADJUNTOS',
@@ -554,9 +624,10 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
         assignedToName: _assignedToName,
         fechaEntrega: _fechaEntrega,
         adjuntos: allAdjuntos,
-        refTicketId: _refTicketId,
-        refRequerimientoId: _refRequerimientoId,
-        refMinutaId: _refMinutaId,
+        refTickets: _refTickets,
+        refRequerimientos: _refRequerimientos,
+        refMinutas: _refMinutas,
+        refCitas: _refCitas,
         refCompromisoNumero: _refCompromisoNumero,
       );
 
@@ -591,4 +662,465 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
     TareaPrioridad.alta => const Color(0xFFFF9800),
     TareaPrioridad.urgente => const Color(0xFFD32F2F),
   };
+
+  // ─── Búsqueda de referencias ──────────────────────────
+
+  Future<void> _searchTickets(String projectName) async {
+    final tickets = await ref.read(
+      allTicketsByProjectProvider(projectName).future,
+    );
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchRefDialog<Ticket>(
+        title: 'Buscar ticket',
+        items: tickets.where((t) => !_refTickets.contains(t.id)).toList(),
+        labelBuilder: (t) => '${t.folio} — ${t.titulo}',
+        idBuilder: (t) => t.id,
+        searchBuilder: (t) => [
+          t.folio,
+          t.titulo,
+          t.descripcion,
+          t.status.label,
+          t.priority.label,
+          t.createdByName,
+          t.assignedToName ?? '',
+          t.moduleName,
+        ].join(' '),
+        leadingBuilder: (t) => Icon(
+          t.isActive
+              ? Icons.confirmation_number_outlined
+              : Icons.archive_outlined,
+          color: t.isActive
+              ? Theme.of(ctx).colorScheme.primary
+              : Theme.of(ctx).colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
+        subtitleBuilder: (t) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _StatusChip(
+                    label: t.status.label,
+                    color: cs.primaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  _StatusChip(
+                    label: t.priority.label,
+                    color: cs.tertiaryContainer,
+                  ),
+                  if (!t.isActive) ...[
+                    const SizedBox(width: 4),
+                    _StatusChip(label: 'Archivado', color: cs.errorContainer),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${t.moduleName} · ${t.createdByName}',
+                style: Theme.of(ctx).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (selected != null) setState(() => _refTickets.add(selected));
+  }
+
+  Future<void> _searchRequerimientos(String projectName) async {
+    final reqs = await ref.read(
+      allRequerimientosByProjectProvider(projectName).future,
+    );
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchRefDialog<Requerimiento>(
+        title: 'Buscar requerimiento',
+        items: reqs.where((r) => !_refRequerimientos.contains(r.id)).toList(),
+        labelBuilder: (r) => '${r.folio} — ${r.titulo}',
+        idBuilder: (r) => r.id,
+        searchBuilder: (r) => [
+          r.folio,
+          r.titulo,
+          r.descripcion,
+          r.status.label,
+          r.prioridad.label,
+          r.tipo.label,
+          r.createdByName,
+          r.assignedToName ?? '',
+          r.moduleName ?? '',
+        ].join(' '),
+        leadingBuilder: (r) => Icon(
+          r.isActive ? Icons.assignment_outlined : Icons.archive_outlined,
+          color: r.isActive
+              ? Theme.of(ctx).colorScheme.primary
+              : Theme.of(ctx).colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
+        subtitleBuilder: (r) {
+          final cs = Theme.of(ctx).colorScheme;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _StatusChip(
+                    label: r.status.label,
+                    color: cs.primaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  _StatusChip(
+                    label: r.prioridad.label,
+                    color: cs.tertiaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  _StatusChip(
+                    label: r.tipo.label,
+                    color: cs.secondaryContainer,
+                  ),
+                  if (!r.isActive) ...[
+                    const SizedBox(width: 4),
+                    _StatusChip(label: 'Archivado', color: cs.errorContainer),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${r.moduleName ?? 'Sin módulo'} · ${r.createdByName}',
+                style: Theme.of(ctx).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (selected != null) setState(() => _refRequerimientos.add(selected));
+  }
+
+  Future<void> _searchMinutas(String projectName) async {
+    final minutas = await ref.read(
+      minutasByProjectProvider(projectName).future,
+    );
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchRefDialog<Minuta>(
+        title: 'Buscar minuta',
+        items: minutas.where((m) => !_refMinutas.contains(m.id)).toList(),
+        labelBuilder: (m) => '${m.folio} — ${m.objetivo}',
+        idBuilder: (m) => m.id,
+        searchBuilder: (m) => [
+          m.folio,
+          m.objetivo,
+          m.createdByName,
+          m.observaciones ?? '',
+          m.lugar ?? '',
+          m.modalidad.label,
+          m.isActive ? '' : 'archivado',
+        ].join(' '),
+        leadingBuilder: (m) => Icon(
+          m.isActive ? Icons.description_outlined : Icons.archive_outlined,
+          color: m.isActive
+              ? Theme.of(ctx).colorScheme.primary
+              : Theme.of(ctx).colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
+        subtitleBuilder: (m) {
+          final cs = Theme.of(ctx).colorScheme;
+          final fecha = m.fecha != null
+              ? DateFormat('dd/MM/yyyy').format(m.fecha!)
+              : 'Sin fecha';
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _StatusChip(
+                    label: m.modalidad.label,
+                    color: cs.primaryContainer,
+                  ),
+                  if (!m.isActive) ...[
+                    const SizedBox(width: 4),
+                    _StatusChip(label: 'Archivada', color: cs.errorContainer),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$fecha · ${m.createdByName}',
+                style: Theme.of(ctx).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (selected != null) setState(() => _refMinutas.add(selected));
+  }
+
+  Future<void> _searchCitas(String projectName) async {
+    final citas = await ref.read(citasByProjectProvider(projectName).future);
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchRefDialog<Cita>(
+        title: 'Buscar cita',
+        items: citas.where((c) => !_refCitas.contains(c.id)).toList(),
+        labelBuilder: (c) => '${c.folio} — ${c.titulo}',
+        idBuilder: (c) => c.id,
+        searchBuilder: (c) => [
+          c.folio,
+          c.titulo,
+          c.descripcion ?? '',
+          c.status.label,
+          c.modalidad.label,
+          c.createdByName,
+          c.direccion ?? '',
+          c.isActive ? '' : 'archivado',
+        ].join(' '),
+        leadingBuilder: (c) => Icon(
+          c.isActive ? Icons.event_outlined : Icons.archive_outlined,
+          color: c.isActive
+              ? Theme.of(ctx).colorScheme.primary
+              : Theme.of(ctx).colorScheme.onSurfaceVariant,
+          size: 20,
+        ),
+        subtitleBuilder: (c) {
+          final cs = Theme.of(ctx).colorScheme;
+          final fecha = c.fecha != null
+              ? DateFormat('dd/MM/yyyy').format(c.fecha!)
+              : 'Sin fecha';
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _StatusChip(
+                    label: c.status.label,
+                    color: cs.primaryContainer,
+                  ),
+                  const SizedBox(width: 4),
+                  _StatusChip(
+                    label: c.modalidad.label,
+                    color: cs.secondaryContainer,
+                  ),
+                  if (!c.isActive) ...[
+                    const SizedBox(width: 4),
+                    _StatusChip(label: 'Archivada', color: cs.errorContainer),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '$fecha · ${c.createdByName}',
+                style: Theme.of(ctx).textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (selected != null) setState(() => _refCitas.add(selected));
+  }
+}
+
+// ── Ref Sub Section ──────────────────────────────────────
+
+class _RefSubSection extends StatelessWidget {
+  const _RefSubSection({
+    required this.label,
+    required this.icon,
+    required this.ids,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final String label;
+  final IconData icon;
+  final List<String> ids;
+  final VoidCallback onAdd;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text(label, style: theme.textTheme.labelLarge),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Agregar'),
+            ),
+          ],
+        ),
+        if (ids.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: Text(
+              'Sin referencias',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        else
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: ids.map((id) {
+              return Chip(
+                avatar: Icon(icon, size: 16),
+                label: Text(
+                  id.length > 10 ? '${id.substring(0, 10)}…' : id,
+                  style: theme.textTheme.bodySmall,
+                ),
+                deleteIcon: const Icon(Icons.close, size: 16),
+                onDeleted: () => onRemove(id),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Search Ref Dialog ────────────────────────────────────
+
+class _SearchRefDialog<T> extends StatefulWidget {
+  const _SearchRefDialog({
+    required this.title,
+    required this.items,
+    required this.labelBuilder,
+    required this.idBuilder,
+    this.searchBuilder,
+    this.subtitleBuilder,
+    this.leadingBuilder,
+    super.key,
+  });
+
+  final String title;
+  final List<T> items;
+  final String Function(T) labelBuilder;
+  final String Function(T) idBuilder;
+  final String Function(T)? searchBuilder;
+  final Widget Function(T)? subtitleBuilder;
+  final Widget Function(T)? leadingBuilder;
+
+  @override
+  State<_SearchRefDialog<T>> createState() => _SearchRefDialogState<T>();
+}
+
+class _SearchRefDialogState<T> extends State<_SearchRefDialog<T>> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.items.where((item) {
+      if (_query.isEmpty) return true;
+      final text = (widget.searchBuilder ?? widget.labelBuilder)(item);
+      return text.toUpperCase().contains(_query.toUpperCase());
+    }).toList();
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Sin resultados',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final item = filtered[i];
+                        return ListTile(
+                          leading: widget.leadingBuilder?.call(item),
+                          title: Text(
+                            widget.labelBuilder(item),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: widget.subtitleBuilder?.call(item),
+                          isThreeLine: widget.subtitleBuilder != null,
+                          onTap: () =>
+                              Navigator.pop(ctx, widget.idBuilder(item)),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Status Chip (compact label for search results) ───────
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+      ),
+    );
+  }
 }

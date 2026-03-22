@@ -55,6 +55,7 @@ class Cita {
     this.participantes = const [],
     this.refTickets = const [],
     this.refRequerimientos = const [],
+    this.refMinutas = const [],
     this.refMinuta,
     this.participantUids = const [],
     this.recordatorios = const [15, 60],
@@ -85,6 +86,7 @@ class Cita {
   final List<ParticipanteCita> participantes;
   final List<String> refTickets;
   final List<String> refRequerimientos;
+  final List<String> refMinutas; // Minutas referenciadas (seguimiento)
   final String? refMinuta; // Minuta generada tras la reunión
 
   /// UIDs desnormalizados de participantes + createdBy (para consultas cross-project).
@@ -152,6 +154,7 @@ class Cita {
       participantes: parseParticipantes(data['participantes']),
       refTickets: parseStrList(data['refTickets']),
       refRequerimientos: parseStrList(data['refRequerimientos']),
+      refMinutas: parseStrList(data['refMinutas']),
       refMinuta: data['refMinuta'] as String?,
       participantUids: parseStrList(data['participantUids']),
       recordatorios: parseIntList(data['recordatorios']),
@@ -184,6 +187,7 @@ class Cita {
       'participantes': participantes.map((p) => p.toMap()).toList(),
       if (refTickets.isNotEmpty) 'refTickets': refTickets,
       if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
+      if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refMinuta != null) 'refMinuta': refMinuta,
       'participantUids': participantUids,
       'recordatorios': recordatorios,
@@ -213,6 +217,7 @@ class Cita {
     List<ParticipanteCita>? participantes,
     List<String>? refTickets,
     List<String>? refRequerimientos,
+    List<String>? refMinutas,
     String? refMinuta,
     List<String>? participantUids,
     List<int>? recordatorios,
@@ -241,6 +246,7 @@ class Cita {
       participantes: participantes ?? this.participantes,
       refTickets: refTickets ?? this.refTickets,
       refRequerimientos: refRequerimientos ?? this.refRequerimientos,
+      refMinutas: refMinutas ?? this.refMinutas,
       refMinuta: refMinuta ?? this.refMinuta,
       participantUids: participantUids ?? this.participantUids,
       recordatorios: recordatorios ?? this.recordatorios,

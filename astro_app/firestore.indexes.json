@@ -600,6 +600,14 @@
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "participantUids", "arrayConfig": "CONTAINS" }
       ]
+    },
+    {
+      "collectionGroup": "ComentariosCitas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "refCita", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

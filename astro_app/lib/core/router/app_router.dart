@@ -328,12 +328,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.ticketNew,
-        builder: (context, state) => TicketFormScreen(
-          projectId: state.pathParameters['id']!,
-          returnId:
-              (state.extra as Map<String, dynamic>?)?['returnId'] as bool? ??
-              false,
-        ),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return TicketFormScreen(
+            projectId: state.pathParameters['id']!,
+            returnId: extra?['returnId'] as bool? ?? false,
+            refCitaId: extra?['refCitaId'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.ticketEdit,
@@ -358,12 +360,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ── Rutas de requerimientos (más específicas primero)
       GoRoute(
         path: AppRoutes.reqNew,
-        builder: (context, state) => RequerimientoFormScreen(
-          projectId: state.pathParameters['id']!,
-          returnId:
-              (state.extra as Map<String, dynamic>?)?['returnId'] as bool? ??
-              false,
-        ),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return RequerimientoFormScreen(
+            projectId: state.pathParameters['id']!,
+            returnId: extra?['returnId'] as bool? ?? false,
+            refCitaId: extra?['refCitaId'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.reqEdit,
@@ -388,8 +392,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // ── Rutas de minutas (más específicas primero)
       GoRoute(
         path: AppRoutes.minutaNew,
-        builder: (context, state) =>
-            MinutaFormScreen(projectId: state.pathParameters['id']!),
+        builder: (context, state) => MinutaFormScreen(
+          projectId: state.pathParameters['id']!,
+          citaId: state.uri.queryParameters['refCitaId'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.minutaEdit,

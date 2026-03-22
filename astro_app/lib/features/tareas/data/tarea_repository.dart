@@ -145,7 +145,7 @@ class TareaRepository {
 
   /// Stream de todas las tareas (activas e inactivas) vinculadas a una minuta.
   Stream<List<Tarea>> watchByMinuta(String minutaId) {
-    return _ref.where('refMinutaId', isEqualTo: minutaId).snapshots().map((
+    return _ref.where('refMinutas', arrayContains: minutaId).snapshots().map((
       snap,
     ) {
       final tareas = snap.docs.map(Tarea.fromFirestore).toList();

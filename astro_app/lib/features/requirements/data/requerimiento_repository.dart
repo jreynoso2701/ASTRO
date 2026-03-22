@@ -119,17 +119,22 @@ class RequerimientoRepository {
     });
   }
 
-  /// Actualiza el estado.
+  /// Actualiza el estado. Opcionalmente incluye fecha compromiso.
   Future<void> updateStatus(
     String id,
     RequerimientoStatus newStatus, {
     required String updatedBy,
+    DateTime? fechaCompromiso,
   }) async {
-    await _ref.doc(id).update({
+    final data = <String, dynamic>{
       'status': newStatus.label,
       'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
-    });
+    };
+    if (fechaCompromiso != null) {
+      data['fechaCompromiso'] = Timestamp.fromDate(fechaCompromiso);
+    }
+    await _ref.doc(id).update(data);
   }
 
   /// Actualiza criterios de aceptación.
@@ -244,6 +249,21 @@ class RequerimientoRepository {
           );
           return list;
         });
+  }
+
+  /// Stream de **todos** los requerimientos (activos + archivados) de un proyecto.
+  Stream<List<Requerimiento>> watchAllByProject(String projectName) {
+    return _ref.where('projectName', isEqualTo: projectName).snapshots().map((
+      snap,
+    ) {
+      final list = snap.docs.map(Requerimiento.fromFirestore).toList();
+      list.sort(
+        (a, b) => (b.updatedAt ?? DateTime(2000)).compareTo(
+          a.updatedAt ?? DateTime(2000),
+        ),
+      );
+      return list;
+    });
   }
 
   // ── Comentarios ────────────────────────────────────────

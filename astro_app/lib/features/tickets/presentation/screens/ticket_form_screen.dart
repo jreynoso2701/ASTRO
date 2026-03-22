@@ -33,12 +33,14 @@ class TicketFormScreen extends ConsumerStatefulWidget {
     required this.projectId,
     this.ticketId,
     this.returnId = false,
+    this.refCitaId,
     super.key,
   });
 
   final String projectId;
   final String? ticketId;
   final bool returnId;
+  final String? refCitaId;
 
   @override
   ConsumerState<TicketFormScreen> createState() => _TicketFormScreenState();
@@ -72,6 +74,14 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
   // Citas vinculadas
   final List<String> _refCitas = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.refCitaId != null) {
+      _refCitas.add(widget.refCitaId!);
+    }
+  }
 
   bool _isSaving = false;
   bool _isLoaded = false;

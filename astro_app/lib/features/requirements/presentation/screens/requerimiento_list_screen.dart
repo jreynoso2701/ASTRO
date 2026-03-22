@@ -235,12 +235,32 @@ class _RequerimientoListScreenState
       onReqTap: (req) =>
           context.push('/projects/$projectId/requirements/${req.id}'),
       onStatusChange: (req, newStatus) async {
+        const requiresFecha = {
+          RequerimientoStatus.enDesarrollo,
+          RequerimientoStatus.implementado,
+          RequerimientoStatus.completado,
+        };
+
+        DateTime? fechaCompromiso;
+        if (requiresFecha.contains(newStatus) && req.fechaCompromiso == null) {
+          final now = DateTime.now();
+          fechaCompromiso = await showDatePicker(
+            context: context,
+            initialDate: now,
+            firstDate: now.subtract(const Duration(days: 365)),
+            lastDate: now.add(const Duration(days: 365 * 3)),
+            helpText: 'Fecha compromiso',
+          );
+          if (fechaCompromiso == null) return; // Cancelado
+        }
+
         final repo = ref.read(requerimientoRepositoryProvider);
         final profile = ref.read(currentUserProfileProvider).value;
         await repo.updateStatus(
           req.id,
           newStatus,
           updatedBy: profile?.uid ?? '',
+          fechaCompromiso: fechaCompromiso,
         );
         if (profile != null) {
           await repo.addComment(

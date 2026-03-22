@@ -39,7 +39,9 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
 
       // Sincronizar compromiso en la minuta vinculada (Gap 1).
       final tarea = ref.read(tareaByIdProvider(widget.tareaId)).value;
-      if (tarea?.refMinutaId != null && tarea?.refCompromisoNumero != null) {
+      if (tarea != null &&
+          tarea.refMinutas.isNotEmpty &&
+          tarea.refCompromisoNumero != null) {
         final compromisoStatus = switch (newStatus) {
           TareaStatus.completada => 'cumplido',
           _ => 'pendiente',
@@ -47,7 +49,7 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
         try {
           final minutaRepo = MinutaRepository();
           await minutaRepo.updateCompromisoStatus(
-            tarea!.refMinutaId!,
+            tarea.refMinutas.first,
             compromisoNumero: tarea.refCompromisoNumero!,
             newStatus: compromisoStatus,
           );
@@ -75,7 +77,7 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
   Future<void> _archiveTarea() async {
     // Verificar si la tarea está vinculada a una minuta.
     final tarea = ref.read(tareaByIdProvider(widget.tareaId)).value;
-    final hasMinuta = tarea?.refMinutaId != null;
+    final hasMinuta = tarea != null && tarea.refMinutas.isNotEmpty;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -152,11 +154,13 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
 
       // Sincronizar compromiso en la minuta vinculada.
       final tarea = ref.read(tareaByIdProvider(widget.tareaId)).value;
-      if (tarea?.refMinutaId != null && tarea?.refCompromisoNumero != null) {
+      if (tarea != null &&
+          tarea.refMinutas.isNotEmpty &&
+          tarea.refCompromisoNumero != null) {
         try {
           final minutaRepo = MinutaRepository();
           await minutaRepo.updateCompromisoStatus(
-            tarea!.refMinutaId!,
+            tarea.refMinutas.first,
             compromisoNumero: tarea.refCompromisoNumero!,
             newStatus: 'pendiente',
           );
@@ -772,9 +776,10 @@ class _ReferencesSection extends StatelessWidget {
     final theme = Theme.of(context);
 
     final hasRefs =
-        tarea.refTicketId != null ||
-        tarea.refRequerimientoId != null ||
-        tarea.refMinutaId != null;
+        tarea.refTickets.isNotEmpty ||
+        tarea.refRequerimientos.isNotEmpty ||
+        tarea.refMinutas.isNotEmpty ||
+        tarea.refCitas.isNotEmpty;
 
     if (!hasRefs) return const SizedBox.shrink();
 
@@ -790,38 +795,42 @@ class _ReferencesSection extends StatelessWidget {
         ),
         const Divider(height: 16),
 
-        if (tarea.refTicketId != null)
+        for (final ticketId in tarea.refTickets)
           ListTile(
             leading: const Icon(Icons.confirmation_num_outlined),
             title: const Text('Ticket vinculado'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(
-              '/projects/$projectId/tickets/${tarea.refTicketId}',
-            ),
+            onTap: () => context.push('/projects/$projectId/tickets/$ticketId'),
           ),
 
-        if (tarea.refRequerimientoId != null)
+        for (final reqId in tarea.refRequerimientos)
           ListTile(
             leading: const Icon(Icons.assignment_outlined),
             title: const Text('Requerimiento vinculado'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(
-              '/projects/$projectId/requirements/${tarea.refRequerimientoId}',
-            ),
+            onTap: () =>
+                context.push('/projects/$projectId/requirements/$reqId'),
           ),
 
-        if (tarea.refMinutaId != null)
+        for (final minutaId in tarea.refMinutas)
           ListTile(
             leading: const Icon(Icons.description_outlined),
             title: Text(
-              tarea.refCompromisoNumero != null
+              tarea.refCompromisoNumero != null &&
+                      minutaId == tarea.refMinutas.first
                   ? 'Minuta (compromiso #${tarea.refCompromisoNumero})'
                   : 'Minuta vinculada',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(
-              '/projects/$projectId/minutas/${tarea.refMinutaId}',
-            ),
+            onTap: () => context.push('/projects/$projectId/minutas/$minutaId'),
+          ),
+
+        for (final citaId in tarea.refCitas)
+          ListTile(
+            leading: const Icon(Icons.event_outlined),
+            title: const Text('Cita vinculada'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/projects/$projectId/citas/$citaId'),
           ),
       ],
     );

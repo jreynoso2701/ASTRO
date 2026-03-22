@@ -27,6 +27,14 @@ final requerimientosByProjectProvider =
           .watchByProject(projectName);
     });
 
+/// Todos los requerimientos (activos + archivados) de un proyecto.
+final allRequerimientosByProjectProvider =
+    StreamProvider.family<List<Requerimiento>, String>((ref, projectName) {
+      return ref
+          .watch(requerimientoRepositoryProvider)
+          .watchAllByProject(projectName);
+    });
+
 // ── Requerimiento individual ─────────────────────────────
 
 final requerimientoByIdProvider = StreamProvider.family<Requerimiento?, String>(

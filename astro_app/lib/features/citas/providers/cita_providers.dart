@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/models/cita_comment.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/features/citas/data/cita_repository.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
@@ -26,6 +27,16 @@ final citasByProjectProvider = StreamProvider.family<List<Cita>, String>((
 /// Stream de una cita por ID.
 final citaByIdProvider = StreamProvider.family<Cita?, String>((ref, id) {
   return ref.watch(citaRepositoryProvider).watchCita(id);
+});
+
+// ── Comentarios de cita ────────────────────────────────
+
+/// Stream de comentarios de una cita.
+final citaCommentsProvider = StreamProvider.family<List<CitaComment>, String>((
+  ref,
+  citaId,
+) {
+  return ref.watch(citaRepositoryProvider).watchComments(citaId);
 });
 
 // ── Filtros ──────────────────────────────────────────────

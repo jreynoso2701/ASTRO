@@ -427,6 +427,52 @@ export const onTicketUpdated = onDocumentUpdated(
         projectName,
       });
     }
+
+    // Cambio de fecha compromiso de solución
+    const beforeFh = before.fhCompromisoSol;
+    const afterFh = after.fhCompromisoSol;
+    const beforeFhStr = beforeFh?.toMillis?.() ?? (typeof beforeFh === "string" ? beforeFh : null);
+    const afterFhStr = afterFh?.toMillis?.() ?? (typeof afterFh === "string" ? afterFh : null);
+    if (beforeFhStr !== afterFhStr && afterFhStr !== null) {
+      const updatedBy = after.updatedBy as string | undefined;
+      let updatedByName = "Alguien";
+      if (updatedBy) {
+        const userDoc = await db.collection("users").doc(updatedBy).get();
+        if (userDoc.exists) {
+          const ud = userDoc.data()!;
+          updatedByName = (ud.displayName as string) ??
+            (ud.nombre as string) ?? "Alguien";
+        }
+      }
+
+      // Formatear la fecha para el mensaje
+      let fechaStr = "";
+      if (afterFh?.toDate) {
+        const d = afterFh.toDate() as Date;
+        fechaStr = `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")}/${d.getFullYear()}`;
+      } else if (typeof afterFh === "string") {
+        fechaStr = afterFh;
+      }
+
+      const assignments = await getProjectAssignments(projectId);
+      const rootUids = assignments
+        .filter((a) => a.role === "Root" && a.userId !== updatedBy)
+        .map((a) => a.userId);
+
+      if (rootUids.length > 0) {
+        const esNueva = beforeFhStr === null;
+        const accion = esNueva ? "estableció" : "modificó";
+        await sendNotifications(rootUids, {
+          titulo: `📅 ${folio} — fecha compromiso`,
+          cuerpo: `${updatedByName} ${accion} la fecha compromiso al ${fechaStr}.`,
+          tipo: "ticket_fecha_compromiso",
+          refType: "ticket",
+          refId: ticketId,
+          projectId,
+          projectName,
+        });
+      }
+    }
   }
 );
 
@@ -629,6 +675,44 @@ export const onReqUpdated = onDocumentUpdated(
         projectName,
       });
     }
+
+    // Cambio de fecha compromiso
+    const beforeFecha = before.fechaCompromiso?.toMillis?.() ?? null;
+    const afterFecha = after.fechaCompromiso?.toMillis?.() ?? null;
+    if (beforeFecha !== afterFecha && afterFecha !== null) {
+      const updatedBy = after.updatedBy as string | undefined;
+      let updatedByName = "Alguien";
+      if (updatedBy) {
+        const userDoc = await db.collection("users").doc(updatedBy).get();
+        if (userDoc.exists) {
+          const ud = userDoc.data()!;
+          updatedByName = (ud.displayName as string) ??
+            (ud.nombre as string) ?? "Alguien";
+        }
+      }
+
+      const fechaDate = after.fechaCompromiso.toDate() as Date;
+      const fechaStr = `${fechaDate.getDate().toString().padStart(2, "0")}/${(fechaDate.getMonth() + 1).toString().padStart(2, "0")}/${fechaDate.getFullYear()}`;
+
+      const assignments = await getProjectAssignments(projectId);
+      const rootUids = assignments
+        .filter((a) => a.role === "Root" && a.userId !== updatedBy)
+        .map((a) => a.userId);
+
+      if (rootUids.length > 0) {
+        const esNueva = beforeFecha === null;
+        const accion = esNueva ? "estableció" : "modificó";
+        await sendNotifications(rootUids, {
+          titulo: `📅 ${folio} — fecha compromiso`,
+          cuerpo: `${updatedByName} ${accion} la fecha compromiso al ${fechaStr}.`,
+          tipo: "req_fecha_compromiso",
+          refType: "requerimiento",
+          refId: reqId,
+          projectId,
+          projectName,
+        });
+      }
+    }
   }
 );
 
@@ -751,6 +835,7 @@ export const onCitaUpdated = onDocumentUpdated(
     if (before.status !== after.status) {
       const newStatus = after.status as string ?? "";
       const isCancelled = newStatus.toLowerCase() === "cancelada";
+      const isCompleted = newStatus.toLowerCase() === "completada";
 
       const recipients = await getCitaRecipients(
         projectId,
@@ -763,6 +848,16 @@ export const onCitaUpdated = onDocumentUpdated(
           titulo: `${folio} cancelada`,
           cuerpo: `La cita "${after.titulo ?? ""}" ha sido cancelada`,
           tipo: "cita_cancelada",
+          refType: "cita",
+          refId: citaId,
+          projectId,
+          projectName,
+        });
+      } else if (isCompleted) {
+        await sendNotifications(recipients, {
+          titulo: `${folio} completada`,
+          cuerpo: `La cita "${after.titulo ?? ""}" ha sido completada`,
+          tipo: "cita_completada",
           refType: "cita",
           refId: citaId,
           projectId,
@@ -1553,6 +1648,140 @@ export const checkTareaDeadlines = onSchedule(
 
     await Promise.all(promises);
   }
+);
+
+// ── Scheduled: CHECK REQUERIMIENTO DEADLINES ─────────────
+
+/**
+ * Lunes a Viernes a las 09:30 y 16:00 (CDMX).
+ * Revisa requerimientos activos con fechaCompromiso y envía alertas
+ * de semáforo (amber ≤5d, orange ≤1d, red vencido) al responsable + Root.
+ */
+async function _checkReqDeadlinesLogic(runTag: string): Promise<void> {
+  const snap = await db
+    .collection("Requerimientos")
+    .where("isActive", "==", true)
+    .get();
+
+  if (snap.empty) return;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const promises: Promise<void>[] = [];
+
+  for (const doc of snap.docs) {
+    const data = doc.data();
+    const reqId = doc.id;
+
+    // Solo requerimientos con fecha compromiso
+    const fhRaw = data.fechaCompromiso;
+    if (!fhRaw) continue;
+
+    // Omitir estados terminales
+    const status = (data.status as string ?? "").toLowerCase();
+    if (status === "completado" || status === "descartado") continue;
+
+    const target = parseDate(fhRaw);
+    if (!target) continue;
+
+    const deadline = new Date(
+      target.getFullYear(),
+      target.getMonth(),
+      target.getDate()
+    );
+    const diffMs = deadline.getTime() - today.getTime();
+    const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    // Determinar zona del semáforo
+    let zone: "amber" | "orange" | "red" | null = null;
+    let emoji = "";
+    let label = "";
+
+    if (days < 0) {
+      zone = "red";
+      emoji = "\u{1F534}";
+      label = `Vencido hace ${-days} día(s)`;
+    } else if (days <= 1) {
+      zone = "orange";
+      emoji = "\u{1F7E0}";
+      label = days === 0 ? "Vence HOY" : "Vence MAÑANA";
+    } else if (days <= 5) {
+      zone = "amber";
+      emoji = "\u{1F7E1}";
+      label = `Vence en ${days} días`;
+    }
+
+    if (!zone) continue;
+
+    // Anti-spam: zona + tag de corrida (am/pm) para permitir 2 alertas/día
+    const alertKey = `${zone}_${runTag}`;
+    const lastAlert = data._lastDeadlineAlert as string | undefined;
+    if (lastAlert === alertKey) continue;
+
+    promises.push(
+      db
+        .collection("Requerimientos")
+        .doc(reqId)
+        .update({_lastDeadlineAlert: alertKey})
+        .then(() => {
+          /* ok */
+        })
+    );
+
+    const projectId = data.projectId as string | undefined;
+    if (!projectId) continue;
+
+    const projectName = (data.projectName as string) ?? "";
+    const folio = (data.folio as string) ?? "";
+    const titulo = (data.titulo as string) ?? "";
+    const assignedToUid = data.assignedToUid as string | undefined;
+
+    // Notificar al asignado + Root del proyecto
+    const recipientUids: string[] = [];
+    if (assignedToUid) recipientUids.push(assignedToUid);
+
+    const assignments = await getProjectAssignments(projectId);
+    for (const a of assignments) {
+      if (a.role === "Root" && !recipientUids.includes(a.userId)) {
+        recipientUids.push(a.userId);
+      }
+    }
+
+    if (recipientUids.length === 0) continue;
+
+    promises.push(
+      sendNotifications(recipientUids, {
+        titulo: `${emoji} ${folio} — ${label}`,
+        cuerpo: titulo,
+        tipo: `req_deadline_${zone}`,
+        refType: "requerimiento",
+        refId: reqId,
+        projectId,
+        projectName,
+      })
+    );
+  }
+
+  await Promise.all(promises);
+}
+
+/** Lunes a Viernes 09:30 CDMX */
+export const checkReqDeadlinesMorning = onSchedule(
+  {
+    schedule: "30 9 * * 1-5",
+    timeZone: "America/Mexico_City",
+  },
+  async () => _checkReqDeadlinesLogic("am")
+);
+
+/** Lunes a Viernes 16:00 CDMX */
+export const checkReqDeadlinesAfternoon = onSchedule(
+  {
+    schedule: "0 16 * * 1-5",
+    timeZone: "America/Mexico_City",
+  },
+  async () => _checkReqDeadlinesLogic("pm")
 );
 
 // ── Scheduled: RESUMEN DIARIO ────────────────────────────

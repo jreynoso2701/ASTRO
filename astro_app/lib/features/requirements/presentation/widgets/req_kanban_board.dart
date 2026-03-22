@@ -424,6 +424,13 @@ class _KanbanCard extends StatelessWidget {
                 text: _shortDate(req.createdAt!),
               ),
 
+            // ── Fecha compromiso ──
+            if (req.fechaCompromiso != null)
+              _CardInfoRow(
+                icon: Icons.event_outlined,
+                text: 'Compromiso: ${_shortDate(req.fechaCompromiso!)}',
+              ),
+
             // ── Fase ──
             if (req.faseAsignada != null)
               _CardInfoRow(

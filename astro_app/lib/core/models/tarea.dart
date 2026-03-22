@@ -23,9 +23,10 @@ class Tarea {
     this.assignedToName,
     this.fechaEntrega,
     this.adjuntos = const [],
-    this.refTicketId,
-    this.refRequerimientoId,
-    this.refMinutaId,
+    this.refTickets = const [],
+    this.refRequerimientos = const [],
+    this.refMinutas = const [],
+    this.refCitas = const [],
     this.refCompromisoNumero,
     this.isActive = true,
     this.createdAt,
@@ -51,10 +52,11 @@ class Tarea {
   final DateTime? fechaEntrega;
   final List<String> adjuntos;
 
-  // Referencias cruzadas
-  final String? refTicketId;
-  final String? refRequerimientoId;
-  final String? refMinutaId;
+  // Referencias cruzadas (listas — admite múltiples vínculos)
+  final List<String> refTickets;
+  final List<String> refRequerimientos;
+  final List<String> refMinutas;
+  final List<String> refCitas;
   final int? refCompromisoNumero;
 
   final bool isActive;
@@ -75,6 +77,14 @@ class Tarea {
       return [];
     }
 
+    /// Migración: si existe la lista nueva la usa; si no, hereda el campo viejo.
+    List<String> parseRefList(dynamic listVal, dynamic singleVal) {
+      final list = parseList(listVal);
+      if (list.isNotEmpty) return list;
+      if (singleVal is String && singleVal.isNotEmpty) return [singleVal];
+      return [];
+    }
+
     return Tarea(
       id: doc.id,
       folio: data['folio'] as String? ?? '',
@@ -92,9 +102,13 @@ class Tarea {
       assignedToName: data['assignedToName'] as String?,
       fechaEntrega: parseDate(data['fechaEntrega']),
       adjuntos: parseList(data['adjuntos']),
-      refTicketId: data['refTicketId'] as String?,
-      refRequerimientoId: data['refRequerimientoId'] as String?,
-      refMinutaId: data['refMinutaId'] as String?,
+      refTickets: parseRefList(data['refTickets'], data['refTicketId']),
+      refRequerimientos: parseRefList(
+        data['refRequerimientos'],
+        data['refRequerimientoId'],
+      ),
+      refMinutas: parseRefList(data['refMinutas'], data['refMinutaId']),
+      refCitas: parseList(data['refCitas']),
       refCompromisoNumero: (data['refCompromisoNumero'] as num?)?.toInt(),
       isActive: data['isActive'] as bool? ?? true,
       createdAt: parseDate(data['createdAt']),
@@ -121,9 +135,10 @@ class Tarea {
       if (fechaEntrega != null)
         'fechaEntrega': Timestamp.fromDate(fechaEntrega!),
       if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
-      if (refTicketId != null) 'refTicketId': refTicketId,
-      if (refRequerimientoId != null) 'refRequerimientoId': refRequerimientoId,
-      if (refMinutaId != null) 'refMinutaId': refMinutaId,
+      if (refTickets.isNotEmpty) 'refTickets': refTickets,
+      if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
+      if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
+      if (refCitas.isNotEmpty) 'refCitas': refCitas,
       if (refCompromisoNumero != null)
         'refCompromisoNumero': refCompromisoNumero,
       'isActive': isActive,
@@ -150,9 +165,10 @@ class Tarea {
     String? assignedToName,
     DateTime? fechaEntrega,
     List<String>? adjuntos,
-    String? refTicketId,
-    String? refRequerimientoId,
-    String? refMinutaId,
+    List<String>? refTickets,
+    List<String>? refRequerimientos,
+    List<String>? refMinutas,
+    List<String>? refCitas,
     int? refCompromisoNumero,
     bool? isActive,
     DateTime? createdAt,
@@ -175,9 +191,10 @@ class Tarea {
       assignedToName: assignedToName ?? this.assignedToName,
       fechaEntrega: fechaEntrega ?? this.fechaEntrega,
       adjuntos: adjuntos ?? this.adjuntos,
-      refTicketId: refTicketId ?? this.refTicketId,
-      refRequerimientoId: refRequerimientoId ?? this.refRequerimientoId,
-      refMinutaId: refMinutaId ?? this.refMinutaId,
+      refTickets: refTickets ?? this.refTickets,
+      refRequerimientos: refRequerimientos ?? this.refRequerimientos,
+      refMinutas: refMinutas ?? this.refMinutas,
+      refCitas: refCitas ?? this.refCitas,
       refCompromisoNumero: refCompromisoNumero ?? this.refCompromisoNumero,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,

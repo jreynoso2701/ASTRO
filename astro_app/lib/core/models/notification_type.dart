@@ -6,6 +6,10 @@ enum NotificationType {
   ticketAsignado('ticket_asignado', 'Ticket asignado'),
   ticketComentario('ticket_comentario', 'Nuevo comentario en ticket'),
   ticketPrioridadCambiada('ticket_prioridad', 'Prioridad de ticket cambiada'),
+  ticketFechaCompromiso(
+    'ticket_fecha_compromiso',
+    'Fecha compromiso de ticket cambiada',
+  ),
 
   // Requerimientos
   reqCreado('req_creado', 'Requerimiento creado'),
@@ -14,6 +18,15 @@ enum NotificationType {
   reqComentario('req_comentario', 'Nuevo comentario en requerimiento'),
   reqFaseAsignada('req_fase', 'Fase asignada a requerimiento'),
   reqPrioridadCambiada('req_prioridad', 'Prioridad de requerimiento cambiada'),
+  reqFechaCompromiso(
+    'req_fecha_compromiso',
+    'Fecha compromiso de requerimiento cambiada',
+  ),
+
+  // Deadline de requerimientos
+  reqDeadlineAmber('req_deadline_amber', 'Requerimiento próximo a vencer'),
+  reqDeadlineOrange('req_deadline_orange', 'Requerimiento vence hoy/mañana'),
+  reqDeadlineRed('req_deadline_red', 'Requerimiento vencido'),
 
   // Deadline de tickets
   ticketDeadlineAmber('ticket_deadline_amber', 'Ticket próximo a vencer'),
@@ -45,6 +58,7 @@ enum NotificationType {
   citaCreada('cita_creada', 'Cita creada'),
   citaActualizada('cita_actualizada', 'Cita actualizada'),
   citaCancelada('cita_cancelada', 'Cita cancelada'),
+  citaCompletada('cita_completada', 'Cita completada'),
   citaRecordatorio('cita_recordatorio', 'Recordatorio de cita');
 
   const NotificationType(this.value, this.label);

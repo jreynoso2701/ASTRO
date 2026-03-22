@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/models/cita_comment.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
@@ -61,11 +62,19 @@ class CitaDetailScreen extends ConsumerWidget {
           final width = MediaQuery.sizeOf(context).width;
           final isWide = width >= AppBreakpoints.medium;
 
-          final infoSection = _CitaInfoSection(cita: cita);
+          final infoSection = _CitaInfoSection(
+            cita: cita,
+            projectId: projectId,
+          );
           final actionsSection = _ActionsSection(
             cita: cita,
             canManage: canManage || isRoot,
-            onStatusChange: (status) => _changeStatus(ref, cita, status),
+            onStatusChange: (status) =>
+                _changeStatus(context, ref, cita, status),
+          );
+          final commentsSection = _CommentsSection(
+            citaId: citaId,
+            canComment: canManage || isRoot,
           );
 
           if (isWide) {
@@ -83,7 +92,14 @@ class CitaDetailScreen extends ConsumerWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
-                    child: actionsSection,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        actionsSection,
+                        const SizedBox(height: 24),
+                        commentsSection,
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -98,6 +114,8 @@ class CitaDetailScreen extends ConsumerWidget {
                 infoSection,
                 const SizedBox(height: 24),
                 actionsSection,
+                const SizedBox(height: 24),
+                commentsSection,
               ],
             ),
           );
@@ -107,22 +125,269 @@ class CitaDetailScreen extends ConsumerWidget {
   }
 
   Future<void> _changeStatus(
+    BuildContext context,
     WidgetRef ref,
     Cita cita,
     CitaStatus newStatus,
   ) async {
     final repo = ref.read(citaRepositoryProvider);
     final uid = ref.read(authStateProvider).value?.uid ?? '';
+
+    // ── Modal de completar ─────────────────────────────────
+    if (newStatus == CitaStatus.completada) {
+      final projectId = GoRouterState.of(context).pathParameters['id'] ?? '';
+      final result = await showDialog<_CompletionResult>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) =>
+            _CompletionDialog(citaId: cita.id, projectId: projectId),
+      );
+      if (result == null) return; // canceló
+
+      await repo.updateStatus(cita.id, newStatus, updatedBy: uid);
+
+      // Actualizar refTickets / refRequerimientos de la cita con los creados
+      if (result.createdTicketIds.isNotEmpty ||
+          result.createdReqIds.isNotEmpty) {
+        final citaRepo = ref.read(citaRepositoryProvider);
+        for (final ticketId in result.createdTicketIds) {
+          await citaRepo.addRefTicket(cita.id, ticketId);
+        }
+        for (final reqId in result.createdReqIds) {
+          await citaRepo.addRefRequerimiento(cita.id, reqId);
+        }
+      }
+
+      if (result.comment.isNotEmpty) {
+        final profile = ref.read(currentUserProfileProvider).value;
+        await repo.addComment(
+          cita.id,
+          CitaComment(
+            id: '',
+            text: result.comment,
+            authorId: uid,
+            authorName: profile?.displayName ?? '',
+            citaId: cita.id,
+            type: CitaCommentType.completion,
+          ),
+        );
+      }
+
+      if (!context.mounted) return;
+      if (result.generateMinuta) {
+        context.push('/projects/$projectId/minutas/new?refCitaId=${cita.id}');
+      }
+      return;
+    }
+
     await repo.updateStatus(cita.id, newStatus, updatedBy: uid);
+  }
+}
+
+// ── Completion Dialog ────────────────────────────────────
+
+class _CompletionResult {
+  const _CompletionResult({
+    required this.comment,
+    this.generateMinuta = false,
+    this.createdTicketIds = const [],
+    this.createdReqIds = const [],
+  });
+  final String comment;
+  final bool generateMinuta;
+  final List<String> createdTicketIds;
+  final List<String> createdReqIds;
+}
+
+class _CompletionDialog extends StatefulWidget {
+  const _CompletionDialog({required this.citaId, required this.projectId});
+  final String citaId;
+  final String projectId;
+
+  @override
+  State<_CompletionDialog> createState() => _CompletionDialogState();
+}
+
+class _CompletionDialogState extends State<_CompletionDialog> {
+  final _commentCtrl = TextEditingController();
+  final List<String> _createdTicketIds = [];
+  final List<String> _createdReqIds = [];
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createTicket() async {
+    final ticketId = await context.push<String>(
+      '/projects/${widget.projectId}/tickets/new',
+      extra: {'returnId': true, 'refCitaId': widget.citaId},
+    );
+    if (ticketId != null && ticketId.isNotEmpty && mounted) {
+      setState(() => _createdTicketIds.add(ticketId));
+    }
+  }
+
+  Future<void> _createRequerimiento() async {
+    final reqId = await context.push<String>(
+      '/projects/${widget.projectId}/requirements/new',
+      extra: {'returnId': true, 'refCitaId': widget.citaId},
+    );
+    if (reqId != null && reqId.isNotEmpty && mounted) {
+      setState(() => _createdReqIds.add(reqId));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('Completar cita'),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Puedes añadir un comentario de cierre y, '
+                'opcionalmente, generar una minuta a partir de esta cita.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _commentCtrl,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  hintText: 'Comentario de cierre (opcional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ── Crear ticket / requerimiento ──
+              Text(
+                'Crear a partir de esta cita:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _createTicket,
+                      icon: const Icon(
+                        Icons.confirmation_number_outlined,
+                        size: 18,
+                      ),
+                      label: const Text('Ticket'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _createRequerimiento,
+                      icon: const Icon(Icons.assignment_outlined, size: 18),
+                      label: const Text('Requerimiento'),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Mostrar items creados
+              if (_createdTicketIds.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: _createdTicketIds
+                      .map(
+                        (id) => Chip(
+                          avatar: const Icon(
+                            Icons.confirmation_number_outlined,
+                            size: 14,
+                          ),
+                          label: Text(
+                            'Ticket creado',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+              if (_createdReqIds.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: _createdReqIds
+                      .map(
+                        (id) => Chip(
+                          avatar: const Icon(
+                            Icons.assignment_outlined,
+                            size: 14,
+                          ),
+                          label: Text(
+                            'Requerimiento creado',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton.tonal(
+          onPressed: () => Navigator.pop(
+            context,
+            _CompletionResult(
+              comment: _commentCtrl.text.trim(),
+              generateMinuta: true,
+              createdTicketIds: _createdTicketIds,
+              createdReqIds: _createdReqIds,
+            ),
+          ),
+          child: const Text('Completar y generar minuta'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(
+            context,
+            _CompletionResult(
+              comment: _commentCtrl.text.trim(),
+              createdTicketIds: _createdTicketIds,
+              createdReqIds: _createdReqIds,
+            ),
+          ),
+          child: const Text('Completar'),
+        ),
+      ],
+    );
   }
 }
 
 // ── Info Section ─────────────────────────────────────────
 
 class _CitaInfoSection extends StatelessWidget {
-  const _CitaInfoSection({required this.cita});
+  const _CitaInfoSection({required this.cita, required this.projectId});
 
   final Cita cita;
+  final String projectId;
 
   @override
   Widget build(BuildContext context) {
@@ -365,6 +630,144 @@ class _CitaInfoSection extends StatelessWidget {
             ),
           ),
         ],
+
+        // ── Minuta generada ─────────────────────────────────
+        if (cita.refMinuta != null && cita.refMinuta!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MINUTA GENERADA',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('Ver minuta'),
+                    trailing: const Icon(Icons.chevron_right),
+                    contentPadding: EdgeInsets.zero,
+                    onTap: () => context.push(
+                      '/projects/$projectId/minutas/${cita.refMinuta}',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        // ── Referencias ─────────────────────────────────────
+        if (cita.refMinutas.isNotEmpty ||
+            cita.refTickets.isNotEmpty ||
+            cita.refRequerimientos.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'REFERENCIAS',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  if (cita.refTickets.isNotEmpty) ...[
+                    Text(
+                      'Tickets',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: cita.refTickets.map((id) {
+                        return ActionChip(
+                          avatar: const Icon(
+                            Icons.confirmation_number_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            id.length > 8 ? '${id.substring(0, 8)}…' : id,
+                          ),
+                          onPressed: () =>
+                              context.push('/projects/$projectId/tickets/$id'),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (cita.refRequerimientos.isNotEmpty) ...[
+                    Text(
+                      'Requerimientos',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: cita.refRequerimientos.map((id) {
+                        return ActionChip(
+                          avatar: const Icon(
+                            Icons.assignment_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            id.length > 8 ? '${id.substring(0, 8)}…' : id,
+                          ),
+                          onPressed: () => context.push(
+                            '/projects/$projectId/requirements/$id',
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (cita.refMinutas.isNotEmpty) ...[
+                    Text(
+                      'Minutas',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: cita.refMinutas.map((id) {
+                        return ActionChip(
+                          avatar: const Icon(
+                            Icons.description_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            id.length > 8 ? '${id.substring(0, 8)}…' : id,
+                          ),
+                          onPressed: () =>
+                              context.push('/projects/$projectId/minutas/$id'),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -555,6 +958,190 @@ class _ActionsSection extends StatelessWidget {
               .toList(),
         ),
       ],
+    );
+  }
+}
+
+// ── Comments Section ─────────────────────────────────────
+
+class _CommentsSection extends ConsumerStatefulWidget {
+  const _CommentsSection({required this.citaId, required this.canComment});
+
+  final String citaId;
+  final bool canComment;
+
+  @override
+  ConsumerState<_CommentsSection> createState() => _CommentsSectionState();
+}
+
+class _CommentsSectionState extends ConsumerState<_CommentsSection> {
+  final _ctrl = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _ctrl.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      final repo = ref.read(citaRepositoryProvider);
+      final profile = ref.read(currentUserProfileProvider).value;
+      await repo.addComment(
+        widget.citaId,
+        CitaComment(
+          id: '',
+          text: text,
+          authorId: profile?.uid ?? '',
+          authorName: profile?.displayName ?? '',
+          citaId: widget.citaId,
+        ),
+      );
+      _ctrl.clear();
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final commentsAsync = ref.watch(citaCommentsProvider(widget.citaId));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'COMENTARIOS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 24),
+            commentsAsync.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (e, _) => Text('Error: $e'),
+              data: (comments) {
+                if (comments.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Sin comentarios',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  );
+                }
+                return Column(
+                  children: comments.map((c) {
+                    final isCompletion = c.type == CitaCommentType.completion;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            isCompletion
+                                ? Icons.check_circle_outline
+                                : Icons.chat_bubble_outline,
+                            size: 18,
+                            color: isCompletion
+                                ? const Color(0xFF4CAF50)
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      c.authorName,
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const Spacer(),
+                                    if (c.createdAt != null)
+                                      Text(
+                                        DateFormat(
+                                          'dd/MM/yy HH:mm',
+                                        ).format(c.createdAt!),
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(c.text, style: theme.textTheme.bodyMedium),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            if (widget.canComment) ...[
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _ctrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Añadir comentario…',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                      maxLines: 2,
+                      minLines: 1,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    onPressed: _sending ? null : _send,
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send, size: 20),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

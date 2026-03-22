@@ -16,7 +16,9 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/minuta.dart';
+import 'package:astro/core/models/cita.dart';
 
 /// Genera un ID corto para cada criterio de aceptación.
 String _shortId() => DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -27,12 +29,14 @@ class RequerimientoFormScreen extends ConsumerStatefulWidget {
     required this.projectId,
     this.reqId,
     this.returnId = false,
+    this.refCitaId,
     super.key,
   });
 
   final String projectId;
   final String? reqId;
   final bool returnId;
+  final String? refCitaId;
 
   @override
   ConsumerState<RequerimientoFormScreen> createState() =>
@@ -64,6 +68,20 @@ class _RequerimientoFormScreenState
 
   // Minutas vinculadas
   final List<String> _refMinutas = [];
+
+  // Citas vinculadas
+  final List<String> _refCitas = [];
+
+  // Fecha compromiso
+  DateTime? _fechaCompromiso;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.refCitaId != null) {
+      _refCitas.add(widget.refCitaId!);
+    }
+  }
 
   // Porcentaje manual
   double _porcentajeAvance = 0;
@@ -264,8 +282,16 @@ class _RequerimientoFormScreenState
               _buildAdjuntosSection(),
               const SizedBox(height: 24),
 
+              // ── Fecha compromiso ──
+              _buildFechaCompromisoField(),
+              const SizedBox(height: 24),
+
               // ── Minutas vinculadas ──
               _buildMinutasSection(projectName),
+              const SizedBox(height: 24),
+
+              // ── Citas vinculadas ──
+              _buildCitasSection(projectName),
               const SizedBox(height: 24),
 
               // ── Campos Root/Soporte ──
@@ -582,6 +608,58 @@ class _RequerimientoFormScreenState
     if (selected != null) setState(() => _refMinutas.add(selected));
   }
 
+  // ── Citas Section ─────────────────────────────────────
+
+  Widget _buildCitasSection(String projectName) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'CITAS VINCULADAS',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            letterSpacing: 1,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        ..._refCitas.map(
+          (id) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Chip(
+              avatar: const Icon(Icons.event_outlined, size: 16),
+              label: Text(
+                id.length > 12 ? '${id.substring(0, 12)}...' : id,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              onDeleted: () => setState(() => _refCitas.remove(id)),
+              deleteIcon: const Icon(Icons.close, size: 16),
+            ),
+          ),
+        ),
+
+        TextButton.icon(
+          onPressed: () => _searchCitas(projectName),
+          icon: const Icon(Icons.search),
+          label: const Text('Buscar cita'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _searchCitas(String projectName) async {
+    final citas = ref.read(citasByProjectProvider(projectName)).value ?? [];
+    if (!mounted) return;
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _SearchCitaDialog(
+        citas: citas.where((c) => !_refCitas.contains(c.id)).toList(),
+      ),
+    );
+    if (selected != null) setState(() => _refCitas.add(selected));
+  }
+
   // ── File Picking ───────────────────────────────────────
 
   Future<void> _pickFromGallery() async {
@@ -606,6 +684,56 @@ class _RequerimientoFormScreenState
     }
   }
 
+  // ── Fecha compromiso ────────────────────────────────────
+
+  Widget _buildFechaCompromisoField() {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.event_outlined),
+      title: Text(
+        _fechaCompromiso != null
+            ? 'Fecha compromiso: ${_fmtDate(_fechaCompromiso!)}'
+            : 'Fecha compromiso',
+      ),
+      subtitle: _fechaCompromiso == null ? const Text('Sin definir') : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'Seleccionar fecha',
+            icon: const Icon(Icons.calendar_today),
+            onPressed: _pickFechaCompromiso,
+          ),
+          if (_fechaCompromiso != null)
+            IconButton(
+              tooltip: 'Limpiar fecha',
+              icon: const Icon(Icons.clear),
+              onPressed: () => setState(() => _fechaCompromiso = null),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFechaCompromiso() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _fechaCompromiso ?? now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365 * 3)),
+    );
+    if (picked != null) {
+      setState(() => _fechaCompromiso = picked);
+    }
+  }
+
+  String _fmtDate(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/'
+        '${dt.month.toString().padLeft(2, '0')}/'
+        '${dt.year}';
+  }
+
   // ── Load existing data ─────────────────────────────────
 
   void _loadReq(Requerimiento req) {
@@ -622,8 +750,10 @@ class _RequerimientoFormScreenState
     _porcentajeAvance = req.porcentajeAvance;
     _porcentajeManual = req.porcentajeManual;
     _observacionesController.text = req.observacionesRoot ?? '';
+    _fechaCompromiso = req.fechaCompromiso;
     _existingAdjuntos.addAll(req.adjuntos);
     _refMinutas.addAll(req.refMinutas);
+    _refCitas.addAll(req.refCitas);
 
     for (final c in req.criteriosAceptacion) {
       _criterios.add(
@@ -710,11 +840,13 @@ class _RequerimientoFormScreenState
             criteriosAceptacion: criterios,
             adjuntos: allAdjuntos,
             refMinutas: _refMinutas,
+            refCitas: _refCitas,
             porcentajeAvance: pct,
             porcentajeManual: _porcentajeManual,
             observacionesRoot: _observacionesController.text.trim().isNotEmpty
                 ? _observacionesController.text.trim()
                 : null,
+            fechaCompromiso: _fechaCompromiso,
           ),
           updatedBy: profile.uid,
         );
@@ -751,11 +883,13 @@ class _RequerimientoFormScreenState
           criteriosAceptacion: criterios,
           adjuntos: allAdjuntos,
           refMinutas: _refMinutas,
+          refCitas: _refCitas,
           porcentajeAvance: pct,
           porcentajeManual: _porcentajeManual,
           observacionesRoot: _observacionesController.text.trim().isNotEmpty
               ? _observacionesController.text.trim()
               : null,
+          fechaCompromiso: _fechaCompromiso,
           createdAt: DateTime.now(),
         );
 
@@ -853,6 +987,80 @@ class _SearchMinutaDialogState extends State<_SearchMinutaDialog> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           onTap: () => Navigator.pop(ctx, m.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchCitaDialog extends StatefulWidget {
+  const _SearchCitaDialog({required this.citas});
+
+  final List<Cita> citas;
+
+  @override
+  State<_SearchCitaDialog> createState() => _SearchCitaDialogState();
+}
+
+class _SearchCitaDialogState extends State<_SearchCitaDialog> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.citas.where((c) {
+      if (_query.isEmpty) return true;
+      final upper = _query.toUpperCase();
+      return c.folio.toUpperCase().contains(upper) ||
+          c.titulo.toUpperCase().contains(upper);
+    }).toList();
+
+    return AlertDialog(
+      title: const Text('Buscar cita'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: Column(
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Buscar por folio o título...',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+              onChanged: (v) => setState(() => _query = v),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Sin resultados',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final c = filtered[i];
+                        return ListTile(
+                          title: Text(
+                            '${c.folio} — ${c.titulo}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () => Navigator.pop(ctx, c.id),
                         );
                       },
                     ),

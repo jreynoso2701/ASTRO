@@ -97,6 +97,7 @@ class Requerimiento {
     this.adjuntos = const [],
     this.refMinutas = const [],
     this.refCitas = const [],
+    this.fechaCompromiso,
     this.motivoRechazo,
     this.observacionesRoot,
     this.isActive = true,
@@ -145,6 +146,9 @@ class Requerimiento {
   // Vínculos futuros (Fase 2)
   final List<String> refMinutas;
   final List<String> refCitas;
+
+  // Fecha compromiso (obligatoria para En Desarrollo, Implementado, Completado)
+  final DateTime? fechaCompromiso;
 
   // Disposición Root
   final String? motivoRechazo;
@@ -229,6 +233,7 @@ class Requerimiento {
       adjuntos: parseStrList(data['adjuntos']),
       refMinutas: parseStrList(data['refMinutas']),
       refCitas: parseStrList(data['refCitas']),
+      fechaCompromiso: parseDate(data['fechaCompromiso']),
       motivoRechazo: data['motivoRechazo'] as String?,
       observacionesRoot: data['observacionesRoot'] as String?,
       isActive: data['isActive'] as bool? ?? true,
@@ -264,6 +269,8 @@ class Requerimiento {
       if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
+      if (fechaCompromiso != null)
+        'fechaCompromiso': Timestamp.fromDate(fechaCompromiso!),
       if (motivoRechazo != null) 'motivoRechazo': motivoRechazo,
       if (observacionesRoot != null) 'observacionesRoot': observacionesRoot,
       'isActive': isActive,
@@ -297,6 +304,7 @@ class Requerimiento {
     List<String>? adjuntos,
     List<String>? refMinutas,
     List<String>? refCitas,
+    DateTime? fechaCompromiso,
     String? motivoRechazo,
     String? observacionesRoot,
     bool? isActive,
@@ -329,6 +337,7 @@ class Requerimiento {
       adjuntos: adjuntos ?? this.adjuntos,
       refMinutas: refMinutas ?? this.refMinutas,
       refCitas: refCitas ?? this.refCitas,
+      fechaCompromiso: fechaCompromiso ?? this.fechaCompromiso,
       motivoRechazo: motivoRechazo ?? this.motivoRechazo,
       observacionesRoot: observacionesRoot ?? this.observacionesRoot,
       isActive: isActive ?? this.isActive,

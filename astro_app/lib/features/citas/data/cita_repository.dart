@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/models/cita_comment.dart';
 import 'package:astro/core/models/cita_status.dart';
 
 /// Repositorio CRUD de Citas en Firestore.
@@ -15,6 +16,9 @@ class CitaRepository {
 
   CollectionReference<Map<String, dynamic>> get _ref =>
       _firestore.collection('Citas');
+
+  CollectionReference<Map<String, dynamic>> get _commentsRef =>
+      _firestore.collection('ComentariosCitas');
 
   // ── Citas ──────────────────────────────────────────────
 
@@ -150,5 +154,49 @@ class CitaRepository {
           );
           return list;
         });
+  }
+
+  // ── Comentarios ────────────────────────────────────────
+
+  /// Stream de comentarios de una cita.
+  Stream<List<CitaComment>> watchComments(String citaId) {
+    return _commentsRef
+        .where('refCita', isEqualTo: citaId)
+        .orderBy('createdAt')
+        .snapshots()
+        .map((snap) => snap.docs.map(CitaComment.fromFirestore).toList());
+  }
+
+  /// Añade un comentario a una cita.
+  Future<void> addComment(String citaId, CitaComment comment) async {
+    final data = comment.toFirestore();
+    data['refCita'] = citaId;
+    await _commentsRef.add(data);
+  }
+
+  // ── Referencias ─────────────────────────────────────────
+
+  /// Establece la minuta generada tras completar la cita.
+  Future<void> setRefMinuta(String citaId, String minutaId) async {
+    await _ref.doc(citaId).update({
+      'refMinuta': minutaId,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
+  /// Añade una referencia de ticket a una cita.
+  Future<void> addRefTicket(String citaId, String ticketId) async {
+    await _ref.doc(citaId).update({
+      'refTickets': FieldValue.arrayUnion([ticketId]),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
+  /// Añade una referencia de requerimiento a una cita.
+  Future<void> addRefRequerimiento(String citaId, String reqId) async {
+    await _ref.doc(citaId).update({
+      'refRequerimientos': FieldValue.arrayUnion([reqId]),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
   }
 }

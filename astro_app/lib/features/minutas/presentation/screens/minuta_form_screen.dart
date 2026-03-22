@@ -22,6 +22,7 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
+import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
@@ -29,10 +30,16 @@ import 'package:astro/features/tareas/data/tarea_repository.dart';
 
 /// Pantalla de creación / edición de minuta.
 class MinutaFormScreen extends ConsumerStatefulWidget {
-  const MinutaFormScreen({required this.projectId, this.minutaId, super.key});
+  const MinutaFormScreen({
+    required this.projectId,
+    this.minutaId,
+    this.citaId,
+    super.key,
+  });
 
   final String projectId;
   final String? minutaId;
+  final String? citaId;
 
   @override
   ConsumerState<MinutaFormScreen> createState() => _MinutaFormScreenState();
@@ -62,6 +69,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
 
   bool _isSaving = false;
   bool _isLoaded = false;
+  bool _citaPreloaded = false;
 
   bool get _isEditing => widget.minutaId != null;
 
@@ -135,6 +143,37 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
           body: const Center(child: CircularProgressIndicator()),
         );
       }
+    }
+
+    // Pre-poblar desde cita (solo al crear)
+    if (widget.citaId != null && !_isEditing && !_citaPreloaded) {
+      final citaAsync = ref.watch(citaByIdProvider(widget.citaId!));
+      citaAsync.whenData((cita) {
+        if (cita != null && !_citaPreloaded) {
+          _fecha = cita.fecha;
+          _horaInicio = cita.horaInicio;
+          _horaFin = cita.horaFin;
+          _modalidad = cita.modalidad;
+          if (cita.urlVideoconferencia != null) {
+            _urlController.text = cita.urlVideoconferencia!;
+          }
+          if (cita.direccion != null) {
+            _direccionController.text = cita.direccion!;
+          }
+          for (final p in cita.participantes) {
+            _asistentes.add(
+              AsistenteMinuta(
+                uid: p.uid.isNotEmpty ? p.uid : null,
+                nombre: p.nombre,
+                puesto: p.rol ?? '',
+              ),
+            );
+          }
+          _objetivoController.text = cita.titulo;
+          _citaPreloaded = true;
+          if (mounted) setState(() {});
+        }
+      });
     }
 
     return Scaffold(
@@ -1053,6 +1092,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
         adjuntos: _adjuntos,
         refTickets: _refTickets,
         refRequerimientos: _refRequerimientos,
+        refCita: widget.citaId,
         participantUids: participantUids.toList(),
         observaciones: _observacionesController.text.trim().isNotEmpty
             ? _observacionesController.text.trim()
@@ -1093,6 +1133,12 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
         }
       } else {
         final docId = await repo.create(minuta);
+
+        // Vincular cita → minuta generada
+        if (widget.citaId != null) {
+          final citaRepo = ref.read(citaRepositoryProvider);
+          await citaRepo.setRefMinuta(widget.citaId!, docId);
+        }
 
         // Sincronización bidireccional
         final ticketRepo = ref.read(ticketRepositoryProvider);
@@ -1169,7 +1215,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
           assignedToUid: c.responsableUid,
           assignedToName: c.responsable,
           fechaEntrega: c.fechaEntrega,
-          refMinutaId: minutaId,
+          refMinutas: [minutaId],
           refCompromisoNumero: c.numero,
         );
 

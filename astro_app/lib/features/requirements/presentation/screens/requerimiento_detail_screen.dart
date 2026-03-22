@@ -179,6 +179,13 @@ class _RequerimientoDetailScreenState
     Requerimiento req,
     RequerimientoStatus newStatus,
   ) async {
+    // Statuses que requieren fecha compromiso
+    const requiresFecha = {
+      RequerimientoStatus.enDesarrollo,
+      RequerimientoStatus.implementado,
+      RequerimientoStatus.completado,
+    };
+
     // Si descartado → pedir motivo
     if (newStatus == RequerimientoStatus.descartado) {
       final motivo = await _askMotivo(newStatus.label);
@@ -189,6 +196,26 @@ class _RequerimientoDetailScreenState
         req.copyWith(status: newStatus, motivoRechazo: motivo),
         updatedBy: profile?.uid ?? '',
       );
+    } else if (requiresFecha.contains(newStatus) &&
+        req.fechaCompromiso == null) {
+      // Pedir fecha compromiso solo si aún no tiene una
+      final fecha = await _askFechaCompromiso(null);
+      if (fecha == null) return;
+      final profile = ref.read(currentUserProfileProvider).value;
+      await ref
+          .read(requerimientoRepositoryProvider)
+          .updateStatus(
+            req.id,
+            newStatus,
+            updatedBy: profile?.uid ?? '',
+            fechaCompromiso: fecha,
+          );
+    } else if (requiresFecha.contains(newStatus)) {
+      // Ya tiene fecha compromiso, solo cambiar estado
+      final profile = ref.read(currentUserProfileProvider).value;
+      await ref
+          .read(requerimientoRepositoryProvider)
+          .updateStatus(req.id, newStatus, updatedBy: profile?.uid ?? '');
     } else {
       final profile = ref.read(currentUserProfileProvider).value;
       await ref
@@ -410,6 +437,18 @@ class _RequerimientoDetailScreenState
     controller.dispose();
     return result;
   }
+
+  /// Muestra un DatePicker para seleccionar la fecha compromiso.
+  Future<DateTime?> _askFechaCompromiso(DateTime? current) async {
+    final now = DateTime.now();
+    return showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365 * 3)),
+      helpText: 'Fecha compromiso',
+    );
+  }
 }
 
 // ── Info Section ─────────────────────────────────────────
@@ -498,6 +537,11 @@ class _InfoSection extends StatelessWidget {
           _DetailRow(label: 'Fase asignada', value: req.faseAsignada!.label),
         _DetailRow(label: 'Creado', value: _formatDate(req.createdAt)),
         _DetailRow(label: 'Actualizado', value: _formatDate(req.updatedAt)),
+        if (req.fechaCompromiso != null)
+          _DetailRow(
+            label: 'Fecha compromiso',
+            value: _formatDate(req.fechaCompromiso),
+          ),
 
         const SizedBox(height: 16),
 
