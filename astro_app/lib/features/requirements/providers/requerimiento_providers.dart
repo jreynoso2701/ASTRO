@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/models/requerimiento.dart';
 import 'package:astro/core/models/requerimiento_comment.dart';
 import 'package:astro/core/models/requerimiento_status.dart';
@@ -195,3 +196,129 @@ final canArchiveReqProvider = Provider.family<bool, String>((ref, projectId) {
         a.projectId == projectId && a.isActive && a.role == UserRole.supervisor,
   );
 });
+
+// ── Dashboard — conteo global por estado ─────────────────
+
+/// Conteo global de requerimientos por estado (suma todos los proyectos).
+/// Incluye todos los `kanbanValues` (excluye archivados que no están en la lista).
+final globalReqCountsByStatusProvider = Provider<Map<RequerimientoStatus, int>>(
+  (ref) {
+    final projects = ref.watch(myProjectsProvider);
+    final counts = <RequerimientoStatus, int>{};
+    for (final status in RequerimientoStatus.kanbanValues) {
+      counts[status] = 0;
+    }
+    for (final p in projects) {
+      final reqs =
+          ref.watch(requerimientosByProjectProvider(p.nombreProyecto)).value ??
+          [];
+      for (final r in reqs) {
+        if (counts.containsKey(r.status)) {
+          counts[r.status] = (counts[r.status] ?? 0) + 1;
+        }
+      }
+    }
+    return counts;
+  },
+);
+
+/// Requerimientos agrupados por estado → lista de (proyecto, requerimiento).
+/// Se usa en el dashboard para el bottom sheet de detalle por estado.
+final globalReqsByStatusProvider =
+    Provider<
+      Map<RequerimientoStatus, List<({Proyecto project, Requerimiento req})>>
+    >((ref) {
+      final projects = ref.watch(myProjectsProvider);
+      final result =
+          <
+            RequerimientoStatus,
+            List<({Proyecto project, Requerimiento req})>
+          >{};
+      for (final status in RequerimientoStatus.kanbanValues) {
+        result[status] = [];
+      }
+      for (final p in projects) {
+        final reqs =
+            ref
+                .watch(requerimientosByProjectProvider(p.nombreProyecto))
+                .value ??
+            [];
+        for (final r in reqs) {
+          if (result.containsKey(r.status)) {
+            result[r.status]!.add((project: p, req: r));
+          }
+        }
+      }
+      return result;
+    });
+
+// ── Dashboard — semáforo de fechas compromiso (reqs) ─────
+
+/// Zonas de deadline para requerimientos (misma lógica que tickets).
+final globalReqsByDeadlineProvider =
+    Provider<
+      Map<String, List<({Proyecto project, Requerimiento req, int days})>>
+    >((ref) {
+      final projects = ref.watch(myProjectsProvider);
+      final result =
+          <String, List<({Proyecto project, Requerimiento req, int days})>>{
+            'red': [],
+            'orange': [],
+            'amber': [],
+          };
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      for (final p in projects) {
+        final reqs =
+            ref
+                .watch(requerimientosByProjectProvider(p.nombreProyecto))
+                .value ??
+            [];
+        for (final r in reqs) {
+          // Solo requerimientos activos con fecha compromiso que no estén completados/descartados
+          if (r.fechaCompromiso == null) continue;
+          if (r.status == RequerimientoStatus.completado ||
+              r.status == RequerimientoStatus.descartado) {
+            continue;
+          }
+          final deadline = DateTime(
+            r.fechaCompromiso!.year,
+            r.fechaCompromiso!.month,
+            r.fechaCompromiso!.day,
+          );
+          final diff = deadline.difference(today).inDays;
+          if (diff < 0) {
+            result['red']!.add((project: p, req: r, days: diff));
+          } else if (diff <= 1) {
+            result['orange']!.add((project: p, req: r, days: diff));
+          } else if (diff <= 5) {
+            result['amber']!.add((project: p, req: r, days: diff));
+          }
+        }
+      }
+      return result;
+    });
+
+/// Requerimientos activos sin fecha compromiso asignada.
+final globalReqsWithoutDeadlineProvider =
+    Provider<List<({Proyecto project, Requerimiento req})>>((ref) {
+      final projects = ref.watch(myProjectsProvider);
+      final result = <({Proyecto project, Requerimiento req})>[];
+      for (final p in projects) {
+        final reqs =
+            ref
+                .watch(requerimientosByProjectProvider(p.nombreProyecto))
+                .value ??
+            [];
+        for (final r in reqs) {
+          if (r.fechaCompromiso != null) continue;
+          if (r.status == RequerimientoStatus.completado ||
+              r.status == RequerimientoStatus.descartado) {
+            continue;
+          }
+          result.add((project: p, req: r));
+        }
+      }
+      return result;
+    });

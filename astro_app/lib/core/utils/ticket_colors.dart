@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
+import 'package:astro/core/models/requerimiento_status.dart';
 
 /// Color asociado a cada estado de ticket.
 Color ticketStatusColor(TicketStatus status) {
@@ -23,5 +24,17 @@ Color ticketPriorityColor(TicketPriority priority) {
     TicketPriority.media => const Color(0xFF2196F3),
     TicketPriority.alta => const Color(0xFFFFC107),
     TicketPriority.critica => const Color(0xFFD71921),
+  };
+}
+
+/// Color asociado a cada estado de requerimiento.
+Color reqStatusColor(RequerimientoStatus status) {
+  return switch (status) {
+    RequerimientoStatus.propuesto => const Color(0xFF90A4AE),
+    RequerimientoStatus.enRevision => const Color(0xFF42A5F5),
+    RequerimientoStatus.enDesarrollo => const Color(0xFFFFC107),
+    RequerimientoStatus.implementado => const Color(0xFF4CAF50),
+    RequerimientoStatus.completado => const Color(0xFF388E3C),
+    RequerimientoStatus.descartado => const Color(0xFFEF5350),
   };
 }

@@ -14,6 +14,9 @@ import 'package:astro/core/models/ticket.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
+import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
+import 'package:astro/core/models/requerimiento.dart';
+import 'package:astro/core/models/requerimiento_status.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/cita.dart';
@@ -173,26 +176,15 @@ class DashboardScreen extends ConsumerWidget {
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
-            // ── Resumen de incidentes por estado ───────
+            // ── Pestañas: Tickets / Requerimientos ─────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: _TicketStatusOverview(),
+                child: _IncidentsTabbedSection(isRoot: isRoot),
               ),
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-            // ── Semáforo de deadlines (Root) ───────────
-            if (isRoot)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _TicketDeadlineOverview(),
-                ),
-              ),
-
-            if (isRoot) const SliverToBoxAdapter(child: SizedBox(height: 24)),
 
             // ── Próximas citas ────────────────────────
             SliverToBoxAdapter(child: _UpcomingCitasSection()),
@@ -600,6 +592,122 @@ class _DashboardCitaTile extends StatelessWidget {
         MinutaModalidad.llamada => Icons.phone_outlined,
         MinutaModalidad.hibrida => Icons.devices_outlined,
       };
+}
+
+// ── Tabbed Incidents / Requirements ──────────────────────
+
+/// Ícono representativo por estado de requerimiento.
+IconData _reqStatusIcon(RequerimientoStatus status) => switch (status) {
+  RequerimientoStatus.propuesto => Icons.lightbulb_outline,
+  RequerimientoStatus.enRevision => Icons.rate_review_outlined,
+  RequerimientoStatus.enDesarrollo => Icons.code,
+  RequerimientoStatus.implementado => Icons.rocket_launch_outlined,
+  RequerimientoStatus.completado => Icons.check_circle_outline,
+  RequerimientoStatus.descartado => Icons.cancel_outlined,
+};
+
+/// Sección con pestañas Tickets / Requerimientos.
+/// Contiene las cards de estados + dona + semáforo de cada tipo.
+class _IncidentsTabbedSection extends ConsumerStatefulWidget {
+  const _IncidentsTabbedSection({required this.isRoot});
+  final bool isRoot;
+
+  @override
+  ConsumerState<_IncidentsTabbedSection> createState() =>
+      _IncidentsTabbedSectionState();
+}
+
+class _IncidentsTabbedSectionState
+    extends ConsumerState<_IncidentsTabbedSection>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Tab bar ──
+        TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          indicatorSize: TabBarIndicatorSize.label,
+          labelStyle: theme.textTheme.labelLarge?.copyWith(
+            letterSpacing: 1,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: theme.textTheme.labelLarge?.copyWith(
+            letterSpacing: 1,
+          ),
+          tabs: const [
+            Tab(text: 'TICKETS'),
+            Tab(text: 'REQUERIMIENTOS'),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        // ── Tab content (no PageView — just listen to index) ──
+        AnimatedBuilder(
+          animation: _tabController,
+          builder: (context, _) {
+            if (_tabController.index == 0) {
+              return _TicketsTabContent(isRoot: widget.isRoot);
+            } else {
+              return _ReqsTabContent(isRoot: widget.isRoot);
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Contenido de la pestaña "Tickets": cards por estado + dona + semáforo.
+class _TicketsTabContent extends ConsumerWidget {
+  const _TicketsTabContent({required this.isRoot});
+  final bool isRoot;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        _TicketStatusOverview(),
+        if (isRoot) ...[const SizedBox(height: 24), _TicketDeadlineOverview()],
+      ],
+    );
+  }
+}
+
+/// Contenido de la pestaña "Requerimientos": cards por estado + dona + semáforo.
+class _ReqsTabContent extends ConsumerWidget {
+  const _ReqsTabContent({required this.isRoot});
+  final bool isRoot;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        _ReqStatusOverview(),
+        if (isRoot) ...[const SizedBox(height: 24), _ReqDeadlineOverview()],
+      ],
+    );
+  }
 }
 
 // ── Ticket Status Overview ───────────────────────────────
@@ -1985,6 +2093,1024 @@ void _showTicketsByDeadlineSheet(
                           Navigator.pop(ctx);
                           final pid = t.projectId ?? project.id;
                           context.push('/projects/$pid/tickets/${t.id}');
+                        },
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Requerimientos Status Overview ───────────────────────
+// ══════════════════════════════════════════════════════════
+
+class _ReqStatusOverview extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final counts = ref.watch(globalReqCountsByStatusProvider);
+    final reqsByStatus = ref.watch(globalReqsByStatusProvider);
+    final width = MediaQuery.sizeOf(context).width;
+
+    final statuses = RequerimientoStatus.kanbanValues;
+    final total = counts.values.fold<int>(0, (a, b) => a + b);
+
+    void onStatusTap(RequerimientoStatus status) {
+      final entries = reqsByStatus[status] ?? [];
+      _showReqsByStatusSheet(context, status, entries);
+    }
+
+    final isWide = width >= AppBreakpoints.medium;
+
+    if (isWide) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: statuses
+                      .map(
+                        (s) => SizedBox(
+                          width: (width - 48 - 20) * 3 / 4 / 3 - 10,
+                          child: _ReqStatusCard(
+                            status: s,
+                            count: counts[s] ?? 0,
+                            onTap: () => onStatusTap(s),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 1,
+                child: _ReqDonutChart(counts: counts, total: total),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: statuses
+              .map(
+                (s) => SizedBox(
+                  width: (width - 48 - 10) / 2,
+                  child: _ReqStatusCard(
+                    status: s,
+                    count: counts[s] ?? 0,
+                    onTap: () => onStatusTap(s),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 16),
+        _ReqDonutChart(counts: counts, total: total),
+      ],
+    );
+  }
+}
+
+/// Card individual para un estado de requerimiento.
+class _ReqStatusCard extends StatelessWidget {
+  const _ReqStatusCard({required this.status, required this.count, this.onTap});
+
+  final RequerimientoStatus status;
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = reqStatusColor(status);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: count > 0 ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  status.label.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(_reqStatusIcon(status), color: color, size: 20),
+                  const Spacer(),
+                  Text(
+                    '$count',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: count > 0
+                          ? color
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Donut chart de distribución de requerimientos por estado.
+class _ReqDonutChart extends StatelessWidget {
+  const _ReqDonutChart({required this.counts, required this.total});
+
+  final Map<RequerimientoStatus, int> counts;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(
+              'DISTRIBUCIÓN',
+              style: theme.textTheme.labelSmall?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: CustomPaint(
+                painter: _ReqDonutChartPainter(
+                  counts: counts,
+                  total: total,
+                  centerTextColor: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              alignment: WrapAlignment.center,
+              children: counts.entries
+                  .where((e) => e.value > 0)
+                  .map(
+                    (e) => Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: reqStatusColor(e.key),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${e.value}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom painter for requerimiento donut chart.
+class _ReqDonutChartPainter extends CustomPainter {
+  _ReqDonutChartPainter({
+    required this.counts,
+    required this.total,
+    required this.centerTextColor,
+  });
+
+  final Map<RequerimientoStatus, int> counts;
+  final int total;
+  final Color centerTextColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2;
+    const strokeWidth = 14.0;
+    final rect = Rect.fromCircle(
+      center: center,
+      radius: radius - strokeWidth / 2,
+    );
+
+    final bgPaint = Paint()
+      ..color = centerTextColor.withValues(alpha: 0.06)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius - strokeWidth / 2, bgPaint);
+
+    if (total == 0) {
+      _drawCenterText(canvas, center, '0');
+      return;
+    }
+
+    double startAngle = -math.pi / 2;
+    final segmentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
+
+    for (final status in RequerimientoStatus.kanbanValues) {
+      final count = counts[status] ?? 0;
+      if (count == 0) continue;
+      final sweepAngle = (count / total) * 2 * math.pi;
+      segmentPaint.color = reqStatusColor(status);
+      canvas.drawArc(rect, startAngle, sweepAngle, false, segmentPaint);
+      startAngle += sweepAngle;
+    }
+
+    _drawCenterText(canvas, center, '$total');
+  }
+
+  void _drawCenterText(Canvas canvas, Offset center, String text) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: centerTextColor,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      center - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ReqDonutChartPainter oldDelegate) =>
+      oldDelegate.counts != counts || oldDelegate.total != total;
+}
+
+// ── Bottom Sheet: requerimientos por estado ───────────────
+
+void _showReqsByStatusSheet(
+  BuildContext context,
+  RequerimientoStatus status,
+  List<({Proyecto project, Requerimiento req})> entries,
+) {
+  final color = reqStatusColor(status);
+  final theme = Theme.of(context);
+
+  final sorted = [...entries]
+    ..sort((a, b) {
+      final aDate = a.req.updatedAt ?? a.req.createdAt;
+      final bDate = b.req.updatedAt ?? b.req.createdAt;
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return bDate.compareTo(aDate);
+    });
+
+  final grouped = <String, ({Proyecto project, List<Requerimiento> reqs})>{};
+  for (final e in sorted) {
+    final key = e.project.id;
+    if (grouped.containsKey(key)) {
+      grouped[key]!.reqs.add(e.req);
+    } else {
+      grouped[key] = (project: e.project, reqs: [e.req]);
+    }
+  }
+
+  final dateFmt = DateFormat('dd/MM/yy HH:mm');
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scrollController) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Icon(_reqStatusIcon(status), color: color, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    status.label,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${entries.length}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: grouped.length,
+              itemBuilder: (ctx, i) {
+                final entry = grouped.values.elementAt(i);
+                final project = entry.project;
+                final reqs = entry.reqs;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        context.push('/projects/${project.id}/requirements');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                project.nombreProyecto,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${reqs.length}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ...reqs.map((r) {
+                      final dateStr = r.updatedAt != null
+                          ? dateFmt.format(r.updatedAt!)
+                          : r.createdAt != null
+                          ? dateFmt.format(r.createdAt!)
+                          : '—';
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                        ),
+                        leading: Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ticketPriorityColor(r.prioridad),
+                          ),
+                        ),
+                        title: Text(
+                          r.titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        subtitle: Text(
+                          '${r.folio} · ${r.prioridad.label} · ${r.tipo.label}\n$dateStr',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        isThreeLine: true,
+                        trailing: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final pid = r.projectId ?? project.id;
+                          context.push('/projects/$pid/requirements/${r.id}');
+                        },
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Semáforo de fechas compromiso — Requerimientos ───────
+
+class _ReqDeadlineOverview extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final byDeadline = ref.watch(globalReqsByDeadlineProvider);
+    final withoutDeadline = ref.watch(globalReqsWithoutDeadlineProvider);
+    final width = MediaQuery.sizeOf(context).width;
+
+    final total =
+        byDeadline.values.fold<int>(0, (a, list) => a + list.length) +
+        withoutDeadline.length;
+    if (total == 0) return const SizedBox.shrink();
+
+    final zones = [
+      ('red', 'VENCIDO', const Color(0xFFD32F2F), Icons.error_outline),
+      (
+        'orange',
+        'HOY / MAÑANA',
+        const Color(0xFFFF9800),
+        Icons.warning_amber_outlined,
+      ),
+      ('amber', '2–5 DÍAS', const Color(0xFFFFC107), Icons.schedule),
+    ];
+
+    final cardWidth = width >= AppBreakpoints.medium
+        ? (width - 48 - 20) / 4 - 4
+        : (width - 48 - 20) / 2;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'SEMÁFORO FECHAS COMPROMISO — REQUERIMIENTOS',
+          style: theme.textTheme.labelLarge?.copyWith(
+            letterSpacing: 1,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            ...zones.map((z) {
+              final count = byDeadline[z.$1]?.length ?? 0;
+              return SizedBox(
+                width: cardWidth,
+                child: _GenericDeadlineCard(
+                  label: z.$2,
+                  color: z.$3,
+                  icon: z.$4,
+                  count: count,
+                  onTap: () {
+                    final entries = byDeadline[z.$1] ?? [];
+                    if (entries.isEmpty) return;
+                    _showReqsByDeadlineSheet(context, z.$2, z.$3, entries);
+                  },
+                ),
+              );
+            }),
+            SizedBox(
+              width: cardWidth,
+              child: _GenericDeadlineCard(
+                label: 'SIN FECHA',
+                color: theme.colorScheme.onSurfaceVariant,
+                icon: Icons.event_busy_outlined,
+                count: withoutDeadline.length,
+                onTap: () {
+                  if (withoutDeadline.isEmpty) return;
+                  _showReqsWithoutDeadlineSheet(context, withoutDeadline);
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Card genérica de zona de deadline.
+class _GenericDeadlineCard extends StatelessWidget {
+  const _GenericDeadlineCard({
+    required this.label,
+    required this.color,
+    required this.icon,
+    required this.count,
+    this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: count > 0 ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(icon, color: color, size: 20),
+                  const Spacer(),
+                  Text(
+                    '$count',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: count > 0
+                          ? color
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom Sheet: requerimientos por deadline ─────────────
+
+void _showReqsByDeadlineSheet(
+  BuildContext context,
+  String zoneLabel,
+  Color color,
+  List<({Proyecto project, Requerimiento req, int days})> entries,
+) {
+  final theme = Theme.of(context);
+  final sorted = [...entries]..sort((a, b) => a.days.compareTo(b.days));
+
+  final grouped =
+      <
+        String,
+        ({Proyecto project, List<({Requerimiento req, int days})> items})
+      >{};
+  for (final e in sorted) {
+    final key = e.project.id;
+    if (grouped.containsKey(key)) {
+      grouped[key]!.items.add((req: e.req, days: e.days));
+    } else {
+      grouped[key] = (project: e.project, items: [(req: e.req, days: e.days)]);
+    }
+  }
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scrollController) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.assignment_outlined, color: color, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    zoneLabel,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${entries.length}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: grouped.length,
+              itemBuilder: (ctx, i) {
+                final entry = grouped.values.elementAt(i);
+                final project = entry.project;
+                final items = entry.items;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        context.push('/projects/${project.id}/requirements');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                project.nombreProyecto,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${items.length}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ...items.map((item) {
+                      final r = item.req;
+                      final daysLabel = item.days < 0
+                          ? '${item.days.abs()}d vencido'
+                          : item.days == 0
+                          ? 'Hoy'
+                          : '${item.days}d restante${item.days == 1 ? '' : 's'}';
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                        ),
+                        leading: Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color,
+                          ),
+                        ),
+                        title: Text(
+                          r.titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        subtitle: Text(
+                          '${r.folio} · ${r.prioridad.label} · $daysLabel',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final pid = r.projectId ?? project.id;
+                          context.push('/projects/$pid/requirements/${r.id}');
+                        },
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Bottom Sheet: reqs sin fecha compromiso ──────────────
+
+void _showReqsWithoutDeadlineSheet(
+  BuildContext context,
+  List<({Proyecto project, Requerimiento req})> entries,
+) {
+  final theme = Theme.of(context);
+  final color = theme.colorScheme.onSurfaceVariant;
+
+  final grouped = <String, ({Proyecto project, List<Requerimiento> items})>{};
+  for (final e in entries) {
+    final key = e.project.id;
+    if (grouped.containsKey(key)) {
+      grouped[key]!.items.add(e.req);
+    } else {
+      grouped[key] = (project: e.project, items: [e.req]);
+    }
+  }
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scrollController) => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                Icon(Icons.event_busy_outlined, color: color, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Sin fecha compromiso',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${entries.length}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: grouped.length,
+              itemBuilder: (ctx, i) {
+                final entry = grouped.values.elementAt(i);
+                final project = entry.project;
+                final items = entry.items;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        context.push('/projects/${project.id}/requirements');
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                project.nombreProyecto,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '${items.length}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ...items.map((r) {
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                        ),
+                        leading: Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        title: Text(
+                          r.titulo,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        subtitle: Text(
+                          '${r.folio} · ${r.prioridad.label} · Sin fecha',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final pid = r.projectId ?? project.id;
+                          context.push('/projects/$pid/requirements/${r.id}');
                         },
                       );
                     }),
