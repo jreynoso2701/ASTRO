@@ -283,6 +283,17 @@ async function sendNotifications(
             priority: "high",
             notification: {channelId: "astro_default"},
           },
+          apns: {
+            headers: {
+              "apns-priority": "10",
+            },
+            payload: {
+              aps: {
+                sound: "default",
+                "content-available": 1,
+              },
+            },
+          },
         });
 
         // Limpiar tokens inválidos

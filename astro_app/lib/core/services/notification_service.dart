@@ -35,6 +35,16 @@ class NotificationService {
       await _createAndroidChannel();
     }
 
+    // 0b. En iOS, permitir que las notificaciones se muestren como banner
+    // incluso cuando la app está en primer plano.
+    if (!kIsWeb && Platform.isIOS) {
+      await _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
+
     // 1. Solicitar permiso (Android 13+ y web lo requieren)
     final settings = await _messaging.requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
