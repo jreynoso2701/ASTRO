@@ -61,92 +61,101 @@ class MinutaListScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (_) {
-              return AdaptiveBody(
-                maxWidth: 960,
-                child: Column(
-                  children: [
-                    // Barra de búsqueda
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Buscar minuta...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () => ref
-                                      .read(minutaSearchProvider.notifier)
-                                      .clear(),
-                                )
-                              : null,
-                          isDense: true,
-                        ),
-                        onChanged: (v) =>
-                            ref.read(minutaSearchProvider.notifier).setQuery(v),
-                      ),
-                    ),
-
-                    // Contador
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${filteredMinutas.length} minuta${filteredMinutas.length == 1 ? '' : 's'}',
-                            style: Theme.of(context).textTheme.bodySmall,
+              return SafeArea(
+                top: false,
+                child: AdaptiveBody(
+                  maxWidth: 960,
+                  child: Column(
+                    children: [
+                      // Barra de búsqueda
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Buscar minuta...',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () => ref
+                                        .read(minutaSearchProvider.notifier)
+                                        .clear(),
+                                  )
+                                : null,
+                            isDense: true,
                           ),
-                        ],
+                          onChanged: (v) => ref
+                              .read(minutaSearchProvider.notifier)
+                              .setQuery(v),
+                        ),
                       ),
-                    ),
 
-                    // Lista
-                    Expanded(
-                      child: filteredMinutas.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.description_outlined,
-                                    size: 64,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Sin minutas',
-                                    style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              itemCount: filteredMinutas.length,
-                              itemBuilder: (context, index) {
-                                final minuta = filteredMinutas[index];
-                                return _MinutaCard(
-                                  minuta: minuta,
-                                  onTap: () => context.push(
-                                    '/projects/$projectId/minutas/${minuta.id}',
-                                  ),
-                                );
-                              },
+                      // Contador
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${filteredMinutas.length} minuta${filteredMinutas.length == 1 ? '' : 's'}',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                    ),
-                  ],
+                          ],
+                        ),
+                      ),
+
+                      // Lista
+                      Expanded(
+                        child: filteredMinutas.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.description_outlined,
+                                      size: 64,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Sin minutas',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  16,
+                                ),
+                                itemCount: filteredMinutas.length,
+                                itemBuilder: (context, index) {
+                                  final minuta = filteredMinutas[index];
+                                  return _MinutaCard(
+                                    minuta: minuta,
+                                    onTap: () => context.push(
+                                      '/projects/$projectId/minutas/${minuta.id}',
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

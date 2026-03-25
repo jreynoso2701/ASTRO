@@ -280,6 +280,16 @@ class TicketRepository {
     await _ref.doc(ticketId).update({'commentCount': FieldValue.increment(1)});
   }
 
+  /// Marca un comentario como eliminado (soft-delete) y limpia sus adjuntos.
+  Future<void> deleteComment(String commentId) async {
+    await _commentsRef.doc(commentId).update({
+      'deleted': true,
+      'comentario': 'Comentario eliminado',
+      'text': 'Comentario eliminado',
+      'adjuntos': [],
+    });
+  }
+
   static String _nowV1String(DateTime now) {
     return '${now.year}/${now.month}/${now.day} '
         '${now.hour}:${now.minute.toString().padLeft(2, '0')}';

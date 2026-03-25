@@ -608,6 +608,22 @@
         { "fieldPath": "refCita", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "Proyectos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fkEmpresa", "order": "ASCENDING" },
+        { "fieldPath": "estatusProyecto", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Proyectos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresaId", "order": "ASCENDING" },
+        { "fieldPath": "estatusProyecto", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

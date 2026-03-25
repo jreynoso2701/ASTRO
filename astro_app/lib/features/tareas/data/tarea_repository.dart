@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:astro/core/models/subtarea.dart';
 import 'package:astro/core/models/tarea.dart';
 
 /// Repositorio CRUD de Tareas en Firestore.
@@ -131,14 +132,65 @@ class TareaRepository {
   }
 
   /// Actualiza solo el status de una tarea.
+  /// Si el status es 'completada', marca todas las subtareas como completadas.
   Future<void> updateStatus(
     String tareaId,
     String newStatus, {
     required String updatedBy,
   }) async {
-    await _ref.doc(tareaId).update({
+    final updates = <String, dynamic>{
       'status': newStatus,
       'updatedBy': updatedBy,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    };
+
+    // Auto-completar subtareas si la tarea se marca como completada.
+    if (newStatus == 'completada') {
+      final doc = await _ref.doc(tareaId).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        final subtareas = (data['subtareas'] as List<dynamic>?) ?? [];
+        if (subtareas.isNotEmpty) {
+          final updated = subtareas.map((s) {
+            final map = Map<String, dynamic>.from(s as Map);
+            map['completada'] = true;
+            return map;
+          }).toList();
+          updates['subtareas'] = updated;
+        }
+      }
+    }
+
+    await _ref.doc(tareaId).update(updates);
+  }
+
+  /// Actualiza la lista completa de subtareas de una tarea.
+  Future<void> updateSubtareas(String tareaId, List<Subtarea> subtareas) async {
+    await _ref.doc(tareaId).update({
+      'subtareas': subtareas.map((s) => s.toMap()).toList(),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
+  /// Alterna el estado completada de una subtarea específica.
+  Future<void> toggleSubtarea(
+    String tareaId,
+    String subtareaId,
+    bool completada,
+  ) async {
+    final doc = await _ref.doc(tareaId).get();
+    if (!doc.exists) return;
+    final data = doc.data()!;
+    final subtareas = (data['subtareas'] as List<dynamic>?) ?? [];
+    final updated = subtareas.map((s) {
+      final map = Map<String, dynamic>.from(s as Map);
+      if (map['id'] == subtareaId) {
+        map['completada'] = completada;
+      }
+      return map;
+    }).toList();
+    await _ref.doc(tareaId).update({
+      'subtareas': updated,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }

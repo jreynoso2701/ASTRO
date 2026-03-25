@@ -199,4 +199,12 @@ class CitaRepository {
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
+
+  /// Actualiza la agenda (items checklist) de una cita.
+  Future<void> updateAgenda(String citaId, List<AgendaItem> agenda) async {
+    await _ref.doc(citaId).update({
+      'agenda': agenda.map((a) => a.toMap()).toList(),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
 }

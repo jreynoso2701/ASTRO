@@ -16,6 +16,7 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Pantalla de creación / edición de cita.
 class CitaFormScreen extends ConsumerStatefulWidget {
@@ -51,6 +52,9 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
   final List<String> _refTickets = [];
   final List<String> _refRequerimientos = [];
   final List<String> _refMinutas = [];
+
+  // Agenda
+  final List<AgendaItem> _agenda = [];
 
   bool _isSaving = false;
   bool _isLoaded = false;
@@ -114,6 +118,9 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
           _refMinutas
             ..clear()
             ..addAll(cita.refMinutas);
+          _agenda
+            ..clear()
+            ..addAll(cita.agenda);
           _isLoaded = true;
           if (mounted) setState(() {});
         }
@@ -349,6 +356,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
               _RefSubSection(
                 label: 'Tickets',
                 icon: Icons.confirmation_number_outlined,
+                refType: RefType.ticket,
                 ids: _refTickets,
                 onAdd: () => _searchTickets(projectName),
                 onRemove: (id) => setState(() => _refTickets.remove(id)),
@@ -359,6 +367,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
               _RefSubSection(
                 label: 'Requerimientos',
                 icon: Icons.assignment_outlined,
+                refType: RefType.requerimiento,
                 ids: _refRequerimientos,
                 onAdd: () => _searchRequerimientos(projectName),
                 onRemove: (id) => setState(() => _refRequerimientos.remove(id)),
@@ -369,9 +378,39 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
               _RefSubSection(
                 label: 'Minutas',
                 icon: Icons.description_outlined,
+                refType: RefType.minuta,
                 ids: _refMinutas,
                 onAdd: () => _searchMinutas(projectName),
                 onRemove: (id) => setState(() => _refMinutas.remove(id)),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Agenda ────────────────────────────────
+              _SectionHeader(label: 'AGENDA'),
+              const SizedBox(height: 8),
+              _AgendaSection(
+                items: _agenda,
+                onAdd: (texto) {
+                  setState(() {
+                    _agenda.add(
+                      AgendaItem(
+                        id: DateTime.now().microsecondsSinceEpoch.toString(),
+                        texto: texto,
+                      ),
+                    );
+                  });
+                },
+                onRemove: (id) {
+                  setState(() => _agenda.removeWhere((a) => a.id == id));
+                },
+                onEdit: (id, nuevoTexto) {
+                  setState(() {
+                    final i = _agenda.indexWhere((a) => a.id == id);
+                    if (i != -1)
+                      _agenda[i] = _agenda[i].copyWith(texto: nuevoTexto);
+                  });
+                },
               ),
 
               const SizedBox(height: 24),
@@ -785,6 +824,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
             : null,
         participantes: _participantes,
         recordatorios: _recordatorios,
+        agenda: _agenda,
         refTickets: _refTickets,
         refRequerimientos: _refRequerimientos,
         refMinutas: _refMinutas,
@@ -808,6 +848,149 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+}
+
+// ── Agenda Section ───────────────────────────────────────
+
+class _AgendaSection extends StatefulWidget {
+  const _AgendaSection({
+    required this.items,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onEdit,
+  });
+
+  final List<AgendaItem> items;
+  final void Function(String texto) onAdd;
+  final void Function(String id) onRemove;
+  final void Function(String id, String nuevoTexto) onEdit;
+
+  @override
+  State<_AgendaSection> createState() => _AgendaSectionState();
+}
+
+class _AgendaSectionState extends State<_AgendaSection> {
+  final _addController = TextEditingController();
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _addController.text.trim();
+    if (text.isEmpty) return;
+    widget.onAdd(text);
+    _addController.clear();
+  }
+
+  void _showEditDialog(AgendaItem item) {
+    final editCtl = TextEditingController(text: item.texto);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar punto de agenda'),
+        content: TextField(
+          controller: editCtl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          onSubmitted: (_) {
+            final t = editCtl.text.trim();
+            if (t.isNotEmpty) widget.onEdit(item.id, t);
+            Navigator.pop(ctx);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final t = editCtl.text.trim();
+              if (t.isNotEmpty) widget.onEdit(item.id, t);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.items.isNotEmpty)
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: widget.items.length,
+            onReorder: (oldIdx, newIdx) {
+              if (newIdx > oldIdx) newIdx--;
+              final item = widget.items.removeAt(oldIdx);
+              widget.items.insert(newIdx, item);
+            },
+            itemBuilder: (_, i) {
+              final item = widget.items[i];
+              return ListTile(
+                key: ValueKey(item.id),
+                dense: true,
+                leading: Icon(
+                  Icons.drag_indicator,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                ),
+                title: Text(item.texto),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      onPressed: () => _showEditDialog(item),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        size: 18,
+                        color: theme.colorScheme.error,
+                      ),
+                      onPressed: () => widget.onRemove(item.id),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _addController,
+                decoration: const InputDecoration(
+                  hintText: 'Agregar punto de agenda...',
+                  isDense: true,
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: (_) => _submit(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(icon: const Icon(Icons.add), onPressed: _submit),
+          ],
+        ),
+      ],
+    );
   }
 }
 
@@ -1004,6 +1187,7 @@ class _RefSubSection extends StatelessWidget {
   const _RefSubSection({
     required this.label,
     required this.icon,
+    required this.refType,
     required this.ids,
     required this.onAdd,
     required this.onRemove,
@@ -1011,6 +1195,7 @@ class _RefSubSection extends StatelessWidget {
 
   final String label;
   final IconData icon;
+  final RefType refType;
   final List<String> ids;
   final VoidCallback onAdd;
   final ValueChanged<String> onRemove;
@@ -1051,8 +1236,9 @@ class _RefSubSection extends StatelessWidget {
             children: ids.map((id) {
               return Chip(
                 avatar: Icon(icon, size: 16),
-                label: Text(
-                  id.length > 10 ? '${id.substring(0, 10)}…' : id,
+                label: ResolvedRefText(
+                  id: id,
+                  type: refType,
                   style: theme.textTheme.bodySmall,
                 ),
                 deleteIcon: const Icon(Icons.close, size: 16),

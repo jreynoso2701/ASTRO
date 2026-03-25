@@ -10,6 +10,7 @@ import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Pantalla de detalle de una cita.
 class CitaDetailScreen extends ConsumerWidget {
@@ -65,6 +66,7 @@ class CitaDetailScreen extends ConsumerWidget {
           final infoSection = _CitaInfoSection(
             cita: cita,
             projectId: projectId,
+            canManage: canManage || isRoot,
           );
           final actionsSection = _ActionsSection(
             cita: cita,
@@ -383,14 +385,19 @@ class _CompletionDialogState extends State<_CompletionDialog> {
 
 // ── Info Section ─────────────────────────────────────────
 
-class _CitaInfoSection extends StatelessWidget {
-  const _CitaInfoSection({required this.cita, required this.projectId});
+class _CitaInfoSection extends ConsumerWidget {
+  const _CitaInfoSection({
+    required this.cita,
+    required this.projectId,
+    required this.canManage,
+  });
 
   final Cita cita;
   final String projectId;
+  final bool canManage;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final dateStr = cita.fecha != null
         ? DateFormat('dd/MM/yyyy').format(cita.fecha!)
@@ -494,6 +501,61 @@ class _CitaInfoSection extends StatelessWidget {
                   ),
                   const Divider(height: 24),
                   Text(cita.descripcion!, style: theme.textTheme.bodyMedium),
+                ],
+              ),
+            ),
+          ),
+        ],
+
+        // Agenda
+        if (cita.agenda.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AGENDA',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  ...cita.agenda.map(
+                    (item) => CheckboxListTile(
+                      value: item.tratado,
+                      dense: true,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      title: Text(
+                        item.texto,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          decoration: item.tratado
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: item.tratado
+                              ? theme.colorScheme.onSurfaceVariant
+                              : null,
+                        ),
+                      ),
+                      onChanged: canManage
+                          ? (val) async {
+                              final updated = cita.agenda
+                                  .map(
+                                    (a) => a.id == item.id
+                                        ? a.copyWith(tratado: val ?? false)
+                                        : a,
+                                  )
+                                  .toList();
+                              await ref
+                                  .read(citaRepositoryProvider)
+                                  .updateAgenda(cita.id, updated);
+                            }
+                          : null,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -699,9 +761,7 @@ class _CitaInfoSection extends StatelessWidget {
                             Icons.confirmation_number_outlined,
                             size: 16,
                           ),
-                          label: Text(
-                            id.length > 8 ? '${id.substring(0, 8)}…' : id,
-                          ),
+                          label: ResolvedRefText(id: id, type: RefType.ticket),
                           onPressed: () =>
                               context.push('/projects/$projectId/tickets/$id'),
                         );
@@ -726,8 +786,9 @@ class _CitaInfoSection extends StatelessWidget {
                             Icons.assignment_outlined,
                             size: 16,
                           ),
-                          label: Text(
-                            id.length > 8 ? '${id.substring(0, 8)}…' : id,
+                          label: ResolvedRefText(
+                            id: id,
+                            type: RefType.requerimiento,
                           ),
                           onPressed: () => context.push(
                             '/projects/$projectId/requirements/$id',
@@ -754,9 +815,7 @@ class _CitaInfoSection extends StatelessWidget {
                             Icons.description_outlined,
                             size: 16,
                           ),
-                          label: Text(
-                            id.length > 8 ? '${id.substring(0, 8)}…' : id,
-                          ),
+                          label: ResolvedRefText(id: id, type: RefType.minuta),
                           onPressed: () =>
                               context.push('/projects/$projectId/minutas/$id'),
                         );

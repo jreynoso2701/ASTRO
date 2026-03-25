@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:intl/intl.dart';
+import 'package:astro/core/models/subtarea.dart';
 import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
@@ -19,6 +22,7 @@ import 'package:astro/features/requirements/providers/requerimiento_providers.da
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
@@ -71,6 +75,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   // Adjuntos
   final List<String> _existingAdjuntos = [];
   final List<XFile> _newFiles = [];
+  bool _isDragging = false;
 
   // Referencias (listas)
   final List<String> _refTickets = [];
@@ -78,6 +83,9 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   final List<String> _refMinutas = [];
   final List<String> _refCitas = [];
   int? _refCompromisoNumero;
+
+  // Subtareas
+  final List<Subtarea> _subtareas = [];
 
   bool _isSaving = false;
   bool _isLoaded = false;
@@ -158,6 +166,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
           _refMinutas.addAll(tarea.refMinutas);
           _refCitas.addAll(tarea.refCitas);
           _refCompromisoNumero = tarea.refCompromisoNumero;
+          _subtareas.addAll(tarea.subtareas);
           _isLoaded = true;
           if (mounted) setState(() {});
         }
@@ -408,6 +417,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               _RefSubSection(
                 label: 'Tickets',
                 icon: Icons.confirmation_number_outlined,
+                refType: RefType.ticket,
                 ids: _refTickets,
                 onAdd: () => _searchTickets(projectName),
                 onRemove: (id) => setState(() => _refTickets.remove(id)),
@@ -418,6 +428,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               _RefSubSection(
                 label: 'Requerimientos',
                 icon: Icons.assignment_outlined,
+                refType: RefType.requerimiento,
                 ids: _refRequerimientos,
                 onAdd: () => _searchRequerimientos(projectName),
                 onRemove: (id) => setState(() => _refRequerimientos.remove(id)),
@@ -428,6 +439,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               _RefSubSection(
                 label: 'Minutas',
                 icon: Icons.description_outlined,
+                refType: RefType.minuta,
                 ids: _refMinutas,
                 onAdd: () => _searchMinutas(projectName),
                 onRemove: (id) => setState(() => _refMinutas.remove(id)),
@@ -438,9 +450,77 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               _RefSubSection(
                 label: 'Citas',
                 icon: Icons.event_outlined,
+                refType: RefType.cita,
                 ids: _refCitas,
                 onAdd: () => _searchCitas(projectName),
                 onRemove: (id) => setState(() => _refCitas.remove(id)),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ── Subtareas ─────────────────────────────
+              Text(
+                'SUBTAREAS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              _SubtareasSection(
+                subtareas: _subtareas,
+                onAdd: (titulo) {
+                  setState(() {
+                    _subtareas.add(
+                      Subtarea(
+                        id: DateTime.now().microsecondsSinceEpoch.toString(),
+                        titulo: titulo,
+                        orden: _subtareas.length,
+                      ),
+                    );
+                  });
+                },
+                onRemove: (id) {
+                  setState(() {
+                    _subtareas.removeWhere((s) => s.id == id);
+                    // Reindexar orden
+                    for (int i = 0; i < _subtareas.length; i++) {
+                      _subtareas[i] = _subtareas[i].copyWith(orden: i);
+                    }
+                  });
+                },
+                onEdit: (id, titulo) {
+                  setState(() {
+                    final idx = _subtareas.indexWhere((s) => s.id == id);
+                    if (idx != -1) {
+                      _subtareas[idx] = _subtareas[idx].copyWith(
+                        titulo: titulo,
+                      );
+                    }
+                  });
+                },
+                onToggle: (id) {
+                  setState(() {
+                    final idx = _subtareas.indexWhere((s) => s.id == id);
+                    if (idx != -1) {
+                      _subtareas[idx] = _subtareas[idx].copyWith(
+                        completada: !_subtareas[idx].completada,
+                      );
+                    }
+                  });
+                },
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (newIndex > oldIndex) newIndex -= 1;
+                    final item = _subtareas.removeAt(oldIndex);
+                    _subtareas.insert(newIndex, item);
+                    for (int i = 0; i < _subtareas.length; i++) {
+                      _subtareas[i] = _subtareas[i].copyWith(orden: i);
+                    }
+                  });
+                },
               ),
 
               const SizedBox(height: 24),
@@ -456,64 +536,174 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               const Divider(),
               const SizedBox(height: 8),
 
-              // Existentes
-              if (_existingAdjuntos.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _existingAdjuntos.map((url) {
-                    final name = Uri.decodeFull(
-                      url.split('/').last.split('?').first,
-                    );
-                    return Chip(
-                      avatar: const Icon(Icons.attach_file, size: 16),
-                      label: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      onDeleted: () =>
-                          setState(() => _existingAdjuntos.remove(url)),
-                    );
-                  }).toList(),
-                ),
-
-              // Nuevos
-              if (_newFiles.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _newFiles.map((file) {
-                    return Chip(
-                      avatar: const Icon(Icons.upload_file, size: 16),
-                      label: Text(
-                        file.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      deleteIcon: const Icon(Icons.close, size: 16),
-                      onDeleted: () => setState(() => _newFiles.remove(file)),
-                    );
-                  }).toList(),
-                ),
-
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.image_outlined, size: 18),
-                    label: const Text('Imagen'),
-                    onPressed: _pickImage,
+              DropTarget(
+                onDragEntered: (_) => setState(() => _isDragging = true),
+                onDragExited: (_) => setState(() => _isDragging = false),
+                onDragDone: (details) {
+                  setState(() {
+                    _isDragging = false;
+                    _newFiles.addAll(details.files);
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _isDragging
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outlineVariant,
+                      width: _isDragging ? 2 : 1,
+                      strokeAlign: BorderSide.strokeAlignInside,
+                    ),
+                    color: _isDragging
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.08)
+                        : null,
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.attach_file, size: 18),
-                    label: const Text('Archivo'),
-                    onPressed: _pickFile,
+                  child: Column(
+                    children: [
+                      // Indicador visual de drop zone
+                      if (_existingAdjuntos.isEmpty && _newFiles.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            children: [
+                              Icon(
+                                _isDragging
+                                    ? Icons.file_download
+                                    : Icons.cloud_upload_outlined,
+                                size: 36,
+                                color: _isDragging
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _isDragging
+                                    ? 'Suelta los archivos aquí'
+                                    : kIsWeb
+                                    ? 'Arrastra archivos aquí o usa los botones'
+                                    : 'Adjunta archivos con los botones',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: _isDragging
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                    ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Dragging indicator when files already exist
+                      if ((_existingAdjuntos.isNotEmpty ||
+                              _newFiles.isNotEmpty) &&
+                          _isDragging)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.file_download,
+                                size: 20,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Suelta los archivos aquí',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Existentes
+                      if (_existingAdjuntos.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _existingAdjuntos.map((url) {
+                              final name = Uri.decodeFull(
+                                url.split('/').last.split('?').first,
+                              );
+                              return Chip(
+                                avatar: Icon(_fileIcon(name), size: 16),
+                                label: Text(
+                                  name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                deleteIcon: const Icon(Icons.close, size: 16),
+                                onDeleted: () => setState(
+                                  () => _existingAdjuntos.remove(url),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+
+                      // Nuevos
+                      if (_newFiles.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _newFiles.map((file) {
+                              return Chip(
+                                avatar: Icon(_fileIcon(file.name), size: 16),
+                                label: Text(
+                                  file.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                deleteIcon: const Icon(Icons.close, size: 16),
+                                onDeleted: () =>
+                                    setState(() => _newFiles.remove(file)),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+
+                      // Botones
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.image_outlined, size: 18),
+                            label: const Text('Imagen'),
+                            onPressed: _pickImage,
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.attach_file, size: 18),
+                            label: const Text('Archivo'),
+                            onPressed: _pickFile,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
 
               const SizedBox(height: 32),
@@ -629,6 +819,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
         refMinutas: _refMinutas,
         refCitas: _refCitas,
         refCompromisoNumero: _refCompromisoNumero,
+        subtareas: _subtareas,
       );
 
       if (_isEditing) {
@@ -662,6 +853,26 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
     TareaPrioridad.alta => const Color(0xFFFF9800),
     TareaPrioridad.urgente => const Color(0xFFD32F2F),
   };
+
+  static IconData _fileIcon(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    return switch (ext) {
+      'jpg' ||
+      'jpeg' ||
+      'png' ||
+      'gif' ||
+      'webp' ||
+      'bmp' => Icons.image_outlined,
+      'mp4' || 'mov' || 'avi' || 'mkv' || 'webm' => Icons.videocam_outlined,
+      'pdf' => Icons.picture_as_pdf_outlined,
+      'doc' || 'docx' => Icons.description_outlined,
+      'xls' || 'xlsx' => Icons.table_chart_outlined,
+      'ppt' || 'pptx' => Icons.slideshow_outlined,
+      'zip' || 'rar' || '7z' || 'tar' || 'gz' => Icons.folder_zip_outlined,
+      'mp3' || 'wav' || 'aac' || 'ogg' || 'flac' => Icons.audiotrack_outlined,
+      _ => Icons.attach_file,
+    };
+  }
 
   // ─── Búsqueda de referencias ──────────────────────────
 
@@ -940,12 +1151,249 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   }
 }
 
+// ── Subtareas Section ────────────────────────────────────
+
+class _SubtareasSection extends StatefulWidget {
+  const _SubtareasSection({
+    required this.subtareas,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onEdit,
+    required this.onToggle,
+    required this.onReorder,
+  });
+
+  final List<Subtarea> subtareas;
+  final ValueChanged<String> onAdd;
+  final ValueChanged<String> onRemove;
+  final void Function(String id, String titulo) onEdit;
+  final ValueChanged<String> onToggle;
+  final void Function(int oldIndex, int newIndex) onReorder;
+
+  @override
+  State<_SubtareasSection> createState() => _SubtareasSectionState();
+}
+
+class _SubtareasSectionState extends State<_SubtareasSection> {
+  final _addController = TextEditingController();
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    super.dispose();
+  }
+
+  void _addSubtarea() {
+    final text = _addController.text.trim();
+    if (text.isEmpty) return;
+    widget.onAdd(text);
+    _addController.clear();
+  }
+
+  void _showEditDialog(Subtarea sub) {
+    final editController = TextEditingController(text: sub.titulo);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar subtarea'),
+        content: TextField(
+          controller: editController,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Título',
+            hintText: 'Nombre de la subtarea',
+          ),
+          onSubmitted: (_) {
+            final newTitle = editController.text.trim();
+            if (newTitle.isNotEmpty) {
+              widget.onEdit(sub.id, newTitle);
+            }
+            Navigator.pop(ctx);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final newTitle = editController.text.trim();
+              if (newTitle.isNotEmpty) {
+                widget.onEdit(sub.id, newTitle);
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    ).then((_) => editController.dispose());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final completedCount = widget.subtareas.where((s) => s.completada).length;
+    final total = widget.subtareas.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Progress indicator
+        if (total > 0) ...[
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: completedCount / total,
+                    minHeight: 6,
+                    backgroundColor: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$completedCount / $total',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // Add subtarea field
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _addController,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Nueva subtarea...',
+                  isDense: true,
+                  prefixIcon: Icon(Icons.add, size: 20),
+                ),
+                onSubmitted: (_) => _addSubtarea(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Agregar subtarea',
+              onPressed: _addSubtarea,
+            ),
+          ],
+        ),
+
+        if (total > 0) ...[
+          const SizedBox(height: 8),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: total,
+            onReorder: widget.onReorder,
+            proxyDecorator: (child, index, animation) {
+              return AnimatedBuilder(
+                animation: animation,
+                builder: (context, child) => Material(
+                  elevation: 2,
+                  borderRadius: BorderRadius.circular(8),
+                  child: child,
+                ),
+                child: child,
+              );
+            },
+            itemBuilder: (context, index) {
+              final sub = widget.subtareas[index];
+              return ListTile(
+                key: ValueKey(sub.id),
+                dense: true,
+                contentPadding: const EdgeInsets.only(left: 0, right: 0),
+                leading: ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_handle, size: 20),
+                ),
+                title: Text(
+                  sub.titulo,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    decoration: sub.completada
+                        ? TextDecoration.lineThrough
+                        : null,
+                    color: sub.completada
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        sub.completada
+                            ? Icons.check_circle
+                            : Icons.circle_outlined,
+                        size: 20,
+                        color: sub.completada
+                            ? const Color(0xFF4CAF50)
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      tooltip: sub.completada
+                          ? 'Marcar pendiente'
+                          : 'Marcar completada',
+                      onPressed: () => widget.onToggle(sub.id),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Editar',
+                      onPressed: () => _showEditDialog(sub),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: theme.colorScheme.error,
+                      ),
+                      tooltip: 'Eliminar',
+                      onPressed: () => widget.onRemove(sub.id),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+
+        if (total == 0)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Sin subtareas. Agrega una arriba.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 // ── Ref Sub Section ──────────────────────────────────────
 
 class _RefSubSection extends StatelessWidget {
   const _RefSubSection({
     required this.label,
     required this.icon,
+    required this.refType,
     required this.ids,
     required this.onAdd,
     required this.onRemove,
@@ -953,6 +1401,7 @@ class _RefSubSection extends StatelessWidget {
 
   final String label;
   final IconData icon;
+  final RefType refType;
   final List<String> ids;
   final VoidCallback onAdd;
   final ValueChanged<String> onRemove;
@@ -993,8 +1442,9 @@ class _RefSubSection extends StatelessWidget {
             children: ids.map((id) {
               return Chip(
                 avatar: Icon(icon, size: 16),
-                label: Text(
-                  id.length > 10 ? '${id.substring(0, 10)}…' : id,
+                label: ResolvedRefText(
+                  id: id,
+                  type: refType,
                   style: theme.textTheme.bodySmall,
                 ),
                 deleteIcon: const Icon(Icons.close, size: 16),

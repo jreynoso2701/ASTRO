@@ -13,6 +13,7 @@ import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Pantalla de detalle de una minuta de reunión.
 class MinutaDetailScreen extends ConsumerStatefulWidget {
@@ -564,10 +565,10 @@ class _MinutaInfoSection extends StatelessWidget {
                         size: 18,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      title: Text(
-                        id,
-                        style: theme.textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
+                      title: ResolvedRefText(
+                        id: id,
+                        type: RefType.ticket,
+                        showTitle: true,
                       ),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       dense: true,
@@ -606,10 +607,10 @@ class _MinutaInfoSection extends StatelessWidget {
                         size: 18,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      title: Text(
-                        id,
-                        style: theme.textTheme.bodyMedium,
-                        overflow: TextOverflow.ellipsis,
+                      title: ResolvedRefText(
+                        id: id,
+                        type: RefType.requerimiento,
+                        showTitle: true,
                       ),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       dense: true,

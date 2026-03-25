@@ -12,6 +12,8 @@ class TicketComment {
     this.ticketId,
     this.type = CommentType.comment,
     this.createdAt,
+    this.adjuntos = const [],
+    this.deleted = false,
   });
 
   final String id;
@@ -21,6 +23,8 @@ class TicketComment {
   final String? ticketId; // V1: refIncidente (top-level collection link)
   final CommentType type;
   final DateTime? createdAt;
+  final List<String> adjuntos;
+  final bool deleted;
 
   factory TicketComment.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -51,6 +55,9 @@ class TicketComment {
       ticketId: data['refIncidente'] as String?,
       type: CommentType.fromString(data['type'] as String? ?? 'comment'),
       createdAt: parseDate(data['fechaCreacion'] ?? data['createdAt']),
+      adjuntos:
+          (data['adjuntos'] as List<dynamic>?)?.cast<String>() ?? const [],
+      deleted: data['deleted'] as bool? ?? false,
     );
   }
 
@@ -68,6 +75,8 @@ class TicketComment {
       'authorName': authorName,
       'type': type.name,
       'createdAt': Timestamp.fromDate(createdAt ?? DateTime.now()),
+      if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
+      if (deleted) 'deleted': true,
     };
   }
 }

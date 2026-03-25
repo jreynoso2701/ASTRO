@@ -109,32 +109,64 @@ class _RequerimientoListScreenState
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (_) {
-              return Column(
-                children: [
-                  // Búsqueda
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Buscar requerimiento...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => ref
-                                    .read(reqSearchProvider.notifier)
-                                    .clear(),
-                              )
-                            : null,
-                        isDense: true,
+              return SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    // Búsqueda
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar requerimiento...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () => ref
+                                      .read(reqSearchProvider.notifier)
+                                      .clear(),
+                                )
+                              : null,
+                          isDense: true,
+                        ),
+                        onChanged: (v) =>
+                            ref.read(reqSearchProvider.notifier).setQuery(v),
                       ),
-                      onChanged: (v) =>
-                          ref.read(reqSearchProvider.notifier).setQuery(v),
                     ),
-                  ),
 
-                  // Filtros de estado — solo en modo lista
-                  if (!kanban)
+                    // Filtros de estado — solo en modo lista
+                    if (!kanban)
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          children: [
+                            _FilterChip(
+                              label: 'Todos',
+                              selected: statusFilter == null,
+                              onSelected: (_) => ref
+                                  .read(reqStatusFilterProvider.notifier)
+                                  .clear(),
+                            ),
+                            for (final s in RequerimientoStatus.values)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: _FilterChip(
+                                  label: s.label,
+                                  selected: statusFilter == s,
+                                  onSelected: (_) => ref
+                                      .read(reqStatusFilterProvider.notifier)
+                                      .set(s),
+                                  color: _statusColor(s),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                    // Filtros de tipo
                     SizedBox(
                       height: 40,
                       child: ListView(
@@ -142,79 +174,51 @@ class _RequerimientoListScreenState
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         children: [
                           _FilterChip(
-                            label: 'Todos',
-                            selected: statusFilter == null,
+                            label: 'Tipo: Todos',
+                            selected: tipoFilter == null,
                             onSelected: (_) => ref
-                                .read(reqStatusFilterProvider.notifier)
+                                .read(reqTipoFilterProvider.notifier)
                                 .clear(),
                           ),
-                          for (final s in RequerimientoStatus.values)
+                          for (final t in RequerimientoTipo.values)
                             Padding(
                               padding: const EdgeInsets.only(left: 6),
                               child: _FilterChip(
-                                label: s.label,
-                                selected: statusFilter == s,
+                                label: t.label,
+                                selected: tipoFilter == t,
                                 onSelected: (_) => ref
-                                    .read(reqStatusFilterProvider.notifier)
-                                    .set(s),
-                                color: _statusColor(s),
+                                    .read(reqTipoFilterProvider.notifier)
+                                    .set(t),
                               ),
                             ),
                         ],
                       ),
                     ),
 
-                  // Filtros de tipo
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Tipo: Todos',
-                          selected: tipoFilter == null,
-                          onSelected: (_) =>
-                              ref.read(reqTipoFilterProvider.notifier).clear(),
-                        ),
-                        for (final t in RequerimientoTipo.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: t.label,
-                              selected: tipoFilter == t,
-                              onSelected: (_) => ref
-                                  .read(reqTipoFilterProvider.notifier)
-                                  .set(t),
-                            ),
+                    // Contador
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${filteredReqs.length} requerimiento${filteredReqs.length == 1 ? '' : 's'}',
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
-                  // Contador
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
+                    // Contenido: Kanban o Lista
+                    Expanded(
+                      child: kanban
+                          ? _buildKanban(context, filteredReqs, projectId)
+                          : _buildList(context, filteredReqs, projectId),
                     ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${filteredReqs.length} requerimiento${filteredReqs.length == 1 ? '' : 's'}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Contenido: Kanban o Lista
-                  Expanded(
-                    child: kanban
-                        ? _buildKanban(context, filteredReqs, projectId)
-                        : _buildList(context, filteredReqs, projectId),
-                  ),
-                ],
+                  ],
+                ),
               );
             },
           ),
@@ -262,6 +266,16 @@ class _RequerimientoListScreenState
           updatedBy: profile?.uid ?? '',
           fechaCompromiso: fechaCompromiso,
         );
+
+        // Si pasa a completado, marcar todos los criterios de aceptación
+        if (newStatus == RequerimientoStatus.completado &&
+            req.criteriosAceptacion.isNotEmpty) {
+          final allChecked = req.criteriosAceptacion
+              .map((c) => c.copyWith(completado: true))
+              .toList();
+          await repo.updateCriterios(req.id, allChecked);
+        }
+
         if (profile != null) {
           await repo.addComment(
             req.id,
@@ -312,7 +326,7 @@ class _RequerimientoListScreenState
     return AdaptiveBody(
       maxWidth: 960,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         itemCount: reqs.length,
         itemBuilder: (context, index) {
           final req = reqs[index];

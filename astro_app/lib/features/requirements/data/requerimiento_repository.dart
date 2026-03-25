@@ -285,4 +285,13 @@ class RequerimientoRepository {
     data['refRequerimiento'] = reqId;
     await _commentsRef.add(data);
   }
+
+  /// Marca un comentario como eliminado (soft-delete) y limpia sus adjuntos.
+  Future<void> deleteComment(String commentId) async {
+    await _commentsRef.doc(commentId).update({
+      'deleted': true,
+      'text': 'Comentario eliminado',
+      'adjuntos': [],
+    });
+  }
 }

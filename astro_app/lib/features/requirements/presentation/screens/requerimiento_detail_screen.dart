@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:astro/core/models/requerimiento.dart';
 import 'package:astro/core/models/requerimiento_status.dart';
 import 'package:astro/core/models/requerimiento_fase.dart';
 import 'package:astro/core/models/requerimiento_comment.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Pantalla de detalle de un requerimiento.
 class RequerimientoDetailScreen extends ConsumerStatefulWidget {
@@ -32,6 +36,7 @@ class _RequerimientoDetailScreenState
     extends ConsumerState<RequerimientoDetailScreen> {
   final _commentController = TextEditingController();
   bool _sending = false;
+  List<XFile> _pendingFiles = [];
 
   @override
   void dispose() {
@@ -99,11 +104,19 @@ class _RequerimientoDetailScreenState
             onDelete: canArchive ? () => _deleteReq(req) : null,
           );
 
+          final currentUserId =
+              ref.watch(currentUserProfileProvider).value?.uid ?? '';
+
           final commentsSection = _CommentsSection(
             comments: comments,
             controller: _commentController,
             sending: _sending,
+            pendingFiles: _pendingFiles,
+            currentUserId: currentUserId,
             onSend: () => _sendComment(req.id),
+            onPickFiles: _pickFiles,
+            onRemoveFile: (i) => setState(() => _pendingFiles.removeAt(i)),
+            onDeleteComment: (c) => _deleteComment(req.id, c),
           );
 
           if (isWide) {
@@ -141,7 +154,13 @@ class _RequerimientoDetailScreenState
                         ),
                       ),
                       const Divider(),
-                      ...comments.map((c) => _CommentTile(comment: c)),
+                      ...comments.map(
+                        (c) => _CommentTile(
+                          comment: c,
+                          currentUserId: currentUserId,
+                          onDelete: () => _deleteComment(req.id, c),
+                        ),
+                      ),
                       if (comments.isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
@@ -164,7 +183,10 @@ class _RequerimientoDetailScreenState
               _CommentInput(
                 controller: _commentController,
                 sending: _sending,
+                pendingFiles: _pendingFiles,
                 onSend: () => _sendComment(req.id),
+                onPickFiles: _pickFiles,
+                onRemoveFile: (i) => setState(() => _pendingFiles.removeAt(i)),
               ),
             ],
           );
@@ -223,6 +245,17 @@ class _RequerimientoDetailScreenState
           .updateStatus(req.id, newStatus, updatedBy: profile?.uid ?? '');
     }
 
+    // Si pasa a completado, marcar todos los criterios de aceptación
+    if (newStatus == RequerimientoStatus.completado &&
+        req.criteriosAceptacion.isNotEmpty) {
+      final allChecked = req.criteriosAceptacion
+          .map((c) => c.copyWith(completado: true))
+          .toList();
+      await ref
+          .read(requerimientoRepositoryProvider)
+          .updateCriterios(req.id, allChecked);
+    }
+
     // Historial
     final profile = ref.read(currentUserProfileProvider).value;
     if (profile != null) {
@@ -267,7 +300,7 @@ class _RequerimientoDetailScreenState
 
   Future<void> _sendComment(String reqId) async {
     final text = _commentController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _pendingFiles.isEmpty) return;
 
     final profile = ref.read(currentUserProfileProvider).value;
     if (profile == null) return;
@@ -275,6 +308,18 @@ class _RequerimientoDetailScreenState
     setState(() => _sending = true);
 
     try {
+      List<String> adjuntosUrls = [];
+      if (_pendingFiles.isNotEmpty) {
+        final storage = StorageService();
+        for (final file in _pendingFiles) {
+          final url = await storage.uploadToPath(
+            'comentarios_requerimientos/$reqId',
+            file,
+          );
+          adjuntosUrls.add(url);
+        }
+      }
+
       await ref
           .read(requerimientoRepositoryProvider)
           .addComment(
@@ -284,11 +329,120 @@ class _RequerimientoDetailScreenState
               text: text,
               authorId: profile.uid,
               authorName: profile.displayName,
+              adjuntos: adjuntosUrls,
             ),
           );
       _commentController.clear();
+      setState(() => _pendingFiles = []);
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _deleteComment(
+    String reqId,
+    RequerimientoComment comment,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar comentario'),
+        content: const Text(
+          '¿Estás seguro de eliminar este comentario? '
+          'Se mostrará como "Comentario eliminado".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(requerimientoRepositoryProvider).deleteComment(comment.id);
+  }
+
+  Future<void> _pickFiles() async {
+    final totalAllowed = 10 - _pendingFiles.length;
+    if (totalAllowed <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Máximo 10 archivos por comentario')),
+        );
+      }
+      return;
+    }
+
+    final option = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galería de fotos'),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_file),
+              title: const Text('Seleccionar archivos'),
+              onTap: () => Navigator.pop(ctx, 'files'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (option == null || !mounted) return;
+
+    List<XFile> picked = [];
+    switch (option) {
+      case 'camera':
+        final img = await ImagePicker().pickImage(source: ImageSource.camera);
+        if (img != null) picked = [img];
+        break;
+      case 'gallery':
+        picked = await ImagePicker().pickMultiImage();
+        break;
+      case 'files':
+        final result = await FilePicker.platform.pickFiles(
+          allowMultiple: true,
+          type: FileType.any,
+        );
+        if (result != null) {
+          picked = result.files
+              .where((f) => f.path != null)
+              .map((f) => XFile(f.path!))
+              .toList();
+        }
+        break;
+    }
+
+    if (picked.isEmpty || !mounted) return;
+
+    final canAdd = 10 - _pendingFiles.length;
+    final toAdd = picked.take(canAdd).toList();
+    setState(() => _pendingFiles = [..._pendingFiles, ...toAdd]);
+
+    if (picked.length > canAdd) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Solo se agregaron $canAdd de ${picked.length} archivos (máximo 10)',
+          ),
+        ),
+      );
     }
   }
 
@@ -695,8 +849,10 @@ class _InfoSection extends StatelessWidget {
                     .map(
                       (id) => ListTile(
                         leading: const Icon(Icons.description_outlined),
-                        title: Text(
-                          id.length > 20 ? '${id.substring(0, 20)}...' : id,
+                        title: ResolvedRefText(
+                          id: id,
+                          type: RefType.minuta,
+                          showTitle: true,
                         ),
                         trailing: const Icon(Icons.chevron_right, size: 20),
                         dense: true,
@@ -1043,13 +1199,23 @@ class _CommentsSection extends StatelessWidget {
     required this.comments,
     required this.controller,
     required this.sending,
+    required this.pendingFiles,
+    required this.currentUserId,
     required this.onSend,
+    required this.onPickFiles,
+    required this.onRemoveFile,
+    required this.onDeleteComment,
   });
 
   final List<RequerimientoComment> comments;
   final TextEditingController controller;
   final bool sending;
+  final List<XFile> pendingFiles;
+  final String currentUserId;
   final VoidCallback onSend;
+  final VoidCallback onPickFiles;
+  final ValueChanged<int> onRemoveFile;
+  final ValueChanged<RequerimientoComment> onDeleteComment;
 
   @override
   Widget build(BuildContext context) {
@@ -1094,26 +1260,79 @@ class _CommentsSection extends StatelessWidget {
                     vertical: 8,
                   ),
                   itemCount: comments.length,
-                  itemBuilder: (context, index) =>
-                      _CommentTile(comment: comments[index]),
+                  itemBuilder: (context, index) => _CommentTile(
+                    comment: comments[index],
+                    currentUserId: currentUserId,
+                    onDelete: () => onDeleteComment(comments[index]),
+                  ),
                 ),
         ),
 
         // Input
-        _CommentInput(controller: controller, sending: sending, onSend: onSend),
+        _CommentInput(
+          controller: controller,
+          sending: sending,
+          pendingFiles: pendingFiles,
+          onSend: onSend,
+          onPickFiles: onPickFiles,
+          onRemoveFile: onRemoveFile,
+        ),
       ],
     );
   }
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment});
+  const _CommentTile({
+    required this.comment,
+    this.currentUserId = '',
+    this.onDelete,
+  });
   final RequerimientoComment comment;
+  final String currentUserId;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSystem = comment.type != ReqCommentType.comment;
+
+    // Comentario eliminado
+    if (comment.deleted) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Icon(
+              Icons.delete_outline,
+              size: 14,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Comentario eliminado',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            if (comment.createdAt != null)
+              Text(
+                _formatDateTime(comment.createdAt!),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     if (isSystem) {
       return Padding(
@@ -1146,6 +1365,8 @@ class _CommentTile extends StatelessWidget {
         ),
       );
     }
+
+    final isOwner = comment.authorId == currentUserId;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -1181,10 +1402,27 @@ class _CommentTile extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                if (isOwner && onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    tooltip: 'Eliminar comentario',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: onDelete,
+                    color: theme.colorScheme.error,
+                  ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(comment.text, style: theme.textTheme.bodyMedium),
+            if (comment.text.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(comment.text, style: theme.textTheme.bodyMedium),
+            ],
+            // Adjuntos
+            if (comment.adjuntos.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _ReqCommentAdjuntos(adjuntos: comment.adjuntos),
+            ],
           ],
         ),
       ),
@@ -1192,55 +1430,289 @@ class _CommentTile extends StatelessWidget {
   }
 }
 
+/// Muestra los adjuntos de un comentario de requerimiento.
+class _ReqCommentAdjuntos extends StatelessWidget {
+  const _ReqCommentAdjuntos({required this.adjuntos});
+  final List<String> adjuntos;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final images = <String>[];
+    final files = <String>[];
+
+    for (final url in adjuntos) {
+      if (_isImage(url)) {
+        images.add(url);
+      } else {
+        files.add(url);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (images.isNotEmpty)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: images
+                .map(
+                  (url) => GestureDetector(
+                    onTap: () => FileViewerScreen.open(context, url: url),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        url,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 80,
+                          height: 80,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        if (files.isNotEmpty) ...[
+          if (images.isNotEmpty) const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: files
+                .map(
+                  (url) => ActionChip(
+                    avatar: Icon(
+                      _fileIcon(url),
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                    label: Text(
+                      _fileName(url),
+                      style: theme.textTheme.labelSmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () => FileViewerScreen.open(context, url: url),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  bool _isImage(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.jpg') ||
+        lower.contains('.jpeg') ||
+        lower.contains('.png') ||
+        lower.contains('.gif') ||
+        lower.contains('.webp') ||
+        lower.contains('.bmp');
+  }
+
+  IconData _fileIcon(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('.pdf')) return Icons.picture_as_pdf;
+    if (lower.contains('.doc') || lower.contains('.docx')) {
+      return Icons.description;
+    }
+    if (lower.contains('.xls') || lower.contains('.xlsx')) {
+      return Icons.table_chart;
+    }
+    if (lower.contains('.mp4') || lower.contains('.mov')) {
+      return Icons.videocam;
+    }
+    if (lower.contains('.mp3') || lower.contains('.wav')) {
+      return Icons.audiotrack;
+    }
+    return Icons.insert_drive_file;
+  }
+
+  String _fileName(String url) {
+    try {
+      final decoded = Uri.decodeFull(url);
+      final segments = decoded.split('/');
+      final last = segments.last;
+      final name = last.split('?').first;
+      return name.length > 30 ? '${name.substring(0, 27)}...' : name;
+    } catch (_) {
+      return 'Archivo';
+    }
+  }
+}
+
 class _CommentInput extends StatelessWidget {
   const _CommentInput({
     required this.controller,
     required this.sending,
+    required this.pendingFiles,
     required this.onSend,
+    required this.onPickFiles,
+    required this.onRemoveFile,
   });
 
   final TextEditingController controller;
   final bool sending;
+  final List<XFile> pendingFiles;
   final VoidCallback onSend;
+  final VoidCallback onPickFiles;
+  final ValueChanged<int> onRemoveFile;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: 'Escribe un comentario...',
-                border: InputBorder.none,
-                isDense: true,
+          // Vista previa de archivos pendientes
+          if (pendingFiles.isNotEmpty) ...[
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: pendingFiles.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final file = pendingFiles[i];
+                  final isImg = _isImageFile(file.name);
+                  return Stack(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        child: isImg
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  file.path,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Icon(
+                                      Icons.image,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.insert_drive_file,
+                                      size: 24,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                    Text(
+                                      _ext(file.name),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(fontSize: 9),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: GestureDetector(
+                          onTap: () => onRemoveFile(i),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: theme.colorScheme.onError,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
             ),
-          ),
-          IconButton(
-            tooltip: 'Enviar comentario',
-            icon: sending
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send),
-            onPressed: sending ? null : onSend,
+            const SizedBox(height: 8),
+          ],
+          // Barra de input
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Adjuntar archivo',
+                icon: Badge(
+                  isLabelVisible: pendingFiles.isNotEmpty,
+                  label: Text('${pendingFiles.length}'),
+                  child: const Icon(Icons.attach_file),
+                ),
+                onPressed: sending ? null : onPickFiles,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    hintText: 'Escribe un comentario...',
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                  maxLines: null,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => onSend(),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Enviar comentario',
+                icon: sending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send),
+                onPressed: sending ? null : onSend,
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  bool _isImageFile(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp');
+  }
+
+  String _ext(String name) {
+    final parts = name.split('.');
+    return parts.length > 1 ? '.${parts.last}' : '';
   }
 }
 

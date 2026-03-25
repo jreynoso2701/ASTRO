@@ -18,14 +18,18 @@ class AiAgentSheet extends ConsumerStatefulWidget {
 class _AiAgentSheetState extends ConsumerState<AiAgentSheet> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  late final AiChatNotifier _chatNotifier;
 
   @override
   void initState() {
     super.initState();
+    _chatNotifier = ref.read(aiChatNotifierProvider.notifier);
   }
 
   @override
   void dispose() {
+    // Detener TTS al cerrar el bottom sheet
+    _chatNotifier.stopSpeaking();
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -156,6 +160,21 @@ class _AiAgentSheetState extends ConsumerState<AiAgentSheet> {
                 onStopSpeaking: () {
                   ref.read(aiChatNotifierProvider.notifier).stopSpeaking();
                 },
+              ),
+
+              // ── AI Disclaimer ──
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4, top: 2),
+                child: Text(
+                  'El Asistente de IA puede cometer errores. Comprueba la información importante.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.6,
+                    ),
+                    fontSize: 10,
+                  ),
+                ),
               ),
             ],
           ),

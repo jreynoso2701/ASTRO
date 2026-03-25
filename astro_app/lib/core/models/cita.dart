@@ -2,6 +2,41 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/models/minuta_modalidad.dart';
 
+/// Item de la agenda de una cita (texto + checkbox).
+class AgendaItem {
+  const AgendaItem({
+    required this.id,
+    required this.texto,
+    this.tratado = false,
+  });
+
+  final String id;
+  final String texto;
+  final bool tratado;
+
+  factory AgendaItem.fromMap(Map<String, dynamic> data) {
+    return AgendaItem(
+      id: data['id'] as String? ?? '',
+      texto: data['texto'] as String? ?? '',
+      tratado: data['tratado'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'texto': texto,
+    'tratado': tratado,
+  };
+
+  AgendaItem copyWith({String? texto, bool? tratado}) {
+    return AgendaItem(
+      id: id,
+      texto: texto ?? this.texto,
+      tratado: tratado ?? this.tratado,
+    );
+  }
+}
+
 /// Participante de una cita programada.
 class ParticipanteCita {
   const ParticipanteCita({required this.uid, required this.nombre, this.rol});
@@ -58,6 +93,7 @@ class Cita {
     this.refMinutas = const [],
     this.refMinuta,
     this.participantUids = const [],
+    this.agenda = const [],
     this.recordatorios = const [15, 60],
     this.status = CitaStatus.programada,
     this.notas,
@@ -91,6 +127,9 @@ class Cita {
 
   /// UIDs desnormalizados de participantes + createdBy (para consultas cross-project).
   final List<String> participantUids;
+
+  /// Agenda / temas a tratar (checklist en vivo).
+  final List<AgendaItem> agenda;
 
   /// Minutos antes de la cita para enviar recordatorio (ej. [15, 60]).
   final List<int> recordatorios;
@@ -157,6 +196,12 @@ class Cita {
       refMinutas: parseStrList(data['refMinutas']),
       refMinuta: data['refMinuta'] as String?,
       participantUids: parseStrList(data['participantUids']),
+      agenda: (data['agenda'] is List)
+          ? (data['agenda'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map(AgendaItem.fromMap)
+                .toList()
+          : [],
       recordatorios: parseIntList(data['recordatorios']),
       status: CitaStatus.fromString(data['status'] as String?),
       notas: data['notas'] as String?,
@@ -190,6 +235,7 @@ class Cita {
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refMinuta != null) 'refMinuta': refMinuta,
       'participantUids': participantUids,
+      if (agenda.isNotEmpty) 'agenda': agenda.map((a) => a.toMap()).toList(),
       'recordatorios': recordatorios,
       'status': status.name,
       if (notas != null) 'notas': notas,
@@ -220,6 +266,7 @@ class Cita {
     List<String>? refMinutas,
     String? refMinuta,
     List<String>? participantUids,
+    List<AgendaItem>? agenda,
     List<int>? recordatorios,
     CitaStatus? status,
     String? notas,
@@ -249,6 +296,7 @@ class Cita {
       refMinutas: refMinutas ?? this.refMinutas,
       refMinuta: refMinuta ?? this.refMinuta,
       participantUids: participantUids ?? this.participantUids,
+      agenda: agenda ?? this.agenda,
       recordatorios: recordatorios ?? this.recordatorios,
       status: status ?? this.status,
       notas: notas ?? this.notas,

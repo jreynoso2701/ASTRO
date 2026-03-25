@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:astro/core/models/ticket.dart';
 import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
@@ -8,10 +10,12 @@ import 'package:astro/core/models/ticket_comment.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/utils/ticket_colors.dart';
+import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Pantalla de detalle de un ticket con hilo de comentarios.
 class TicketDetailScreen extends ConsumerStatefulWidget {
@@ -31,6 +35,7 @@ class TicketDetailScreen extends ConsumerStatefulWidget {
 class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   final _commentController = TextEditingController();
   bool _sending = false;
+  List<XFile> _pendingFiles = [];
 
   @override
   void dispose() {
@@ -95,11 +100,19 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                 : null,
           );
 
+          final currentUserId =
+              ref.watch(currentUserProfileProvider).value?.uid ?? '';
+
           final commentsSection = _CommentsSection(
             comments: comments,
             controller: _commentController,
             sending: _sending,
+            pendingFiles: _pendingFiles,
+            currentUserId: currentUserId,
             onSend: () => _sendComment(ticket.id),
+            onPickFiles: _pickFiles,
+            onRemoveFile: (i) => setState(() => _pendingFiles.removeAt(i)),
+            onDeleteComment: (c) => _deleteComment(ticket.id, c),
           );
 
           if (isWide) {
@@ -139,8 +152,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                       const Divider(),
                       ...commentsAsync
                               .whenOrNull(
-                                data: (list) =>
-                                    list.map((c) => _CommentTile(comment: c)),
+                                data: (list) => list.map(
+                                  (c) => _CommentTile(
+                                    comment: c,
+                                    currentUserId: currentUserId,
+                                    onDelete: () =>
+                                        _deleteComment(ticket.id, c),
+                                  ),
+                                ),
                               )
                               ?.toList() ??
                           [],
@@ -167,7 +186,10 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               _CommentInput(
                 controller: _commentController,
                 sending: _sending,
+                pendingFiles: _pendingFiles,
                 onSend: () => _sendComment(ticket.id),
+                onPickFiles: _pickFiles,
+                onRemoveFile: (i) => setState(() => _pendingFiles.removeAt(i)),
               ),
             ],
           );
@@ -301,7 +323,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
   Future<void> _sendComment(String ticketId) async {
     final text = _commentController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _pendingFiles.isEmpty) return;
 
     final profile = ref.read(currentUserProfileProvider).value;
     if (profile == null) return;
@@ -309,6 +331,19 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     setState(() => _sending = true);
 
     try {
+      // Subir archivos pendientes
+      List<String> adjuntosUrls = [];
+      if (_pendingFiles.isNotEmpty) {
+        final storage = StorageService();
+        for (final file in _pendingFiles) {
+          final url = await storage.uploadToPath(
+            'comentarios_tickets/$ticketId',
+            file,
+          );
+          adjuntosUrls.add(url);
+        }
+      }
+
       await ref
           .read(ticketRepositoryProvider)
           .addComment(
@@ -318,11 +353,118 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               text: text,
               authorId: profile.uid,
               authorName: profile.displayName,
+              adjuntos: adjuntosUrls,
             ),
           );
       _commentController.clear();
+      setState(() => _pendingFiles = []);
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _deleteComment(String ticketId, TicketComment comment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar comentario'),
+        content: const Text(
+          '¿Estás seguro de eliminar este comentario? '
+          'Se mostrará como "Comentario eliminado".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await ref.read(ticketRepositoryProvider).deleteComment(comment.id);
+  }
+
+  Future<void> _pickFiles() async {
+    final totalAllowed = 10 - _pendingFiles.length;
+    if (totalAllowed <= 0) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Máximo 10 archivos por comentario')),
+        );
+      }
+      return;
+    }
+
+    final option = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galería de fotos'),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_file),
+              title: const Text('Seleccionar archivos'),
+              onTap: () => Navigator.pop(ctx, 'files'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (option == null || !mounted) return;
+
+    List<XFile> picked = [];
+    switch (option) {
+      case 'camera':
+        final img = await ImagePicker().pickImage(source: ImageSource.camera);
+        if (img != null) picked = [img];
+        break;
+      case 'gallery':
+        picked = await ImagePicker().pickMultiImage();
+        break;
+      case 'files':
+        final result = await FilePicker.platform.pickFiles(
+          allowMultiple: true,
+          type: FileType.any,
+        );
+        if (result != null) {
+          picked = result.files
+              .where((f) => f.path != null)
+              .map((f) => XFile(f.path!))
+              .toList();
+        }
+        break;
+    }
+
+    if (picked.isEmpty || !mounted) return;
+
+    // Respetar el límite de 10
+    final canAdd = 10 - _pendingFiles.length;
+    final toAdd = picked.take(canAdd).toList();
+    setState(() => _pendingFiles = [..._pendingFiles, ...toAdd]);
+
+    if (picked.length > canAdd) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Solo se agregaron $canAdd de ${picked.length} archivos (máximo 10)',
+          ),
+        ),
+      );
     }
   }
 
@@ -791,8 +933,10 @@ class _TicketInfoSection extends StatelessWidget {
                   ...ticket.refMinutas.map(
                     (id) => ListTile(
                       leading: const Icon(Icons.description_outlined),
-                      title: Text(
-                        id.length > 20 ? '${id.substring(0, 20)}...' : id,
+                      title: ResolvedRefText(
+                        id: id,
+                        type: RefType.minuta,
+                        showTitle: true,
                       ),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       dense: true,
@@ -827,8 +971,10 @@ class _TicketInfoSection extends StatelessWidget {
                   ...ticket.refCitas.map(
                     (id) => ListTile(
                       leading: const Icon(Icons.event_outlined),
-                      title: Text(
-                        id.length > 20 ? '${id.substring(0, 20)}...' : id,
+                      title: ResolvedRefText(
+                        id: id,
+                        type: RefType.cita,
+                        showTitle: true,
                       ),
                       trailing: const Icon(Icons.chevron_right, size: 20),
                       dense: true,
@@ -1368,13 +1514,23 @@ class _CommentsSection extends StatelessWidget {
     required this.comments,
     required this.controller,
     required this.sending,
+    required this.pendingFiles,
+    required this.currentUserId,
     required this.onSend,
+    required this.onPickFiles,
+    required this.onRemoveFile,
+    required this.onDeleteComment,
   });
 
   final List<TicketComment> comments;
   final TextEditingController controller;
   final bool sending;
+  final List<XFile> pendingFiles;
+  final String currentUserId;
   final VoidCallback onSend;
+  final VoidCallback onPickFiles;
+  final ValueChanged<int> onRemoveFile;
+  final ValueChanged<TicketComment> onDeleteComment;
 
   @override
   Widget build(BuildContext context) {
@@ -1404,27 +1560,79 @@ class _CommentsSection extends StatelessWidget {
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: comments.length,
-                  itemBuilder: (context, i) =>
-                      _CommentTile(comment: comments[i]),
+                  itemBuilder: (context, i) => _CommentTile(
+                    comment: comments[i],
+                    currentUserId: currentUserId,
+                    onDelete: () => onDeleteComment(comments[i]),
+                  ),
                 ),
         ),
-        _CommentInput(controller: controller, sending: sending, onSend: onSend),
+        _CommentInput(
+          controller: controller,
+          sending: sending,
+          pendingFiles: pendingFiles,
+          onSend: onSend,
+          onPickFiles: onPickFiles,
+          onRemoveFile: onRemoveFile,
+        ),
       ],
     );
   }
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment});
+  const _CommentTile({
+    required this.comment,
+    this.currentUserId = '',
+    this.onDelete,
+  });
   final TicketComment comment;
+  final String currentUserId;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isSystem = comment.type != CommentType.comment;
 
+    // Comentario eliminado
+    if (comment.deleted) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        child: Row(
+          children: [
+            Icon(
+              Icons.delete_outline,
+              size: 16,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Comentario eliminado',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            if (comment.createdAt != null)
+              Text(
+                _formatTime(comment.createdAt!),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
     if (isSystem) {
-      // Entrada de historial (cambio de estado, asignación, etc.)
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
         child: Row(
@@ -1463,6 +1671,8 @@ class _CommentTile extends StatelessWidget {
         ),
       );
     }
+
+    final isOwner = comment.authorId == currentUserId;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1503,10 +1713,27 @@ class _CommentTile extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                if (isOwner && onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    tooltip: 'Eliminar comentario',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: onDelete,
+                    color: theme.colorScheme.error,
+                  ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(comment.text, style: theme.textTheme.bodyMedium),
+            if (comment.text.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(comment.text, style: theme.textTheme.bodyMedium),
+            ],
+            // Adjuntos
+            if (comment.adjuntos.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _CommentAdjuntos(adjuntos: comment.adjuntos),
+            ],
           ],
         ),
       ),
@@ -1537,54 +1764,289 @@ class _CommentTile extends StatelessWidget {
   }
 }
 
+/// Muestra los adjuntos de un comentario: imágenes como thumbnails, archivos como chips.
+class _CommentAdjuntos extends StatelessWidget {
+  const _CommentAdjuntos({required this.adjuntos});
+  final List<String> adjuntos;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final images = <String>[];
+    final files = <String>[];
+
+    for (final url in adjuntos) {
+      if (_isImage(url)) {
+        images.add(url);
+      } else {
+        files.add(url);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (images.isNotEmpty)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: images
+                .map(
+                  (url) => GestureDetector(
+                    onTap: () => FileViewerScreen.open(context, url: url),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        url,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 80,
+                          height: 80,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: const Icon(Icons.broken_image_outlined),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        if (files.isNotEmpty) ...[
+          if (images.isNotEmpty) const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: files
+                .map(
+                  (url) => ActionChip(
+                    avatar: Icon(
+                      _fileIcon(url),
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
+                    label: Text(
+                      _fileName(url),
+                      style: theme.textTheme.labelSmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onPressed: () => FileViewerScreen.open(context, url: url),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  bool _isImage(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.jpg') ||
+        lower.contains('.jpeg') ||
+        lower.contains('.png') ||
+        lower.contains('.gif') ||
+        lower.contains('.webp') ||
+        lower.contains('.bmp');
+  }
+
+  IconData _fileIcon(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('.pdf')) return Icons.picture_as_pdf;
+    if (lower.contains('.doc') || lower.contains('.docx')) {
+      return Icons.description;
+    }
+    if (lower.contains('.xls') || lower.contains('.xlsx')) {
+      return Icons.table_chart;
+    }
+    if (lower.contains('.mp4') || lower.contains('.mov')) {
+      return Icons.videocam;
+    }
+    if (lower.contains('.mp3') || lower.contains('.wav')) {
+      return Icons.audiotrack;
+    }
+    return Icons.insert_drive_file;
+  }
+
+  String _fileName(String url) {
+    try {
+      final decoded = Uri.decodeFull(url);
+      final segments = decoded.split('/');
+      final last = segments.last;
+      // Quitar query params (?alt=media&token=...)
+      final name = last.split('?').first;
+      return name.length > 30 ? '${name.substring(0, 27)}...' : name;
+    } catch (_) {
+      return 'Archivo';
+    }
+  }
+}
+
 class _CommentInput extends StatelessWidget {
   const _CommentInput({
     required this.controller,
     required this.sending,
+    required this.pendingFiles,
     required this.onSend,
+    required this.onPickFiles,
+    required this.onRemoveFile,
   });
 
   final TextEditingController controller;
   final bool sending;
+  final List<XFile> pendingFiles;
   final VoidCallback onSend;
+  final VoidCallback onPickFiles;
+  final ValueChanged<int> onRemoveFile;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+        border: Border(top: BorderSide(color: theme.dividerColor)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: 'Escribe un comentario...',
-                isDense: true,
-                border: OutlineInputBorder(),
+          // Vista previa de archivos pendientes
+          if (pendingFiles.isNotEmpty) ...[
+            SizedBox(
+              height: 64,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: pendingFiles.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final file = pendingFiles[i];
+                  final isImg = _isImageFile(file.name);
+                  return Stack(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        child: isImg
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  file.path,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                    child: Icon(
+                                      Icons.image,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.insert_drive_file,
+                                      size: 24,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                    Text(
+                                      _ext(file.name),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(fontSize: 9),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: GestureDetector(
+                          onTap: () => onRemoveFile(i),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 14,
+                              color: theme.colorScheme.onError,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend(),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(
-            tooltip: 'Enviar comentario',
-            onPressed: sending ? null : onSend,
-            icon: sending
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.send),
+            const SizedBox(height: 8),
+          ],
+          // Barra de input
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Adjuntar archivo',
+                icon: Badge(
+                  isLabelVisible: pendingFiles.isNotEmpty,
+                  label: Text('${pendingFiles.length}'),
+                  child: const Icon(Icons.attach_file),
+                ),
+                onPressed: sending ? null : onPickFiles,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    hintText: 'Escribe un comentario...',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: null,
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => onSend(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                tooltip: 'Enviar comentario',
+                onPressed: sending ? null : onSend,
+                icon: sending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  bool _isImageFile(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp');
+  }
+
+  String _ext(String name) {
+    final parts = name.split('.');
+    return parts.length > 1 ? '.${parts.last}' : '';
   }
 }
 

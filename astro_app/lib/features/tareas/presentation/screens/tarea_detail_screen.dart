@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +13,7 @@ import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/minutas/data/minuta_repository.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Pantalla de detalle de una tarea.
 class TareaDetailScreen extends ConsumerStatefulWidget {
@@ -232,62 +235,141 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
           final width = MediaQuery.sizeOf(context).width;
           final isWide = width >= AppBreakpoints.medium;
 
-          final infoSection = _TareaInfoSection(tarea: tarea);
-
-          final actionsSection = _ActionsSection(
+          final hero = _HeroSection(
             tarea: tarea,
             canInteract: canInteract,
             canArchive: canArchive,
             isLoading: _isLoading,
+            isWide: isWide,
             onUpdateStatus: _updateStatus,
             onArchive: _archiveTarea,
             onRestore: _restoreTarea,
           );
 
-          final refsSection = _ReferencesSection(
-            tarea: tarea,
-            projectId: widget.projectId,
-          );
+          final hasSubtareas = tarea.subtareas.isNotEmpty;
+          final hasDescription = tarea.descripcion.isNotEmpty;
+          final hasAdjuntos = tarea.adjuntos.isNotEmpty;
+          final hasRefs =
+              tarea.refTickets.isNotEmpty ||
+              tarea.refRequerimientos.isNotEmpty ||
+              tarea.refMinutas.isNotEmpty ||
+              tarea.refCitas.isNotEmpty;
 
+          // ── Wide layout (tablet / desktop) ──
           if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 420,
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+            final hasLeftContent = hasSubtareas || hasDescription;
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  hero,
+                  const SizedBox(height: 24),
+                  if (hasLeftContent)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        infoSection,
-                        const SizedBox(height: 24),
-                        actionsSection,
+                        // Left: Subtareas + Descripción
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (hasSubtareas)
+                                _SubtareasChecklist(
+                                  tarea: tarea,
+                                  canInteract: canInteract,
+                                ),
+                              if (hasSubtareas && hasDescription)
+                                const SizedBox(height: 16),
+                              if (hasDescription)
+                                _DescriptionCard(
+                                  descripcion: tarea.descripcion,
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        // Right: Detalles + Adjuntos + Referencias
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _DetailsCard(tarea: tarea),
+                              if (hasAdjuntos) ...[
+                                const SizedBox(height: 16),
+                                _AdjuntosCard(adjuntos: tarea.adjuntos),
+                              ],
+                              if (hasRefs) ...[
+                                const SizedBox(height: 16),
+                                _ReferencesCard(
+                                  tarea: tarea,
+                                  projectId: widget.projectId,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    // Sin contenido izquierdo: detalles en row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _DetailsCard(tarea: tarea)),
+                        if (hasAdjuntos || hasRefs) ...[
+                          const SizedBox(width: 24),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (hasAdjuntos)
+                                  _AdjuntosCard(adjuntos: tarea.adjuntos),
+                                if (hasAdjuntos && hasRefs)
+                                  const SizedBox(height: 16),
+                                if (hasRefs)
+                                  _ReferencesCard(
+                                    tarea: tarea,
+                                    projectId: widget.projectId,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                  ),
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: refsSection,
-                  ),
-                ),
-              ],
+                ],
+              ),
             );
           }
 
+          // ── Mobile layout ──
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                infoSection,
+                hero,
+                if (hasSubtareas) ...[
+                  const SizedBox(height: 16),
+                  _SubtareasChecklist(tarea: tarea, canInteract: canInteract),
+                ],
+                if (hasDescription) ...[
+                  const SizedBox(height: 16),
+                  _DescriptionCard(descripcion: tarea.descripcion),
+                ],
+                const SizedBox(height: 16),
+                _DetailsCard(tarea: tarea),
+                if (hasAdjuntos) ...[
+                  const SizedBox(height: 16),
+                  _AdjuntosCard(adjuntos: tarea.adjuntos),
+                ],
+                if (hasRefs) ...[
+                  const SizedBox(height: 16),
+                  _ReferencesCard(tarea: tarea, projectId: widget.projectId),
+                ],
                 const SizedBox(height: 24),
-                actionsSection,
-                const SizedBox(height: 24),
-                refsSection,
               ],
             ),
           );
@@ -297,14 +379,15 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
   }
 }
 
-// ── Actions Section ──────────────────────────────────────
+// ── Hero Section ─────────────────────────────────────────
 
-class _ActionsSection extends StatelessWidget {
-  const _ActionsSection({
+class _HeroSection extends StatelessWidget {
+  const _HeroSection({
     required this.tarea,
     required this.canInteract,
     required this.canArchive,
     required this.isLoading,
+    required this.isWide,
     required this.onUpdateStatus,
     required this.onArchive,
     required this.onRestore,
@@ -314,6 +397,7 @@ class _ActionsSection extends StatelessWidget {
   final bool canInteract;
   final bool canArchive;
   final bool isLoading;
+  final bool isWide;
   final ValueChanged<TareaStatus> onUpdateStatus;
   final VoidCallback onArchive;
   final VoidCallback onRestore;
@@ -321,54 +405,231 @@ class _ActionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final statusColor = _statusColor(tarea.status);
     final isArchived = !tarea.isActive;
 
-    // Si está archivada, solo mostrar botón de restaurar (Root/Supervisor).
-    if (isArchived) {
-      if (!canArchive) return const SizedBox.shrink();
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final hasSubtareas = tarea.subtareas.isNotEmpty;
+    final completedCount = tarea.subtareas.where((s) => s.completada).length;
+    final total = tarea.subtareas.length;
+    final progress = total > 0 ? completedCount / total : 0.0;
+
+    final ringSize = isWide ? 120.0 : 88.0;
+    final strokeWidth = isWide ? 9.0 : 7.0;
+
+    // Anillo de progreso animado o icono de estado
+    final progressWidget = SizedBox(
+      width: ringSize,
+      height: ringSize,
+      child: hasSubtareas
+          ? TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) {
+                return CustomPaint(
+                  painter: _ProgressRingPainter(
+                    progress: value,
+                    trackColor: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.08,
+                    ),
+                    progressColor: isArchived
+                        ? theme.colorScheme.onSurfaceVariant
+                        : statusColor,
+                    strokeWidth: strokeWidth,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${(value * 100).toInt()}%',
+                      style: TextStyle(
+                        fontSize: isWide ? 26 : 20,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        color: isArchived
+                            ? theme.colorScheme.onSurfaceVariant
+                            : statusColor,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            )
+          : Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color:
+                    (isArchived
+                            ? theme.colorScheme.onSurfaceVariant
+                            : statusColor)
+                        .withValues(alpha: 0.12),
+                border: Border.all(
+                  color:
+                      (isArchived
+                              ? theme.colorScheme.onSurfaceVariant
+                              : statusColor)
+                          .withValues(alpha: 0.3),
+                  width: 3,
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  _statusIcon(tarea.status),
+                  size: ringSize * 0.4,
+                  color: isArchived
+                      ? theme.colorScheme.onSurfaceVariant
+                      : statusColor,
+                ),
+              ),
+            ),
+    );
+
+    // Contenido de texto
+    final textContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Folio
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            tarea.folio,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Título
+        Text(
+          tarea.titulo,
+          style:
+              (isWide
+                      ? theme.textTheme.headlineSmall
+                      : theme.textTheme.titleLarge)
+                  ?.copyWith(fontWeight: FontWeight.bold),
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 10),
+
+        // Badges
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _badge(tarea.status.label, statusColor, theme),
+            _badge(
+              tarea.prioridad.label,
+              _prioridadColor(tarea.prioridad),
+              theme,
+            ),
+            if (isArchived) _badge('Archivada', theme.colorScheme.error, theme),
+          ],
+        ),
+
+        // Deadline
+        if (tarea.fechaEntrega != null && tarea.isActive) ...[
+          const SizedBox(height: 10),
+          _DeadlineIndicator(fecha: tarea.fechaEntrega!),
+        ],
+
+        // Texto motivacional
+        const SizedBox(height: 10),
+        Text(
+          _motivationalText(tarea),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+
+    // Botones de acción
+    final actions = _buildActions(context, theme);
+
+    return Container(
+      padding: EdgeInsets.all(isWide ? 24 : 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            statusColor.withValues(alpha: isArchived ? 0.03 : 0.08),
+            statusColor.withValues(alpha: 0.02),
+          ],
+        ),
+        border: Border.all(
+          color: statusColor.withValues(alpha: isArchived ? 0.1 : 0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                'ARCHIVADA',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  letterSpacing: 1,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Divider(height: 16),
-              Text(
-                'Esta tarea está archivada y no aparece en las listas activas.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: isLoading ? null : onRestore,
-                  icon: const Icon(Icons.unarchive_outlined),
-                  label: const Text('Restaurar tarea'),
-                ),
-              ),
+              progressWidget,
+              SizedBox(width: isWide ? 24 : 16),
+              Expanded(child: textContent),
             ],
           ),
+          if (actions != null) ...[
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            actions,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _badge(String label, Color color, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildActions(BuildContext context, ThemeData theme) {
+    final isArchived = !tarea.isActive;
+
+    if (isArchived) {
+      if (!canArchive) return null;
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: isLoading ? null : onRestore,
+          icon: const Icon(Icons.unarchive_outlined),
+          label: const Text('Restaurar tarea'),
         ),
       );
     }
 
-    // Construir lista de acciones disponibles.
-    final actions = <Widget>[];
+    final buttons = <Widget>[];
 
     if (canInteract) {
-      // Cambios de status según el status actual.
       switch (tarea.status) {
         case TareaStatus.pendiente:
-          actions.add(
+          buttons.addAll([
             _ActionButton(
               icon: Icons.play_arrow_outlined,
               label: 'Iniciar',
@@ -377,8 +638,6 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => onUpdateStatus(TareaStatus.enProgreso),
             ),
-          );
-          actions.add(
             _ActionButton(
               icon: Icons.check_circle_outline,
               label: 'Completar',
@@ -387,8 +646,6 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => onUpdateStatus(TareaStatus.completada),
             ),
-          );
-          actions.add(
             _ActionButton(
               icon: Icons.cancel_outlined,
               label: 'Cancelar',
@@ -397,9 +654,9 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => onUpdateStatus(TareaStatus.cancelada),
             ),
-          );
+          ]);
         case TareaStatus.enProgreso:
-          actions.add(
+          buttons.addAll([
             _ActionButton(
               icon: Icons.pause_outlined,
               label: 'Pendiente',
@@ -408,8 +665,6 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => onUpdateStatus(TareaStatus.pendiente),
             ),
-          );
-          actions.add(
             _ActionButton(
               icon: Icons.check_circle_outline,
               label: 'Completar',
@@ -418,8 +673,6 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => onUpdateStatus(TareaStatus.completada),
             ),
-          );
-          actions.add(
             _ActionButton(
               icon: Icons.cancel_outlined,
               label: 'Cancelar',
@@ -428,11 +681,10 @@ class _ActionsSection extends StatelessWidget {
                   ? null
                   : () => onUpdateStatus(TareaStatus.cancelada),
             ),
-          );
+          ]);
         case TareaStatus.completada:
-          // Solo Root/Supervisor pueden regresar una tarea completada.
           if (canArchive) {
-            actions.add(
+            buttons.add(
               _ActionButton(
                 icon: Icons.replay_outlined,
                 label: 'Reabrir',
@@ -444,9 +696,8 @@ class _ActionsSection extends StatelessWidget {
             );
           }
         case TareaStatus.cancelada:
-          // Solo Root/Supervisor pueden regresar una tarea cancelada.
           if (canArchive) {
-            actions.add(
+            buttons.add(
               _ActionButton(
                 icon: Icons.replay_outlined,
                 label: 'Reabrir',
@@ -460,13 +711,12 @@ class _ActionsSection extends StatelessWidget {
       }
     }
 
-    // Archivar: Root/Supervisor, solo si completada o cancelada.
     final canArchiveThis =
         canArchive &&
         (tarea.status == TareaStatus.completada ||
             tarea.status == TareaStatus.cancelada);
     if (canArchiveThis) {
-      actions.add(
+      buttons.add(
         _ActionButton(
           icon: Icons.inventory_2_outlined,
           label: 'Archivar',
@@ -476,37 +726,169 @@ class _ActionsSection extends StatelessWidget {
       );
     }
 
-    if (actions.isEmpty) return const SizedBox.shrink();
+    if (buttons.isEmpty) return null;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ACCIONES',
-              style: theme.textTheme.labelLarge?.copyWith(
-                letterSpacing: 1,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const Divider(height: 16),
-            if (isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(8),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-            else
-              Wrap(spacing: 8, runSpacing: 8, children: actions),
-          ],
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: CircularProgressIndicator(strokeWidth: 2),
         ),
-      ),
+      );
+    }
+
+    return Wrap(spacing: 8, runSpacing: 8, children: buttons);
+  }
+
+  static Color _statusColor(TareaStatus s) => switch (s) {
+    TareaStatus.pendiente => const Color(0xFFFFC107),
+    TareaStatus.enProgreso => const Color(0xFF42A5F5),
+    TareaStatus.completada => const Color(0xFF4CAF50),
+    TareaStatus.cancelada => const Color(0xFF9E9E9E),
+  };
+
+  static Color _prioridadColor(TareaPrioridad p) => switch (p) {
+    TareaPrioridad.baja => const Color(0xFF4CAF50),
+    TareaPrioridad.media => const Color(0xFFFFC107),
+    TareaPrioridad.alta => const Color(0xFFFF9800),
+    TareaPrioridad.urgente => const Color(0xFFD32F2F),
+  };
+
+  static IconData _statusIcon(TareaStatus s) => switch (s) {
+    TareaStatus.pendiente => Icons.hourglass_empty,
+    TareaStatus.enProgreso => Icons.trending_up,
+    TareaStatus.completada => Icons.check,
+    TareaStatus.cancelada => Icons.close,
+  };
+
+  static String _motivationalText(Tarea tarea) {
+    if (!tarea.isActive) return 'Esta tarea está archivada';
+    final done = tarea.subtareas.where((s) => s.completada).length;
+    final total = tarea.subtareas.length;
+
+    switch (tarea.status) {
+      case TareaStatus.completada:
+        return '¡Tarea completada con éxito!';
+      case TareaStatus.cancelada:
+        return 'Esta tarea fue cancelada';
+      case TareaStatus.pendiente:
+        if (total == 0) return 'Lista para comenzar';
+        if (done > 0) return '$done de $total subtareas listas';
+        return '$total subtareas por completar';
+      case TareaStatus.enProgreso:
+        if (total == 0) return 'Tarea en progreso';
+        if (done == total) return '¡Todas las subtareas completadas!';
+        if (done >= total * 0.7) return '¡Ya casi! $done de $total subtareas';
+        if (done > 0) return '¡Buen avance! $done de $total subtareas';
+        return 'Comienza con las subtareas';
+    }
+  }
+}
+
+// ── Progress Ring Painter ────────────────────────────────
+
+class _ProgressRingPainter extends CustomPainter {
+  _ProgressRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+    required this.strokeWidth,
+  });
+
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide - strokeWidth) / 2;
+
+    // Track
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    // Progress arc
+    if (progress > 0) {
+      final progressPaint = Paint()
+        ..color = progressColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        progressPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ProgressRingPainter oldDelegate) =>
+      progress != oldDelegate.progress ||
+      trackColor != oldDelegate.trackColor ||
+      progressColor != oldDelegate.progressColor;
+}
+
+// ── Deadline Indicator ───────────────────────────────────
+
+class _DeadlineIndicator extends StatelessWidget {
+  const _DeadlineIndicator({required this.fecha});
+
+  final DateTime fecha;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(fecha.year, fecha.month, fecha.day);
+    final days = target.difference(today).inDays;
+
+    late final Color color;
+    late final String text;
+
+    if (days < 0) {
+      color = const Color(0xFFD32F2F);
+      text = 'Vencida hace ${-days} día${days == -1 ? '' : 's'}';
+    } else if (days == 0) {
+      color = const Color(0xFFD32F2F);
+      text = 'Vence hoy';
+    } else if (days <= 2) {
+      color = const Color(0xFFFF9800);
+      text = '$days día${days == 1 ? '' : 's'} restante${days == 1 ? '' : 's'}';
+    } else if (days <= 7) {
+      color = const Color(0xFFFFC107);
+      text = '$days días restantes';
+    } else {
+      color = const Color(0xFF4CAF50);
+      text = '$days días restantes';
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.schedule, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
+
+// ── Action Button ────────────────────────────────────────
 
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
@@ -535,32 +917,141 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-// ── Info Section ─────────────────────────────────────────
+// ── Subtareas Checklist ──────────────────────────────────
 
-class _TareaInfoSection extends StatelessWidget {
-  const _TareaInfoSection({required this.tarea});
+class _SubtareasChecklist extends ConsumerWidget {
+  const _SubtareasChecklist({required this.tarea, required this.canInteract});
 
   final Tarea tarea;
+  final bool canInteract;
 
-  static Color _statusColor(TareaStatus s) => switch (s) {
-    TareaStatus.pendiente => const Color(0xFFFFC107),
-    TareaStatus.enProgreso => const Color(0xFF42A5F5),
-    TareaStatus.completada => const Color(0xFF4CAF50),
-    TareaStatus.cancelada => const Color(0xFF9E9E9E),
-  };
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final subtareas = tarea.subtareas;
+    final completedCount = subtareas.where((s) => s.completada).length;
+    final total = subtareas.length;
+    final progress = total > 0 ? completedCount / total : 0.0;
 
-  static Color _prioridadColor(TareaPrioridad p) => switch (p) {
-    TareaPrioridad.baja => const Color(0xFF4CAF50),
-    TareaPrioridad.media => const Color(0xFFFFC107),
-    TareaPrioridad.alta => const Color(0xFFFF9800),
-    TareaPrioridad.urgente => const Color(0xFFD32F2F),
-  };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'SUBTAREAS',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Text(
+                  '$completedCount / $total',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: progress),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) {
+                  return LinearProgressIndicator(
+                    value: value,
+                    minHeight: 6,
+                    backgroundColor: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.1,
+                    ),
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 24),
+            ...subtareas.map((sub) {
+              return CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: sub.completada,
+                onChanged: canInteract
+                    ? (value) {
+                        final repo = ref.read(tareaRepositoryProvider);
+                        repo.toggleSubtarea(tarea.id, sub.id, value ?? false);
+                      }
+                    : null,
+                title: Text(
+                  sub.titulo,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    decoration: sub.completada
+                        ? TextDecoration.lineThrough
+                        : null,
+                    color: sub.completada
+                        ? theme.colorScheme.onSurfaceVariant
+                        : null,
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Description Card ─────────────────────────────────────
+
+class _DescriptionCard extends StatelessWidget {
+  const _DescriptionCard({required this.descripcion});
+
+  final String descripcion;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = _statusColor(tarea.status);
-    final prioridadColor = _prioridadColor(tarea.prioridad);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'DESCRIPCIÓN',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 16),
+            Text(descripcion, style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Details Card ─────────────────────────────────────────
+
+class _DetailsCard extends StatelessWidget {
+  const _DetailsCard({required this.tarea});
+
+  final Tarea tarea;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
     final fechaStr = tarea.fechaEntrega != null
         ? DateFormat('dd/MM/yyyy').format(tarea.fechaEntrega!)
@@ -572,201 +1063,116 @@ class _TareaInfoSection extends StatelessWidget {
         ? DateFormat('dd/MM/yyyy HH:mm').format(tarea.updatedAt!)
         : '—';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Folio + badges
-        Center(
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  tarea.folio,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontFamily: 'monospace',
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
-                ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'INFORMACIÓN',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: statusColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      tarea.status.label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: statusColor,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: prioridadColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: prioridadColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      tarea.prioridad.label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: prioridadColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 24),
-
-        // Título
-        Text(
-          tarea.titulo,
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Descripción
-        if (tarea.descripcion.isNotEmpty) ...[
-          Text(
-            'DESCRIPCIÓN',
-            style: theme.textTheme.labelLarge?.copyWith(
-              letterSpacing: 1,
-              color: theme.colorScheme.onSurfaceVariant,
             ),
-          ),
-          const Divider(height: 16),
-          Text(tarea.descripcion, style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 16),
-        ],
-
-        // Info card
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'INFORMACIÓN',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    letterSpacing: 1,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Divider(height: 24),
-                _InfoRow(label: 'Proyecto', value: tarea.projectName),
-                if (tarea.moduleName != null && tarea.moduleName!.isNotEmpty)
-                  _InfoRow(label: 'Módulo', value: tarea.moduleName!),
-                _InfoRow(
-                  label: 'Asignado a',
-                  value: tarea.assignedToName ?? 'Sin asignar',
-                ),
-                _InfoRow(label: 'Fecha entrega', value: fechaStr),
-                _InfoRow(label: 'Creado por', value: tarea.createdByName),
-                _InfoRow(label: 'Creado', value: creadoStr),
-                _InfoRow(label: 'Actualizado', value: actualizadoStr),
-              ],
+            const Divider(height: 24),
+            _InfoRow(label: 'Proyecto', value: tarea.projectName),
+            if (tarea.moduleName != null && tarea.moduleName!.isNotEmpty)
+              _InfoRow(label: 'Módulo', value: tarea.moduleName!),
+            _InfoRow(
+              label: 'Asignado a',
+              value: tarea.assignedToName ?? 'Sin asignar',
             ),
-          ),
+            _InfoRow(label: 'Fecha entrega', value: fechaStr),
+            _InfoRow(label: 'Creado por', value: tarea.createdByName),
+            _InfoRow(label: 'Creado', value: creadoStr),
+            _InfoRow(label: 'Actualizado', value: actualizadoStr),
+          ],
         ),
-
-        // Adjuntos
-        if (tarea.adjuntos.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(
-            'ADJUNTOS',
-            style: theme.textTheme.labelLarge?.copyWith(
-              letterSpacing: 1,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const Divider(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: tarea.adjuntos.map((url) {
-              final isImage = RegExp(
-                r'\.(jpg|jpeg|png|gif|webp)',
-                caseSensitive: false,
-              ).hasMatch(url);
-              return GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => FileViewerScreen(
-                      url: url,
-                      fileName: Uri.decodeFull(
-                        url.split('/').last.split('?').first,
-                      ),
-                    ),
-                  ),
-                ),
-                child: isImage
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          url,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : Chip(
-                        avatar: const Icon(Icons.attach_file, size: 16),
-                        label: Text(
-                          Uri.decodeFull(url.split('/').last.split('?').first),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-              );
-            }).toList(),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
 
-// ── References Section ───────────────────────────────────
+// ── Adjuntos Card ────────────────────────────────────────
 
-class _ReferencesSection extends StatelessWidget {
-  const _ReferencesSection({required this.tarea, required this.projectId});
+class _AdjuntosCard extends StatelessWidget {
+  const _AdjuntosCard({required this.adjuntos});
+
+  final List<String> adjuntos;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ADJUNTOS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: adjuntos.map((url) {
+                final isImage = RegExp(
+                  r'\.(jpg|jpeg|png|gif|webp)',
+                  caseSensitive: false,
+                ).hasMatch(url);
+                return GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => FileViewerScreen(
+                        url: url,
+                        fileName: Uri.decodeFull(
+                          url.split('/').last.split('?').first,
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: isImage
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            url,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Chip(
+                          avatar: const Icon(Icons.attach_file, size: 16),
+                          label: Text(
+                            Uri.decodeFull(
+                              url.split('/').last.split('?').first,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── References Card ──────────────────────────────────────
+
+class _ReferencesCard extends StatelessWidget {
+  const _ReferencesCard({required this.tarea, required this.projectId});
 
   final Tarea tarea;
   final String projectId;
@@ -775,64 +1181,101 @@ class _ReferencesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final hasRefs =
-        tarea.refTickets.isNotEmpty ||
-        tarea.refRequerimientos.isNotEmpty ||
-        tarea.refMinutas.isNotEmpty ||
-        tarea.refCitas.isNotEmpty;
-
-    if (!hasRefs) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'REFERENCIAS',
-          style: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const Divider(height: 16),
-
-        for (final ticketId in tarea.refTickets)
-          ListTile(
-            leading: const Icon(Icons.confirmation_num_outlined),
-            title: const Text('Ticket vinculado'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/projects/$projectId/tickets/$ticketId'),
-          ),
-
-        for (final reqId in tarea.refRequerimientos)
-          ListTile(
-            leading: const Icon(Icons.assignment_outlined),
-            title: const Text('Requerimiento vinculado'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () =>
-                context.push('/projects/$projectId/requirements/$reqId'),
-          ),
-
-        for (final minutaId in tarea.refMinutas)
-          ListTile(
-            leading: const Icon(Icons.description_outlined),
-            title: Text(
-              tarea.refCompromisoNumero != null &&
-                      minutaId == tarea.refMinutas.first
-                  ? 'Minuta (compromiso #${tarea.refCompromisoNumero})'
-                  : 'Minuta vinculada',
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'REFERENCIAS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/projects/$projectId/minutas/$minutaId'),
-          ),
+            const Divider(height: 16),
 
-        for (final citaId in tarea.refCitas)
-          ListTile(
-            leading: const Icon(Icons.event_outlined),
-            title: const Text('Cita vinculada'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/projects/$projectId/citas/$citaId'),
-          ),
-      ],
+            for (final ticketId in tarea.refTickets)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.confirmation_num_outlined, size: 20),
+                title: ResolvedRefText(
+                  id: ticketId,
+                  type: RefType.ticket,
+                  showTitle: true,
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () =>
+                    context.push('/projects/$projectId/tickets/$ticketId'),
+              ),
+
+            for (final reqId in tarea.refRequerimientos)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.assignment_outlined, size: 20),
+                title: ResolvedRefText(
+                  id: reqId,
+                  type: RefType.requerimiento,
+                  showTitle: true,
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () =>
+                    context.push('/projects/$projectId/requirements/$reqId'),
+              ),
+
+            for (final minutaId in tarea.refMinutas)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.description_outlined, size: 20),
+                title:
+                    tarea.refCompromisoNumero != null &&
+                        minutaId == tarea.refMinutas.first
+                    ? Row(
+                        children: [
+                          Flexible(
+                            child: ResolvedRefText(
+                              id: minutaId,
+                              type: RefType.minuta,
+                            ),
+                          ),
+                          Text(
+                            ' (compromiso #${tarea.refCompromisoNumero})',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      )
+                    : ResolvedRefText(
+                        id: minutaId,
+                        type: RefType.minuta,
+                        showTitle: true,
+                      ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () =>
+                    context.push('/projects/$projectId/minutas/$minutaId'),
+              ),
+
+            for (final citaId in tarea.refCitas)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.event_outlined, size: 20),
+                title: ResolvedRefText(
+                  id: citaId,
+                  type: RefType.cita,
+                  showTitle: true,
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () => context.push('/projects/$projectId/citas/$citaId'),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

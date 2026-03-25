@@ -23,6 +23,7 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
@@ -170,6 +171,16 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
             );
           }
           _objetivoController.text = cita.titulo;
+
+          // Pre-poblar asuntos tratados desde la agenda de la cita
+          if (cita.agenda.isNotEmpty && _asuntos.isEmpty) {
+            for (int i = 0; i < cita.agenda.length; i++) {
+              _asuntos.add(
+                AsuntoTratado(numero: i + 1, texto: cita.agenda[i].texto),
+              );
+            }
+          }
+
           _citaPreloaded = true;
           if (mounted) setState(() {});
         }
@@ -478,6 +489,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
                 (id) => _RefChip(
                   id: id,
                   icon: Icons.confirmation_num_outlined,
+                  refType: RefType.ticket,
                   onRemove: () => setState(() => _refTickets.remove(id)),
                 ),
               ),
@@ -507,6 +519,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
                 (id) => _RefChip(
                   id: id,
                   icon: Icons.assignment_outlined,
+                  refType: RefType.requerimiento,
                   onRemove: () => setState(() => _refRequerimientos.remove(id)),
                 ),
               ),
@@ -1411,11 +1424,13 @@ class _RefChip extends StatelessWidget {
   const _RefChip({
     required this.id,
     required this.icon,
+    required this.refType,
     required this.onRemove,
   });
 
   final String id;
   final IconData icon;
+  final RefType refType;
   final VoidCallback onRemove;
 
   @override
@@ -1424,8 +1439,9 @@ class _RefChip extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Chip(
         avatar: Icon(icon, size: 16),
-        label: Text(
-          id.length > 12 ? '${id.substring(0, 12)}...' : id,
+        label: ResolvedRefText(
+          id: id,
+          type: refType,
           style: Theme.of(context).textTheme.bodySmall,
         ),
         onDeleted: onRemove,

@@ -71,123 +71,128 @@ class TareasListScreen extends ConsumerWidget {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (_) {
-              return Column(
-                children: [
-                  // Barra de búsqueda
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Buscar tarea...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => ref
-                                    .read(tareaSearchProvider.notifier)
-                                    .clear(),
-                              )
-                            : null,
-                        isDense: true,
+              return SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    // Barra de búsqueda
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Buscar tarea...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: searchQuery.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () => ref
+                                      .read(tareaSearchProvider.notifier)
+                                      .clear(),
+                                )
+                              : null,
+                          isDense: true,
+                        ),
+                        onChanged: (v) =>
+                            ref.read(tareaSearchProvider.notifier).setQuery(v),
                       ),
-                      onChanged: (v) =>
-                          ref.read(tareaSearchProvider.notifier).setQuery(v),
                     ),
-                  ),
 
-                  // Filtros de estado
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Todos',
-                          selected: statusFilter == null,
-                          onSelected: (_) => ref
-                              .read(tareaStatusFilterProvider.notifier)
-                              .clear(),
-                        ),
-                        for (final s in TareaStatus.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: s.label,
-                              selected: statusFilter == s,
-                              onSelected: (_) => ref
-                                  .read(tareaStatusFilterProvider.notifier)
-                                  .set(s),
-                              color: _statusColor(s),
+                    // Filtros de estado
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          _FilterChip(
+                            label: 'Todos',
+                            selected: statusFilter == null,
+                            onSelected: (_) => ref
+                                .read(tareaStatusFilterProvider.notifier)
+                                .clear(),
+                          ),
+                          for (final s in TareaStatus.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _FilterChip(
+                                label: s.label,
+                                selected: statusFilter == s,
+                                onSelected: (_) => ref
+                                    .read(tareaStatusFilterProvider.notifier)
+                                    .set(s),
+                                color: _statusColor(s),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
-                  // Filtros de prioridad
-                  SizedBox(
-                    height: 40,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      children: [
-                        _FilterChip(
-                          label: 'Prioridad: Todas',
-                          selected: prioridadFilter == null,
-                          onSelected: (_) => ref
-                              .read(tareaPrioridadFilterProvider.notifier)
-                              .clear(),
-                        ),
-                        for (final p in TareaPrioridad.values)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 6),
-                            child: _FilterChip(
-                              label: p.label,
-                              selected: prioridadFilter == p,
-                              onSelected: (_) => ref
-                                  .read(tareaPrioridadFilterProvider.notifier)
-                                  .set(p),
-                              color: _prioridadColor(p),
+                    // Filtros de prioridad
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        children: [
+                          _FilterChip(
+                            label: 'Prioridad: Todas',
+                            selected: prioridadFilter == null,
+                            onSelected: (_) => ref
+                                .read(tareaPrioridadFilterProvider.notifier)
+                                .clear(),
+                          ),
+                          for (final p in TareaPrioridad.values)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 6),
+                              child: _FilterChip(
+                                label: p.label,
+                                selected: prioridadFilter == p,
+                                onSelected: (_) => ref
+                                    .read(tareaPrioridadFilterProvider.notifier)
+                                    .set(p),
+                                color: _prioridadColor(p),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
-                  // Contador
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${filteredTareas.length} tarea${filteredTareas.length == 1 ? '' : 's'}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Lista
-                  Expanded(
-                    child: filteredTareas.isEmpty
-                        ? const Center(child: Text('No hay tareas que mostrar'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: filteredTareas.length,
-                            itemBuilder: (context, index) {
-                              final tarea = filteredTareas[index];
-                              return _TareaTile(
-                                tarea: tarea,
-                                projectId: projectId,
-                              );
-                            },
+                    // Contador
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${filteredTareas.length} tarea${filteredTareas.length == 1 ? '' : 's'}',
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
-                  ),
-                ],
+                        ],
+                      ),
+                    ),
+
+                    // Lista
+                    Expanded(
+                      child: filteredTareas.isEmpty
+                          ? const Center(
+                              child: Text('No hay tareas que mostrar'),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                              itemCount: filteredTareas.length,
+                              itemBuilder: (context, index) {
+                                final tarea = filteredTareas[index];
+                                return _TareaTile(
+                                  tarea: tarea,
+                                  projectId: projectId,
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
               );
             },
           ),

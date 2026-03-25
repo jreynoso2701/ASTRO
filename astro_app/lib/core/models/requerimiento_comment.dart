@@ -12,6 +12,8 @@ class RequerimientoComment {
     this.requerimientoId,
     this.type = ReqCommentType.comment,
     this.createdAt,
+    this.adjuntos = const [],
+    this.deleted = false,
   });
 
   final String id;
@@ -21,6 +23,8 @@ class RequerimientoComment {
   final String? requerimientoId;
   final ReqCommentType type;
   final DateTime? createdAt;
+  final List<String> adjuntos;
+  final bool deleted;
 
   factory RequerimientoComment.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -41,6 +45,9 @@ class RequerimientoComment {
       requerimientoId: data['refRequerimiento'] as String?,
       type: ReqCommentType.fromString(data['type'] as String? ?? 'comment'),
       createdAt: parseDate(data['createdAt']),
+      adjuntos:
+          (data['adjuntos'] as List<dynamic>?)?.cast<String>() ?? const [],
+      deleted: data['deleted'] as bool? ?? false,
     );
   }
 
@@ -52,6 +59,8 @@ class RequerimientoComment {
       'authorName': authorName,
       'type': type.name,
       'createdAt': Timestamp.fromDate(createdAt ?? DateTime.now()),
+      if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
+      if (deleted) 'deleted': true,
     };
   }
 }

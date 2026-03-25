@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:astro/core/models/subtarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
 
@@ -28,6 +29,7 @@ class Tarea {
     this.refMinutas = const [],
     this.refCitas = const [],
     this.refCompromisoNumero,
+    this.subtareas = const [],
     this.isActive = true,
     this.createdAt,
     this.updatedAt,
@@ -58,6 +60,9 @@ class Tarea {
   final List<String> refMinutas;
   final List<String> refCitas;
   final int? refCompromisoNumero;
+
+  // Subtareas embebidas
+  final List<Subtarea> subtareas;
 
   final bool isActive;
   final DateTime? createdAt;
@@ -110,6 +115,11 @@ class Tarea {
       refMinutas: parseRefList(data['refMinutas'], data['refMinutaId']),
       refCitas: parseList(data['refCitas']),
       refCompromisoNumero: (data['refCompromisoNumero'] as num?)?.toInt(),
+      subtareas:
+          (data['subtareas'] as List<dynamic>?)
+              ?.map((e) => Subtarea.fromMap(e as Map<String, dynamic>))
+              .toList() ??
+          [],
       isActive: data['isActive'] as bool? ?? true,
       createdAt: parseDate(data['createdAt']),
       updatedAt: parseDate(data['updatedAt']),
@@ -141,6 +151,8 @@ class Tarea {
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
       if (refCompromisoNumero != null)
         'refCompromisoNumero': refCompromisoNumero,
+      if (subtareas.isNotEmpty)
+        'subtareas': subtareas.map((s) => s.toMap()).toList(),
       'isActive': isActive,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
@@ -170,6 +182,7 @@ class Tarea {
     List<String>? refMinutas,
     List<String>? refCitas,
     int? refCompromisoNumero,
+    List<Subtarea>? subtareas,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -196,6 +209,7 @@ class Tarea {
       refMinutas: refMinutas ?? this.refMinutas,
       refCitas: refCitas ?? this.refCitas,
       refCompromisoNumero: refCompromisoNumero ?? this.refCompromisoNumero,
+      subtareas: subtareas ?? this.subtareas,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

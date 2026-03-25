@@ -138,6 +138,12 @@ class AiChatNotifier extends Notifier<AiChatState> {
     final gemini = ref.read(geminiServiceProvider);
     final voice = ref.read(voiceServiceProvider);
 
+    // Detener TTS activo antes de procesar nuevo mensaje
+    if (state.isSpeaking) {
+      await voice.stop();
+      state = state.copyWith(isSpeaking: false);
+    }
+
     // Inicializar Gemini con contexto de usuario si no se ha hecho
     await _ensureGeminiReady();
 
@@ -236,7 +242,12 @@ class AiChatNotifier extends Notifier<AiChatState> {
 
   /// Toggle auto-speak.
   void toggleAutoSpeak() {
-    state = state.copyWith(autoSpeak: !state.autoSpeak);
+    final newAutoSpeak = !state.autoSpeak;
+    state = state.copyWith(autoSpeak: newAutoSpeak);
+    // Si se desactiva y está hablando, detener TTS inmediatamente
+    if (!newAutoSpeak && state.isSpeaking) {
+      stopSpeaking();
+    }
   }
 
   /// Elimina todo el historial de chat.

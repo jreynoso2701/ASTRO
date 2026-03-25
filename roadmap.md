@@ -63,6 +63,13 @@
 - [x] Destino "Proyectos" en el shell de navegación (visible para todos los roles).
 - [x] Dashboard principal con resumen de proyectos, progreso y citas.
 - [x] **Dashboard: Resumen de Incidentes** — 6 cards de conteo por estado (Pendiente, En Desarrollo, Pruebas Internas, Pruebas Cliente, Bugs, Resuelto) con íconos y colores + gráfico donut de distribución (`CustomPainter`). Conteo global sumando todos los proyectos del usuario. Layout adaptativo: 2 columnas + donut abajo en móvil, 3 columnas + donut lateral en tablet/web.
+- [x] **Dashboard: Sección tabulada Tickets / Requerimientos** — `_IncidentsTabbedSection` con `TabBar` para alternar entre vista de Tickets y Requerimientos.
+  - [x] **Tab Requerimientos — Status Overview** (`_ReqStatusOverview`): 6 cards por estado (Propuesto, En Revisión, En Desarrollo, Implementado, Completado, Descartado) con `_ReqStatusCard` + gráfico donut (`_ReqDonutChart`, `_ReqDonutChartPainter`). Layout adaptativo: 2 col + donut abajo en móvil, 3 col + donut lateral en pantallas anchas.
+  - [x] **Tab Requerimientos — Semáforo de Deadlines** (`_ReqDeadlineOverview`): cards tipo semáforo (🔴 Vencido, 🟠 Hoy/Mañana, 🟡 2-5 días, ⚪ Sin Fecha) usando `_GenericDeadlineCard`. Solo visible para Root.
+  - [x] **Bottom sheets de requerimientos**: `_showReqsByStatusSheet`, `_showReqsByDeadlineSheet`, `_showReqsWithoutDeadlineSheet` — listas agrupadas por proyecto con navegación al detalle.
+  - [x] **Providers globales de requerimientos para dashboard**: `globalReqCountsByStatusProvider`, `globalReqsByStatusProvider`, `globalReqsByDeadlineProvider`, `globalReqsWithoutDeadlineProvider`, `allRequerimientosByProjectProvider`.
+  - [x] **`reqStatusColor()`** — función centralizada en `ticket_colors.dart` para mapeo de colores por `RequerimientoStatus`.
+- [x] **Dashboard: Ordenamiento de proyectos** — `ProjectSortOption` enum (nombre ↑↓, progreso ↑↓), `projectSortProvider`, botón `_ProjectSortButton` en header "MIS PROYECTOS" (visible cuando hay >1 proyecto).
 - [x] Asignación de módulos a proyectos (módulos se crean dentro de cada proyecto).
 - [x] Asignación de equipos a proyectos (desde el detalle del proyecto, diálogo de agregar miembro con selector de rol).
 - [x] Progreso del proyecto calculado desde módulos.
@@ -130,6 +137,8 @@
   - [x] Migración Cloud Function: 78 tickets Resuelto actualizados de 0% a 100%.
   - [x] Auto-progreso: Resuelto → 100%, Pendiente → 0% (aplica en cambio de status y drag & drop Kanban).
 - [x] **Estadísticas de tickets** — botón en AppBar (solo Root/Soporte) que abre bottom sheet con rankings: módulos con más incidentes y usuarios que más reportan. Incluye **todos** los tickets (activos + archivados + desactivados). Barras visuales proporcionales con conteo. Provider `allTicketsByProjectProvider` sin filtro `isActive`.
+- [x] **Adjuntos en comentarios de tickets** — botón de adjuntar (bottom sheet: cámara, galería, archivos) en la barra de comentarios. Máximo 10 archivos por comentario. Imágenes como thumbnails clickeables, archivos como chips con ícono por tipo y nombre legible. Permite comentarios sin texto (solo adjuntos). Upload a Storage (`comentarios_tickets/{ticketId}/`).
+- [x] **Eliminación suave de comentarios de tickets** — soft-delete: marca `deleted: true`, reemplaza texto con "Comentario eliminado", limpia adjuntos. Solo el autor puede eliminar. Etiqueta visual en el hilo de comentarios.
 - [x] Notificaciones push al asignar/cambiar estado (implementado en Fase 1.8).
 
 ### 1.7 Levantamiento de Requerimientos
@@ -158,9 +167,12 @@
 - [x] Navegación: `/projects/:id/requirements`, `requirements/new`, `requirements/:reqId`, `requirements/:reqId/edit`.
 - [x] `StorageService.uploadToPath` — método genérico para subir adjuntos a rutas arbitrarias en Firebase Storage.
 - [x] Visibilidad por rol: Usuario solo ve sus propios requerimientos; Root/Supervisor/Soporte ven todos.
+- [x] **Adjuntos en comentarios de requerimientos** — misma funcionalidad que tickets: bottom sheet (cámara/galería/archivos), max 10 archivos, thumbnails + chips, comentarios solo-adjuntos. Upload a Storage (`comentarios_requerimientos/{reqId}/`).
+- [x] **Eliminación suave de comentarios de requerimientos** — soft-delete con etiqueta "Comentario eliminado", solo por el autor.
 - [x] Vinculación bidireccional con minutas (modelo ya tenía `refMinutas`/`refCitas`).
 - [x] Gemini AI: status descriptions y `pendingStatuses` actualizados a nuevos 6 estados, filtro `isActive == false` para excluir archivados.
 - [x] AI Agent Sheet: colores de status actualizados a nuevos 6 estados.
+- [x] **Auto-completar criterios de aceptación** — al cambiar status a "Completado" (desde detalle o drag & drop en Kanban), todos los criterios se marcan automáticamente como completados (`completado: true`) vía `repo.updateCriterios()`.
 
 ### 1.8 Notificaciones Push
 
@@ -200,6 +212,7 @@
   - [x] Respeta `NotificationConfig` overrides por usuario/proyecto.
 - [x] Índices Firestore para `Notificaciones` (userId+createdAt, userId+leida+createdAt).
 - [x] Índices Firestore completos desplegados (45+ índices: Notificaciones, Tickets, projectAssignments, Modulos, Requerimientos, ComentariosRequerimientos, users, Proyectos, NotificacionesGral, chatAI, Citas, Tareas, Minutas, DocumentosProyecto, etc.).
+- [x] **Auditoría de índices Firestore** — revisión completa de todas las queries del proyecto vs índices desplegados. 2 índices faltantes añadidos: `Proyectos` (`fkEmpresa + estatusProyecto`) y `Proyectos` (`empresaId + estatusProyecto`) para cascade deactivation de empresas. Deploy exitoso.
 - [x] **`updatedBy` en actualizaciones de tickets** — `updateStatus`, `archiveTicket` y `assign` del `TicketRepository` ahora envían `updatedBy` con el UID del usuario que ejecutó la acción. La Cloud Function `onTicketUpdated` usa este campo para excluir al autor de las notificaciones de su propia acción.
 - [x] **`updatedBy` en actualizaciones de requerimientos** — `update`, `updateStatus` y `assign` del `RequerimientoRepository` envían `updatedBy`. Screens actualizadas: detail, list/kanban, form.
 - [x] **`updatedBy` en actualizaciones de tareas** — `update`, `updateStatus` y `restore` del `TareaRepository` envían `updatedBy`. Screens actualizadas: detail, form, list, global, minuta sync.
@@ -221,8 +234,14 @@
   - [x] `checkCompromisoDeadlines` — diario 08:00 CDMX, compromisos de minutas pendientes.
   - [x] `dailyMorningSummary` — L-S 09:00 CDMX, resumen diario por proyecto: tickets pendientes (con vencidos), tareas pendientes, citas hoy. Se envía a todos los miembros con push habilitado.
   - [x] `ticketsWithoutDeadlineReminder` — L/Mi/V 10:00 CDMX, alerta de tickets activos sin fecha compromiso. Se envía solo a Root y Soporte.
+  - [x] `checkReqDeadlinesMorning` — L-V 09:30 CDMX, semáforo de requerimientos (🟡 ≤5d / 🟠 ≤1d / 🔴 vencido) con anti-spam (`_lastDeadlineAlert` con zone+tag key). Se envía a `assignedToUid` + Root.
+  - [x] `checkReqDeadlinesAfternoon` — L-V 16:00 CDMX, segunda revisión diaria de deadlines de requerimientos (misma lógica compartida `_checkReqDeadlinesLogic`).
+- [x] **Payload APNs para iOS** — bloque `apns` añadido a `sendEachForMulticast` en Cloud Functions: `apns-priority: "10"`, `sound: "default"`, `content-available: 1`. Garantiza entrega confiable y sonido en dispositivos Apple.
+- [x] **Notificaciones foreground en iOS** — `setForegroundNotificationPresentationOptions(alert: true, badge: true, sound: true)` en `NotificationService`. Muestra banners push incluso con la app en primer plano en iOS.
+- [x] **Configuración APNs en Firebase Console** — clave de autenticación APNs (.p8) subida para entorno de desarrollo y producción. Key ID: `UXKRH6PW76`, Team ID: `VM8NP3C8VD`.
+- [x] Deploy de Cloud Functions a Firebase — **20 funciones** (12 triggers + 8 schedulers) en us-central1.
 - [x] **Notificación push al modificar progreso de módulo** — Cloud Function `onModuloUpdated` (trigger `onDocumentUpdated("Modulos/{moduloId}")`). Detecta cambio en `porcentCompletaModulo`, consulta `updatedBy` para nombre del usuario que modificó, envía push + notificación in-app a todos los Root del proyecto (excluyendo al autor). Título: `📊 {módulo} — {percent}%`. Campo `updatedBy` añadido a `ModuloRepository.updateProgress`. `module_detail_screen.dart` pasa UID del usuario autenticado.
-- [x] Deploy Cloud Functions — **18 funciones** (12 triggers + 6 schedulers) en us-central1.
+- [x] Deploy Cloud Functions — **20 funciones** (12 triggers + 8 schedulers) en us-central1.
 
 ### 1.9 Documentación del Proyecto
 
@@ -307,10 +326,10 @@
 - [x] Metadata web actualizada: `manifest.json` con colores `#000000`, descripción profesional, nombre ASTRO.
 - [x] `index.html` actualizado: título, descripción, apple-mobile-web-app-title.
 - [x] Splash Android: fondo negro en `launch_background.xml` (values + drawable-v21).
-- [x] Versión bumped a `2.1.2+11`.
+- [x] Versión bumped a `2.3.25+16`.
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
-- [x] Build de release para Android (`flutter build appbundle`) — AAB 53.6MB.
-- [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11).
+- [x] Build de release para Android (`flutter build appbundle`) — AAB 54.6MB.
+- [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11), v11-v14 (intermedias), v15 (2.2.22+15).
 - [x] **Hardening de Firestore Security Rules**: eliminada regla catch-all abierta (`request.time < 2044`), reemplazadas todas las reglas `if true` por `request.auth != null`, reglas explícitas para las 28+ colecciones y sub-colecciones del proyecto, denegación por defecto para colecciones no listadas. Cloud Functions no afectadas (Admin SDK). Archivo fuente: `firestore.rules`.
 - [x] **Preparación Deploy Web (Railway)**: Dockerfile multi-stage (Flutter build + Nginx Alpine), `nginx.conf` con SPA routing + gzip + security headers + `$PORT` dinámico, `.dockerignore` optimizado. CORS configurado en Firebase Storage para dominio Railway. Dominio `astro-production-be6a.up.railway.app` agregado a Firebase Auth Authorized Domains.
 - [ ] Deploy web en Railway.
@@ -376,6 +395,18 @@
 - [x] Badge de citas próximas en ícono de Calendario en la navegación.
 - [x] **Dashboard: indicador de citas** — StatCard "Próximas citas" + sección con hasta 3 citas próximas con enlace.
 - [x] **Cloud Function `checkCitaReminders`** — cada 15 min revisa citas programadas y envía push + notificación in-app según `recordatorios` (ventana ±7.5 min).
+- [x] **Campos de referencias cruzadas en Cita** — `refTickets`, `refRequerimientos`, `refMinutas` (List<String>) y `refMinuta` (String?) para minuta generada al completar.
+- [x] **Métodos de vinculación en CitaRepository** — `addRefTicket(citaId, ticketId)`, `addRefRequerimiento(citaId, reqId)`, `setRefMinuta(citaId, minutaId)` con `FieldValue.arrayUnion`.
+- [x] **Diálogo de Completar Cita** (`_CompletionDialog`) — modal al cambiar estado a `completada`:
+  - [x] Campo de comentario de cierre.
+  - [x] Botón "Crear ticket" — navega a formulario con `returnId: true, refCitaId`, vincula ticket creado.
+  - [x] Botón "Crear requerimiento" — misma dinámica, vincula requerimiento creado.
+  - [x] Botón "Completar y generar minuta" — guarda status y navega a `/minutas/new?refCitaId=` con datos pre-cargados.
+  - [x] Botón "Completar" — solo guarda status y comentario.
+  - [x] Tracking de items creados durante el diálogo (`_CompletionResult`).
+- [x] **Visualización de items vinculados en detalle de cita** — secciones de tickets y requerimientos referenciados con chips de navegación al detalle.
+- [x] **Agenda de cita** — modelo `AgendaItem` (id, texto, tratado) embebido como lista en `Cita`. Sección "AGENDA" en formulario de cita: agregar, editar, eliminar y reordenar ítems con `ReorderableListView`. En detalle de cita: checklist interactivo con toggle en vivo (`citaRepository.updateAgenda`), permisos `canManage`. IDs generados con `DateTime.now().microsecondsSinceEpoch`.
+- [x] **Agenda → Asuntos tratados en minuta** — al crear minuta desde cita, los ítems de la agenda se pre-populan como `AsuntoTratado` en el formulario de minuta (solo si la cita tiene agenda y los asuntos están vacíos).
 
 ### 2.2 Módulo de Minutas
 
@@ -431,11 +462,20 @@
 - [x] Navegación cruzada entre tickets ↔ minutas/citas (tap desde detalle de ticket navega a minuta o cita).
 - [x] Navegación cruzada entre minutas ↔ tickets/requerimientos (tap desde detalle de minuta navega a ticket o requerimiento).
 - [x] Navegación cruzada entre requerimientos ↔ minutas (tap desde detalle de requerimiento navega a minuta).
+- [x] **Vinculación bidireccional Citas ↔ Tickets/Requerimientos:**
+  - [x] Campo `refCitas` (List<String>) añadido al modelo `Requerimiento` (constructor, fromFirestore, toFirestore, copyWith).
+  - [x] Parámetro `refCitaId` en rutas de creación: `ticketNew`, `reqNew` y `minutaNew` del router extraen `refCitaId` desde `extra` o query param.
+  - [x] `TicketFormScreen` — constructor param `refCitaId`; al iniciar, agrega a lista de citas referenciadas.
+  - [x] `RequerimientoFormScreen` — constructor param `refCitaId`; al iniciar, agrega a lista de citas referenciadas.
+  - [x] `MinutaFormScreen` — constructor param `citaId`; pre-carga datos de la cita (participantes, fecha, modalidad, URL, dirección); al guardar llama `citaRepo.setRefMinuta(citaId, docId)`.
+  - [x] Navegación cruzada entre citas ↔ tickets/requerimientos (tap desde detalle de cita navega a ticket o requerimiento vinculado).
+- [x] **Widget `ResolvedRefText`** — widget reutilizable para mostrar referencias cruzadas resueltas (folio + nombre) en pantallas de detalle de tickets, requerimientos, minutas, citas y tareas. Reemplaza IDs crudos por texto legible consultando Firestore. Implementado en 8 pantallas.
 
 ### 2.4 Módulo de Tareas
 
 - [x] Modelo de datos `Tarea` en Firestore (colección `Tareas/{docId}`).
-- [x] Campos: id, folio (TAR-ABBR-NUM), titulo, descripcion, projectId, projectName, status, prioridad, createdByUid, createdByName, moduleId/Name, assignedToUid/Name, fechaEntrega, adjuntos, refTicketId, refRequerimientoId, refMinutaId, refCompromisoNumero, isActive, createdAt, updatedAt.
+- [x] Campos: id, folio (TAR-ABBR-NUM), titulo, descripcion, projectId, projectName, status, prioridad, createdByUid, createdByName, moduleId/Name, assignedToUid/Name, fechaEntrega, adjuntos, refTickets, refRequerimientos, refMinutas, refCitas (List<String>), refCompromisoNumero, isActive, createdAt, updatedAt.
+- [x] **Migración de referencias de tarea** — campos `refTicketId`, `refRequerimientoId`, `refMinutaId` (String?) migrados a `refTickets`, `refRequerimientos`, `refMinutas`, `refCitas` (List<String>). Helper `parseRefList(listVal, singleVal)` para compatibilidad retroactiva con documentos existentes.
 - [x] Enums: `TareaStatus` (pendiente, enProgreso, completada, cancelada), `TareaPrioridad` (baja, media, alta, urgente).
 - [x] `TareaRepository` — CRUD, folio auto-incremental (TAR-ABBR-NUM), watchByProject, watchByAssignee, archive.
 - [x] Providers Riverpod: tareas por proyecto, por ID, por asignado (cross-project), filtros (búsqueda, status, prioridad), visibilidad por rol, contadores, `myPendingTareasProvider`.
@@ -449,6 +489,9 @@
 - [x] **Auto-generación de tareas desde compromisos de minuta** — al guardar una minuta (crear o editar), se crean automáticamente tareas para cada compromiso que tenga `responsableUid` definido. Verificación de duplicados por `refMinutaId` + `refCompromisoNumero`. Best-effort (no bloquea guardado).
 - [x] **Eliminación del botón manual "Crear Tarea"** en detalle de minuta — reemplazado por auto-generación automática.
 - [x] **Eliminación de sección "Actividades" del Dashboard** — las tareas ahora se gestionan desde la pantalla global `/tareas` en la navegación principal. Imports y código muerto eliminados del dashboard.
+- [x] **Subtareas (checklist)** — modelo `Subtarea` embebido en `Tarea` (id, titulo, completada, orden). CRUD desde formulario de tarea: agregar, editar inline, reordenar con drag handle, eliminar. Detalle de tarea muestra checklist interactivo con toggle de completado. Progreso visual (barra + porcentaje) basado en subtareas completadas.
+- [x] **Zona drag & drop de adjuntos en formulario de tarea** — `DropRegion` para arrastrar archivos (desktop/web). Preview de archivos pendientes con thumbnails (imágenes) o chips con ícono por tipo. Eliminar archivos pendientes con botón X.
+- [x] **Rediseño UX del detalle de tarea** — Hero section con anillo de progreso animado, gradiente por status, urgencia de deadline, texto motivacional. Layout dos columnas en tablet/desktop. Secciones colapsables.
 - [x] **Acciones rápidas en detalle de tarea** — botones de cambio de estado según estado actual: Iniciar, Completar, Cancelar, Pendiente, Reabrir. Permisos: `canInteract` (Root, asignado o creador) para cambios de estado; `canArchive` (Root + Supervisor) para archivar/restaurar/reabrir completadas o canceladas.
 - [x] **Archivado (soft-delete) de tareas** — solo Root y Supervisor pueden archivar tareas completadas o canceladas. Confirmación con diálogo. Campo `isActive: false` en Firestore.
 - [x] **Restauración de tareas archivadas** — diálogo de selección de estado (pendiente / en progreso) al restaurar. Solo Root y Supervisor.
@@ -504,9 +547,11 @@
 - [x] **Servicio de voz** — `VoiceService`: TTS (`flutter_tts`, es-MX) + STT (`speech_to_text`, es_MX, dictation mode).
 - [x] **Providers Riverpod** — `AiChatNotifier` con estado (isLoading, isListening, isSpeaking, autoSpeak), envío de mensajes, voz automática, borrado de historial.
 - [x] **Chat UI** — Bottom sheet modal (`AiAgentSheet`): drag handle, header con toggle auto-voz, lista de mensajes con burbujas (usuario/asistente), bloques de datos interactivos (cards tapeables), indicador de escritura animado, barra de entrada con campo de texto + micrófono + enviar, sugerencias rápidas en estado vacío.
-- [x] **FAB en Dashboard** — Botón flotante `Icons.auto_awesome` que abre el bottom sheet del agente. Visible para todos los usuarios autenticados.
+- [x] **FAB en Dashboard** — Botón flotante `Icons.auto_awesome` que abre el bottom sheet del agente. Visible solo para Root, Supervisor y Soporte (excluye rol Usuario).
 - [x] **Borrar historial en Perfil** — Sección "ASISTENTE IA" en la pantalla de perfil con opción para borrar historial con diálogo de confirmación.
 - [x] **Permiso RECORD_AUDIO** — Agregado en AndroidManifest.xml para speech-to-text.
+- [x] **Fix StateError en dispose()** — `AiAgentSheet` guardaba referencia `AiChatNotifier` en `late final _chatNotifier` durante `initState()` para evitar `ref.read()` en `dispose()` (patrón seguro de Riverpod cuando widget se desmonta).
+- [x] **TTS mejorado** — detener TTS al cerrar el bottom sheet o enviar nuevo mensaje. Botón mute para desactivar auto-speak. Disclaimer informativo sobre el asistente.
 - [ ] Pruebas en dispositivo físico y ajustes de UX.
 - [ ] Integración con navegación a detalle de items (tickets, minutas, requerimientos, citas).
 
@@ -536,4 +581,4 @@
 
 ---
 
-*Última actualización: Notificación push al modificar progreso de módulo (Cloud Function `onModuloUpdated`). Pestañas "Mis tareas" / "Compañeros" con agrupación por proyecto. Estadísticas de tickets. Versión 2.1.2+11.*
+*Última actualización: Agenda en citas (modelo AgendaItem, formulario, detalle con checklist interactivo, pre-población en minutas). Auto-completar criterios de aceptación al completar requerimiento (detalle + Kanban drag & drop). Widget ResolvedRefText para referencias cruzadas en 8 pantallas. Fix StateError ref en dispose() del agente IA. Mejoras TTS (stop on close, mute, disclaimer). Versión 2.3.25+16.*

@@ -138,40 +138,43 @@ class _DocumentoListBodyState extends ConsumerState<_DocumentoListBody>
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Búsqueda
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Buscar documento...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () =>
-                            ref.read(docSearchProvider.notifier).clear(),
-                      )
-                    : null,
-                isDense: true,
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            // Búsqueda
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Buscar documento...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () =>
+                              ref.read(docSearchProvider.notifier).clear(),
+                        )
+                      : null,
+                  isDense: true,
+                ),
+                onChanged: (v) =>
+                    ref.read(docSearchProvider.notifier).setQuery(v),
               ),
-              onChanged: (v) =>
-                  ref.read(docSearchProvider.notifier).setQuery(v),
             ),
-          ),
 
-          // Tabs content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _FormalesTab(projectId: widget.projectId),
-                _CompartidosTab(projectId: widget.projectId),
-              ],
+            // Tabs content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _FormalesTab(projectId: widget.projectId),
+                  _CompartidosTab(projectId: widget.projectId),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -259,7 +262,7 @@ class _FormalesTab extends ConsumerWidget {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     itemCount: filteredDocs.length,
                     itemBuilder: (context, index) {
                       final doc = filteredDocs[index];
@@ -432,7 +435,7 @@ class _CompartidosTab extends ConsumerWidget {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     itemCount: adjuntos.length,
                     itemBuilder: (context, index) {
                       final adjunto = adjuntos[index];
