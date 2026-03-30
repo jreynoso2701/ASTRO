@@ -56,29 +56,22 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
-
 		<!-- Permisos de privacidad (App Store requiere justificación) -->
-
 		<!-- Cámara -->
 		<key>NSCameraUsageDescription</key>
 		<string>ASTRO necesita acceso a tu cámara para capturar fotos y videos como evidencia en tickets y minutas.</string>
-
 		<!-- Micrófono (audio al grabar video) -->
 		<key>NSMicrophoneUsageDescription</key>
 		<string>ASTRO necesita acceso a tu micrófono para grabar audio al capturar videos.</string>
-
 		<!-- Galería — lectura -->
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>ASTRO necesita acceso a tu biblioteca de fotos para adjuntar imágenes y videos a tickets, requerimientos y minutas.</string>
-
 		<!-- Galería — escritura (guardar descargas) -->
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>ASTRO necesita permiso para guardar archivos descargados en tu biblioteca de fotos.</string>
-
 		<!-- Reconocimiento de voz (speech_to_text) -->
 		<key>NSSpeechRecognitionUsageDescription</key>
 		<string>ASTRO necesita acceso al reconocimiento de voz para transcribir audio en texto.</string>
-
 		<!-- URL schemes para Google Sign-In -->
 		<key>CFBundleURLTypes</key>
 		<array>
@@ -94,6 +87,5 @@
 				</array>
 			</dict>
 		</array>
-
 	</dict>
 </plist>

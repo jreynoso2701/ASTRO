@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/router/app_shell.dart';
@@ -20,6 +21,11 @@ import 'package:astro/features/tickets/presentation/screens/ticket_list_screen.d
 import 'package:astro/features/tickets/presentation/screens/ticket_detail_screen.dart';
 import 'package:astro/features/tickets/presentation/screens/ticket_form_screen.dart';
 import 'package:astro/features/auth/presentation/screens/onboarding_screen.dart';
+import 'package:astro/features/auth/presentation/screens/pending_approval_screen.dart';
+import 'package:astro/features/auth/presentation/screens/rejection_screen.dart';
+import 'package:astro/features/auth/presentation/screens/deactivated_screen.dart';
+import 'package:astro/features/auth/presentation/screens/loading_screen.dart';
+import 'package:astro/features/users/presentation/screens/registration_requests_screen.dart';
 import 'package:astro/features/requirements/presentation/screens/requerimiento_list_screen.dart';
 import 'package:astro/features/requirements/presentation/screens/requerimiento_detail_screen.dart';
 import 'package:astro/features/requirements/presentation/screens/requerimiento_form_screen.dart';
@@ -112,57 +118,161 @@ abstract final class AppRoutes {
 
   // Gestión (hub)
   static const String gestion = '/gestion';
+  static const String registrationRequests = '/gestion/requests';
 
   // Empresas
   static const String empresas = '/empresas';
   static const String empresaNew = '/empresas/new';
   static const String empresaDetail = '/empresas/:empresaId';
   static const String empresaEdit = '/empresas/:empresaId/edit';
+
+  // Pantallas de estado de registro (sin shell)
+  static const String pendingApproval = '/pending-approval';
+  static const String rejected = '/rejected';
+  static const String deactivated = '/deactivated';
+
+  // Pantalla de carga inicial
+  static const String loading = '/loading';
 }
 
-/// Provider del router — depende del estado de autenticación.
+/// Notifier que dispara re-evaluación de redirects cuando cambia el estado
+/// de auth o perfil (sin recrear el GoRouter).
+class _RouterRefreshNotifier extends ChangeNotifier {
+  _RouterRefreshNotifier(Ref ref) {
+    ref.listen(authStateProvider, (_, __) => notifyListeners());
+    ref.listen(currentUserProfileProvider, (_, __) => notifyListeners());
+    ref.listen(hasProjectAssignmentsProvider, (_, __) => notifyListeners());
+  }
+}
+
+/// Provider del router — se crea UNA sola vez.
+/// Los cambios de auth/perfil disparan re-evaluación de redirects via
+/// refreshListenable, sin destruir y recrear el GoRouter.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
-  final userProfile = ref.watch(currentUserProfileProvider);
+  final refreshNotifier = _RouterRefreshNotifier(ref);
+
+  ref.onDispose(() => refreshNotifier.dispose());
 
   return GoRouter(
-    initialLocation: AppRoutes.dashboard,
+    initialLocation: AppRoutes.loading,
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authStateProvider);
+      final userProfile = ref.read(currentUserProfileProvider);
+
       final isLoggedIn = authState.value != null;
       final isAuthRoute =
           state.uri.path == AppRoutes.login ||
           state.uri.path == AppRoutes.register ||
           state.uri.path == AppRoutes.forgotPassword;
+      final isLoadingRoute = state.uri.path == AppRoutes.loading;
+
+      // ── Mientras auth o perfil cargan → mantener en /loading ──
+      if (authState.isLoading) {
+        return isLoadingRoute ? null : AppRoutes.loading;
+      }
+      if (isLoggedIn && userProfile.isLoading) {
+        return isLoadingRoute ? null : AppRoutes.loading;
+      }
+
+      // ── Auth y perfil resueltos ──
 
       // No autenticado → redirigir a login (excepto si ya está en auth).
-      if (!isLoggedIn && !isAuthRoute) return AppRoutes.login;
+      if (!isLoggedIn) {
+        return isAuthRoute ? null : AppRoutes.login;
+      }
 
-      // Autenticado → no permitir acceder a pantallas de auth.
-      if (isLoggedIn && isAuthRoute) return AppRoutes.dashboard;
+      // Autenticado → no permitir acceder a pantallas de auth ni loading.
+      if (isAuthRoute || isLoadingRoute) {
+        final user = userProfile.value;
+        if (user != null) {
+          if (!user.isActive) return AppRoutes.deactivated;
+          if (user.isPending) return AppRoutes.pendingApproval;
+          if (user.isRejected) return AppRoutes.rejected;
+        }
+        return AppRoutes.dashboard;
+      }
+
+      // ── Guards de estado de cuenta ─────────────────
+      final user = userProfile.value;
+      if (user != null) {
+        final isPending = user.isPending;
+        final isRejected = user.isRejected;
+        final isDeactivated = !user.isActive;
+        final isStatusRoute =
+            state.uri.path == AppRoutes.pendingApproval ||
+            state.uri.path == AppRoutes.rejected ||
+            state.uri.path == AppRoutes.deactivated;
+
+        // Desactivado → forzar pantalla de cuenta desactivada.
+        if (isDeactivated && state.uri.path != AppRoutes.deactivated) {
+          return AppRoutes.deactivated;
+        }
+        // Reactivado → salir de la pantalla de desactivado.
+        if (!isDeactivated && state.uri.path == AppRoutes.deactivated) {
+          return AppRoutes.dashboard;
+        }
+
+        // Pendiente → forzar pantalla de espera.
+        if (isPending && state.uri.path != AppRoutes.pendingApproval) {
+          return AppRoutes.pendingApproval;
+        }
+        // Ya no está pendiente → salir de la pantalla de espera.
+        if (!isPending && state.uri.path == AppRoutes.pendingApproval) {
+          return isRejected ? AppRoutes.rejected : AppRoutes.dashboard;
+        }
+
+        // Rechazado → forzar pantalla de rechazo.
+        if (isRejected && state.uri.path != AppRoutes.rejected) {
+          return AppRoutes.rejected;
+        }
+        // Ya no está rechazado → salir de la pantalla de rechazo.
+        if (!isRejected && state.uri.path == AppRoutes.rejected) {
+          return AppRoutes.dashboard;
+        }
+
+        // Si está en ruta de status y ya está aprobado+activo, redirigir.
+        if (user.isApproved && user.isActive && isStatusRoute) {
+          return AppRoutes.dashboard;
+        }
+      }
 
       // Onboarding: usuario sin asignaciones (excepto Root).
-      if (isLoggedIn &&
-          state.uri.path != AppRoutes.onboarding &&
-          state.uri.path != AppRoutes.profile) {
-        final hasAssignments = ref.read(hasProjectAssignmentsProvider);
-        if (hasAssignments == false) return AppRoutes.onboarding;
+      // No aplica a usuarios pendientes o rechazados (ya redirigidos arriba).
+      if (state.uri.path != AppRoutes.onboarding &&
+          state.uri.path != AppRoutes.profile &&
+          state.uri.path != AppRoutes.pendingApproval &&
+          state.uri.path != AppRoutes.rejected &&
+          state.uri.path != AppRoutes.deactivated) {
+        final u = userProfile.value;
+        if (u != null && u.isApproved) {
+          final hasAssignments = ref.read(hasProjectAssignmentsProvider);
+          if (hasAssignments == false) return AppRoutes.onboarding;
+        }
       }
 
       // Ya tiene asignaciones → no permitir acceder a onboarding.
-      if (isLoggedIn && state.uri.path == AppRoutes.onboarding) {
+      if (state.uri.path == AppRoutes.onboarding) {
         final hasAssignments = ref.read(hasProjectAssignmentsProvider);
         if (hasAssignments == true) return AppRoutes.dashboard;
       }
 
       // Guardia de rol: /users solo para Root.
-      if (isLoggedIn && state.uri.path.startsWith('/users')) {
+      if (state.uri.path.startsWith('/users')) {
         if (!userProfile.isLoading && !(userProfile.value?.isRoot ?? false)) {
           return AppRoutes.dashboard;
         }
       }
 
       // Guardia de rol: /empresas solo para Root.
-      if (isLoggedIn && state.uri.path.startsWith('/empresas')) {
+      if (state.uri.path.startsWith('/empresas')) {
+        if (!userProfile.isLoading && !(userProfile.value?.isRoot ?? false)) {
+          return AppRoutes.dashboard;
+        }
+      }
+
+      // Guardia de rol: /gestion/requests solo para Root.
+      if (state.uri.path == AppRoutes.registrationRequests) {
         if (!userProfile.isLoading && !(userProfile.value?.isRoot ?? false)) {
           return AppRoutes.dashboard;
         }
@@ -171,6 +281,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      // ── Pantalla de carga (sin shell)
+      GoRoute(
+        path: AppRoutes.loading,
+        builder: (context, state) => const LoadingScreen(),
+      ),
+
       // ── Rutas de autenticación (sin shell)
       GoRoute(
         path: AppRoutes.login,
@@ -187,6 +303,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.pendingApproval,
+        builder: (context, state) => const PendingApprovalScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.rejected,
+        builder: (context, state) => const RejectionScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.deactivated,
+        builder: (context, state) => const DeactivatedScreen(),
       ),
 
       // ── Perfil (sin shell — tiene su propio AppBar)
@@ -247,6 +375,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Rutas de detalle (sin shell — tienen su propio AppBar)
+
+      // Solicitudes de registro (solo Root)
+      GoRoute(
+        path: AppRoutes.registrationRequests,
+        builder: (context, state) => const RegistrationRequestsScreen(),
+      ),
 
       // Empresas (más específicas primero)
       GoRoute(

@@ -27,7 +27,16 @@ class GestionScreen extends ConsumerWidget {
         color: const Color(0xFF2196F3),
         path: '/projects',
       ),
-      if (isRoot)
+      if (isRoot) ...[
+        _GestionItem(
+          icon: Icons.person_add_outlined,
+          selectedIcon: Icons.person_add,
+          title: 'Solicitudes',
+          subtitle: _pendingSubtitle(ref),
+          color: const Color(0xFFE91E63),
+          path: '/gestion/requests',
+          badgeCount: ref.watch(pendingUsersCountProvider),
+        ),
         _GestionItem(
           icon: Icons.people_outline,
           selectedIcon: Icons.people,
@@ -36,7 +45,6 @@ class GestionScreen extends ConsumerWidget {
           color: const Color(0xFF00BCD4),
           path: '/users',
         ),
-      if (isRoot)
         _GestionItem(
           icon: Icons.business_outlined,
           selectedIcon: Icons.business,
@@ -45,6 +53,7 @@ class GestionScreen extends ConsumerWidget {
           color: const Color(0xFFFF9800),
           path: '/empresas',
         ),
+      ],
     ];
 
     return PopScope(
@@ -83,6 +92,12 @@ class GestionScreen extends ConsumerWidget {
       ),
     );
   }
+
+  String _pendingSubtitle(WidgetRef ref) {
+    final count = ref.watch(pendingUsersCountProvider);
+    if (count == 0) return 'Sin solicitudes pendientes';
+    return '$count solicitud${count != 1 ? 'es' : ''} pendiente${count != 1 ? 's' : ''}';
+  }
 }
 
 class _GestionItem {
@@ -93,6 +108,7 @@ class _GestionItem {
     required this.subtitle,
     required this.color,
     required this.path,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
@@ -101,6 +117,7 @@ class _GestionItem {
   final String subtitle;
   final Color color;
   final String path;
+  final int badgeCount;
 }
 
 class _GestionTile extends StatelessWidget {
@@ -127,7 +144,11 @@ class _GestionTile extends StatelessWidget {
                   color: item.color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(item.icon, color: item.color, size: 26),
+                child: Badge(
+                  isLabelVisible: item.badgeCount > 0,
+                  label: Text('${item.badgeCount}'),
+                  child: Icon(item.icon, color: item.color, size: 26),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -140,6 +161,8 @@ class _GestionTile extends StatelessWidget {
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(

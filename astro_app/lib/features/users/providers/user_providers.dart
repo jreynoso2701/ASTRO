@@ -3,6 +3,7 @@ import 'package:astro/core/models/app_user.dart';
 import 'package:astro/core/models/project_assignment.dart';
 import 'package:astro/core/models/empresa.dart';
 import 'package:astro/core/models/proyecto.dart';
+import 'package:astro/core/models/registration_status.dart';
 import 'package:astro/core/models/user_role.dart';
 import 'package:astro/features/users/data/user_repository.dart';
 import 'package:astro/features/users/data/project_assignment_repository.dart';
@@ -43,6 +44,25 @@ final currentUserProfileProvider = StreamProvider<AppUser?>((ref) {
 final isCurrentUserRootProvider = Provider<bool>((ref) {
   final profile = ref.watch(currentUserProfileProvider);
   return profile.value?.isRoot ?? false;
+});
+
+/// Estado de registro del usuario actual.
+final currentUserRegistrationStatusProvider = Provider<RegistrationStatus?>((
+  ref,
+) {
+  final profile = ref.watch(currentUserProfileProvider);
+  return profile.value?.registrationStatus;
+});
+
+/// Stream de usuarios pendientes de aprobación (para Root).
+final pendingUsersProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(userRepositoryProvider).watchPendingUsers();
+});
+
+/// Conteo de solicitudes pendientes (para badge).
+final pendingUsersCountProvider = Provider<int>((ref) {
+  final pending = ref.watch(pendingUsersProvider);
+  return pending.value?.length ?? 0;
 });
 
 /// Indica si el usuario actual tiene al menos una asignación activa,
@@ -142,11 +162,18 @@ final userSearchProvider = NotifierProvider<UserSearchNotifier, String>(
 );
 
 /// Usuarios filtrados por el término de búsqueda y ordenados A-Z.
+/// Solo incluye usuarios aprobados y activos.
 final filteredUsersProvider = Provider<List<AppUser>>((ref) {
   final users = ref.watch(allUsersProvider);
   final query = ref.watch(userSearchProvider).toUpperCase();
 
-  final list = users.value ?? [];
+  // Solo mostrar usuarios aprobados y activos
+  final list = (users.value ?? [])
+      .where(
+        (u) =>
+            u.registrationStatus == RegistrationStatus.approved && u.isActive,
+      )
+      .toList();
   final filtered = query.isEmpty
       ? [...list]
       : list
@@ -162,4 +189,20 @@ final filteredUsersProvider = Provider<List<AppUser>>((ref) {
         a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
   );
   return filtered;
+});
+
+/// Usuarios desactivados (aprobados pero isActive == false), ordenados A-Z.
+final deactivatedUsersProvider = Provider<List<AppUser>>((ref) {
+  final users = ref.watch(allUsersProvider).value ?? [];
+  final list = users
+      .where(
+        (u) =>
+            u.registrationStatus == RegistrationStatus.approved && !u.isActive,
+      )
+      .toList();
+  list.sort(
+    (a, b) =>
+        a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+  );
+  return list;
 });

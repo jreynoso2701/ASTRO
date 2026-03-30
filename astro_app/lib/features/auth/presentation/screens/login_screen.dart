@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/router/app_router.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
-import 'package:astro/features/auth/presentation/widgets/google_sign_in_button.dart';
-import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de inicio de sesión.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -51,34 +49,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      final credential = await repo.signInWithGoogle();
-
-      // Si es usuario nuevo (registro vía Google), crear documento Firestore.
-      final user = credential.user;
-      if (user != null) {
-        final userRepo = ref.read(userRepositoryProvider);
-        await userRepo.ensureUserExists(
-          uid: user.uid,
-          displayName: user.displayName ?? '',
-          email: user.email ?? '',
-          photoUrl: user.photoURL,
-        );
-      }
-    } on Exception catch (e) {
-      setState(() => _errorMessage = _mapAuthError(e));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   String _mapAuthError(Exception e) {
     final msg = e.toString().toLowerCase();
     if (msg.contains('user-not-found')) {
@@ -110,6 +80,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Header
+          Icon(Icons.rocket_launch, size: 48, color: theme.colorScheme.primary),
+          const SizedBox(height: 12),
           Text('ASTRO', style: theme.textTheme.displaySmall),
           const SizedBox(height: 8),
           Text(
@@ -229,28 +201,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   : const Text('Iniciar sesión'),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // ── Divider
-          Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'o',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // ── Google sign in
-          GoogleSignInButton(onPressed: _isLoading ? null : _signInWithGoogle),
           const SizedBox(height: 32),
 
           // ── Register link

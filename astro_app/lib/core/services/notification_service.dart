@@ -75,29 +75,35 @@ class NotificationService {
   }
 
   /// Guarda el token en el array `fcmTokens` del usuario (sin duplicar).
+  /// Usa set+merge para no fallar si el documento aún no existe (race
+  /// condition durante el registro).
   Future<void> _saveToken(String uid, String token) async {
-    await _firestore.collection('users').doc(uid).update({
+    await _firestore.collection('users').doc(uid).set({
       'fcmTokens': FieldValue.arrayUnion([token]),
-    });
+    }, SetOptions(merge: true));
   }
 
   /// Remueve el token actual del usuario (al cerrar sesión).
   Future<void> removeToken(String uid) async {
-    String? token;
-    if (kIsWeb) {
-      token = await _messaging.getToken(vapidKey: null);
-    } else {
-      token = await _messaging.getToken();
-    }
-
-    if (token != null) {
-      await _firestore.collection('users').doc(uid).update({
-        'fcmTokens': FieldValue.arrayRemove([token]),
-      });
-    }
-
     _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
+
+    try {
+      String? token;
+      if (kIsWeb) {
+        token = await _messaging.getToken(vapidKey: null);
+      } else {
+        token = await _messaging.getToken();
+      }
+
+      if (token != null) {
+        await _firestore.collection('users').doc(uid).update({
+          'fcmTokens': FieldValue.arrayRemove([token]),
+        });
+      }
+    } catch (_) {
+      // El documento puede haber sido eliminado (account deletion).
+    }
   }
 
   /// Handler de mensajes recibidos en primer plano.

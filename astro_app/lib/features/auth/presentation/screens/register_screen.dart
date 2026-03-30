@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
-import 'package:astro/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 /// Pantalla de registro.
@@ -44,54 +43,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     try {
       final repo = ref.read(authRepositoryProvider);
+      final userRepo = ref.read(userRepositoryProvider);
+      final displayName = _nameController.text.trim();
+
       final credential = await repo.registerWithEmail(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
       // Actualizar displayName
-      final displayName = _nameController.text.trim();
       await credential.user?.updateDisplayName(displayName);
 
       // Crear documento en Firestore para que Root lo vea y el router funcione.
       final user = credential.user;
       if (user != null) {
-        final userRepo = ref.read(userRepositoryProvider);
         await userRepo.ensureUserExists(
           uid: user.uid,
           displayName: displayName,
           email: user.email ?? '',
         );
       }
+      // Router redirigirá automáticamente al detectar authState.
     } on Exception catch (e) {
-      setState(() => _errorMessage = _mapAuthError(e));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final repo = ref.read(authRepositoryProvider);
-      final credential = await repo.signInWithGoogle();
-
-      // Si es usuario nuevo, crear documento en Firestore.
-      final user = credential.user;
-      if (user != null) {
-        final userRepo = ref.read(userRepositoryProvider);
-        await userRepo.ensureUserExists(
-          uid: user.uid,
-          displayName: user.displayName ?? '',
-          email: user.email ?? '',
-          photoUrl: user.photoURL,
-        );
-      }
-    } on Exception catch (e) {
+      if (!mounted) return;
       setState(() => _errorMessage = _mapAuthError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -280,31 +254,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     )
                   : const Text('Crear cuenta'),
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // ── Divider
-          Row(
-            children: [
-              const Expanded(child: Divider()),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'o',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const Expanded(child: Divider()),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // ── Google sign in
-          GoogleSignInButton(
-            onPressed: _isLoading ? null : _signInWithGoogle,
-            label: 'Registrarse con Google',
           ),
           const SizedBox(height: 32),
 

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:astro/core/models/app_user.dart';
+import 'package:astro/core/models/registration_status.dart';
 
 /// Repositorio para operaciones CRUD de usuarios en Firestore.
 ///
@@ -61,6 +62,11 @@ class UserRepository {
     await _usersRef.doc(uid).update({'isActive': false});
   }
 
+  /// Elimina permanentemente el documento del usuario en Firestore.
+  Future<void> deleteUserDocument(String uid) async {
+    await _usersRef.doc(uid).delete();
+  }
+
   /// Reactiva un usuario.
   Future<void> activateUser(String uid) async {
     await _usersRef.doc(uid).update({'isActive': true});
@@ -97,9 +103,6 @@ class UserRepository {
     required String email,
     String? photoUrl,
   }) async {
-    final doc = await _usersRef.doc(uid).get();
-    if (doc.exists) return false;
-
     final now = DateTime.now();
     await setUser(
       AppUser(
@@ -109,6 +112,7 @@ class UserRepository {
         photoUrl: photoUrl,
         isActive: true,
         isRoot: false,
+        registrationStatus: RegistrationStatus.pending,
         createdAt: now,
         updatedAt: now,
       ),
@@ -129,5 +133,38 @@ class UserRepository {
     if (phoneNumber != null) fields['phoneNumber'] = phoneNumber;
     if (photoUrl != null) fields['photoUrl'] = photoUrl;
     await _usersRef.doc(uid).update(fields);
+  }
+
+  // ── Aprobación de registro ────────────────────────────
+
+  /// Stream de usuarios pendientes de aprobación.
+  Stream<List<AppUser>> watchPendingUsers() {
+    return _usersRef
+        .where('registrationStatus', isEqualTo: 'pending')
+        .snapshots()
+        .map((s) => s.docs.map(AppUser.fromFirestore).toList());
+  }
+
+  /// Aprueba el registro de un usuario.
+  Future<void> approveUser({
+    required String uid,
+    required String approvedByUid,
+  }) async {
+    await _usersRef.doc(uid).update({
+      'registrationStatus': RegistrationStatus.approved.value,
+      'approvedBy': approvedByUid,
+      'approvedAt': Timestamp.now(),
+      'updatedAt': Timestamp.now(),
+    });
+  }
+
+  /// Rechaza el registro de un usuario.
+  Future<void> rejectUser({required String uid, required String reason}) async {
+    await _usersRef.doc(uid).update({
+      'registrationStatus': RegistrationStatus.rejected.value,
+      'rejectionReason': reason,
+      'rejectedAt': Timestamp.now(),
+      'updatedAt': Timestamp.now(),
+    });
   }
 }

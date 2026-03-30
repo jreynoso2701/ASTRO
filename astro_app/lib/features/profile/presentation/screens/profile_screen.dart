@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import 'package:astro/core/theme/theme_provider.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/ai_agent/providers/ai_agent_providers.dart';
+import 'package:astro/features/notifications/providers/notification_providers.dart';
 
 /// Pantalla de perfil y configuración de cuenta.
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -70,6 +72,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     subtitle: '••••••••',
                     onTap: () => _showChangePasswordDialog(),
                   ),
+                _SettingsTile(
+                  icon: Icons.delete_forever_outlined,
+                  title: 'Eliminar cuenta',
+                  subtitle: 'Elimina permanentemente tu cuenta y datos',
+                  onTap: () => _showDeleteAccountDialog(),
+                  destructive: true,
+                ),
 
                 const SizedBox(height: 24),
 
@@ -366,6 +375,103 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar cuenta'),
+        content: const Text(
+          '¿Estás seguro de que deseas eliminar tu cuenta? '
+          'Se borrarán permanentemente todos tus datos y no podrás recuperarlos. '
+          'Necesitarás autenticarte nuevamente para confirmar.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _executeDeleteAccount();
+            },
+            child: const Text('Eliminar cuenta'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executeDeleteAccount() async {
+    final authRepo = ref.read(authRepositoryProvider);
+    final uid = authRepo.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      // Re-autenticar con contraseña.
+      final password = await _askCurrentPassword();
+      if (password == null) return; // Cancelado
+      final email = authRepo.currentUser?.email ?? '';
+      await authRepo.reauthenticateWithEmail(email: email, password: password);
+
+      // 1. Remover FCM token antes de borrar datos.
+      final notifService = ref.read(notificationServiceProvider);
+      await notifService.removeToken(uid);
+
+      // 2. Llamar Cloud Function que anonimiza datos y elimina cuenta.
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'anonymizeAndDeleteUser',
+        options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
+      );
+      await callable.call();
+
+      // La Cloud Function elimina la cuenta de Auth, lo que cierra sesión.
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().toLowerCase();
+      final errorText = msg.contains('wrong-password')
+          ? 'Contraseña incorrecta.'
+          : msg.contains('cancelled')
+          ? 'Operación cancelada.'
+          : 'Error al eliminar cuenta: $e';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorText)));
+    }
+  }
+
+  Future<String?> _askCurrentPassword() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar contraseña'),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Contraseña actual'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final text = controller.text;
+              if (text.isNotEmpty) Navigator.pop(ctx, text);
+            },
+            child: const Text('Confirmar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _confirmLogout() {
     showDialog(
       context: context,
@@ -526,21 +632,29 @@ class _SettingsTile extends StatelessWidget {
     required this.title,
     this.subtitle,
     required this.onTap,
+    this.destructive = false,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
   final VoidCallback onTap;
+  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iconColor = destructive
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
+    final titleStyle = destructive
+        ? TextStyle(color: theme.colorScheme.error)
+        : null;
     return Card(
       margin: const EdgeInsets.only(bottom: 2),
       child: ListTile(
-        leading: Icon(icon, color: theme.colorScheme.onSurfaceVariant),
-        title: Text(title),
+        leading: Icon(icon, color: iconColor),
+        title: Text(title, style: titleStyle),
         subtitle: subtitle != null
             ? Text(
                 subtitle!,

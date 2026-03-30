@@ -14,7 +14,7 @@
 - [x] Crear proyecto Flutter desde cero.
 - [x] Configurar identificador `com.constelacionr.apps.astro`.
 - [x] Conectar con Firebase (proyecto `astro-b97c2`).
-- [x] Configurar Firebase Authentication (email + Google Sign-In).
+- [x] Configurar Firebase Authentication (email + contraseña — único método).
 - [x] Configurar Firestore Database.
 - [x] Configurar Firebase Storage.
 - [x] Configurar Firebase Cloud Messaging (notificaciones push).
@@ -30,10 +30,24 @@
 
 - [x] Pantalla de login (email + contraseña).
 - [x] Registro con email y contraseña.
-- [x] Registro / Login con cuenta de Google.
+- [x] ~~Registro / Login con cuenta de Google.~~ Removido — solo email/contraseña.
 - [x] Flujo de onboarding para nuevos usuarios (asignación de proyecto y rol posterior).
 - [x] Recuperación de contraseña.
 - [x] Persistencia de sesión.
+- [x] ~~Sign in with Apple.~~ Removido — solo email/contraseña.
+- [x] Eliminación de cuenta con **anonimización de datos** (Cloud Function `anonymizeAndDeleteUser` — reemplaza referencias con "Usuario eliminado - [nombre]", conserva archivos del proyecto, elimina datos personales, notificaciones y configuraciones).
+- [x] **Flujo de Aprobación de Registro:**
+  - [x] Enum `RegistrationStatus` (pending/approved/rejected).
+  - [x] Campos en `AppUser`: `registrationStatus`, `rejectionReason`, `approvedBy`, `approvedAt`, `rejectedAt`.
+  - [x] Nuevo registro crea usuario con status `pending` (Cloud Function + cliente).
+  - [x] Pantalla de espera (`PendingApprovalScreen`) — muestra pasos, opción de eliminar cuenta, contactar soporte después de 24h.
+  - [x] Pantalla de rechazo (`RejectionScreen`) — muestra motivo, contactar soporte, eliminar cuenta.
+  - [x] Pantalla de gestión de solicitudes (`RegistrationRequestsScreen`) — lista pendientes con tiempo de espera, aprobar con asignación de proyecto/rol, rechazar con justificación.
+  - [x] Tile "Solicitudes" en Gestión con badge de conteo (solo Root).
+  - [x] Guards en router: pending→PendingApproval, rejected→Rejection.
+  - [x] Cloud Function `onUserStatusChanged` — notifica al usuario aprobado/rechazado + otros Root.
+  - [x] Cloud Function `checkPendingRegistrations` — recordatorio diario a Root si hay solicitudes >24h.
+  - [x] Cloud Function `onNewUserCreated` actualizada — establece `registrationStatus: pending`, notifica Root sobre nueva solicitud.
 
 ### 1.3 Gestión de Usuarios y Roles
 
@@ -581,4 +595,4 @@
 
 ---
 
-*Última actualización: Agenda en citas (modelo AgendaItem, formulario, detalle con checklist interactivo, pre-población en minutas). Auto-completar criterios de aceptación al completar requerimiento (detalle + Kanban drag & drop). Widget ResolvedRefText para referencias cruzadas en 8 pantallas. Fix StateError ref en dispose() del agente IA. Mejoras TTS (stop on close, mute, disclaimer). Versión 2.3.25+16.*
+*Última actualización: Sign in with Apple (Guideline 4.8 — sign_in_with_apple + crypto deps, entitlements, AuthRepository, botón en login/register). Eliminación de cuenta (Guideline 5.1.1(v) — re-auth por proveedor, delete Firestore doc + Firebase Auth, UI en perfil). Respuesta modelo de negocio (Guideline 2.1(b)). Versión 2.3.25+16.*

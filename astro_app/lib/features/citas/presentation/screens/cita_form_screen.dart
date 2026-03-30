@@ -407,8 +407,9 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
                 onEdit: (id, nuevoTexto) {
                   setState(() {
                     final i = _agenda.indexWhere((a) => a.id == id);
-                    if (i != -1)
+                    if (i != -1) {
                       _agenda[i] = _agenda[i].copyWith(texto: nuevoTexto);
+                    }
                   });
                 },
               ),

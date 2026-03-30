@@ -9,10 +9,12 @@
 
 import {onDocumentCreated, onDocumentUpdated} from "firebase-functions/v2/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {auth} from "firebase-functions/v1";
 import {initializeApp} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {getMessaging} from "firebase-admin/messaging";
+import {getAuth} from "firebase-admin/auth";
 
 initializeApp();
 
@@ -1212,6 +1214,345 @@ export const checkTicketDeadlines = onSchedule(
   }
 );
 
+// ── Callable: ANONIMIZAR Y ELIMINAR CUENTA ───────────────
+
+/**
+ * Helper interno que anonimiza todas las referencias de un usuario
+ * en las colecciones de Firestore y luego elimina el documento del
+ * usuario y su cuenta de Firebase Auth.
+ *
+ * Reemplaza displayName con "Usuario eliminado - [nombre original]"
+ * y limpia datos personales. Los archivos/adjuntos se conservan
+ * pues pertenecen al proyecto.
+ */
+async function performAnonymizeAndDelete(uid: string): Promise<{success: boolean; message: string}> {
+    // Obtener datos del usuario antes de anonimizar
+    const userDoc = await db.collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+      throw new HttpsError("not-found", "Usuario no encontrado.");
+    }
+
+    const userData = userDoc.data()!;
+    const originalName = userData.displayName || userData.email || "Usuario";
+    const anonymizedName = `Usuario eliminado - ${originalName}`;
+
+    // Acumular operaciones para ejecutar en batches de 490
+    type Op =
+      | {type: "update"; ref: FirebaseFirestore.DocumentReference; data: Record<string, unknown>}
+      | {type: "delete"; ref: FirebaseFirestore.DocumentReference};
+    const ops: Op[] = [];
+
+    // ─── 1. Incidentes: createdByName, assignedToName
+    const incidentesCreated = await db
+      .collection("Incidentes")
+      .where("createdBy", "==", uid)
+      .get();
+    for (const doc of incidentesCreated.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName}});
+    }
+
+    const incidentesAssigned = await db
+      .collection("Incidentes")
+      .where("assignedTo", "==", uid)
+      .get();
+    for (const doc of incidentesAssigned.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {assignedToName: anonymizedName}});
+    }
+
+    // ─── 2. Comentarios de Incidentes (subcollection)
+    // Buscar en todos los incidentes (no solo los creados por este usuario)
+    const allIncidentesSnap = await db.collection("Incidentes").get();
+    for (const incDoc of allIncidentesSnap.docs) {
+      const comentarios = await incDoc.ref
+        .collection("Comentarios")
+        .where("authorId", "==", uid)
+        .get();
+      for (const cDoc of comentarios.docs) {
+        ops.push({type: "update", ref: cDoc.ref, data: {authorName: anonymizedName}});
+      }
+    }
+
+    // ─── 3. Requerimientos: createdByName, assignedToName, participantes[]
+    const reqCreated = await db
+      .collection("Requerimientos")
+      .where("createdBy", "==", uid)
+      .get();
+    for (const doc of reqCreated.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName}});
+    }
+
+    const reqAssigned = await db
+      .collection("Requerimientos")
+      .where("assignedTo", "==", uid)
+      .get();
+    for (const doc of reqAssigned.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {assignedToName: anonymizedName}});
+    }
+
+    // Comentarios de Requerimientos
+    const allReqSnap = await db.collection("Requerimientos").get();
+    for (const rDoc of allReqSnap.docs) {
+      const comentarios = await rDoc.ref
+        .collection("ComentariosRequerimientos")
+        .where("authorId", "==", uid)
+        .get();
+      for (const cDoc of comentarios.docs) {
+        ops.push({type: "update", ref: cDoc.ref, data: {authorName: anonymizedName}});
+      }
+    }
+
+    // Participantes y compromisos en Requerimientos (arrays dentro del doc)
+    const allReqsWithParticipant = await db
+      .collection("Requerimientos")
+      .where("participantUids", "array-contains", uid)
+      .get();
+    for (const doc of allReqsWithParticipant.docs) {
+      const data = doc.data();
+      let updated = false;
+      const participantes = (data.participantes || []).map(
+        (p: {uid: string; nombre: string}) => {
+          if (p.uid === uid) {
+            updated = true;
+            return {...p, nombre: anonymizedName};
+          }
+          return p;
+        }
+      );
+      const compromisos = (data.compromisos || []).map(
+        (c: {responsableUid: string; responsable: string}) => {
+          if (c.responsableUid === uid) {
+            updated = true;
+            return {...c, responsable: anonymizedName};
+          }
+          return c;
+        }
+      );
+      if (updated) {
+        ops.push({type: "update", ref: doc.ref, data: {participantes, compromisos}});
+      }
+    }
+
+    // ─── 4. Minutas: createdByName, participantes[], compromisos[]
+    const minutasCreated = await db
+      .collection("Minutas")
+      .where("createdBy", "==", uid)
+      .get();
+    for (const doc of minutasCreated.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName}});
+    }
+
+    const allMinutasWithParticipant = await db
+      .collection("Minutas")
+      .where("participantUids", "array-contains", uid)
+      .get();
+    for (const doc of allMinutasWithParticipant.docs) {
+      const data = doc.data();
+      let updated = false;
+      const participantes = (data.participantes || []).map(
+        (p: {uid: string; nombre: string}) => {
+          if (p.uid === uid) {
+            updated = true;
+            return {...p, nombre: anonymizedName};
+          }
+          return p;
+        }
+      );
+      const compromisos = (data.compromisos || []).map(
+        (c: {responsableUid: string; responsable: string}) => {
+          if (c.responsableUid === uid) {
+            updated = true;
+            return {...c, responsable: anonymizedName};
+          }
+          return c;
+        }
+      );
+      if (updated) {
+        ops.push({type: "update", ref: doc.ref, data: {participantes, compromisos}});
+      }
+    }
+
+    // ─── 5. Citas: createdByName, participantes[]
+    const citasCreated = await db
+      .collection("Citas")
+      .where("createdBy", "==", uid)
+      .get();
+    for (const doc of citasCreated.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName}});
+    }
+
+    // Comentarios de Citas
+    const allCitasSnap = await db.collection("Citas").get();
+    for (const cDoc of allCitasSnap.docs) {
+      const comentarios = await cDoc.ref
+        .collection("ComentariosCitas")
+        .where("authorId", "==", uid)
+        .get();
+      for (const comDoc of comentarios.docs) {
+        ops.push({type: "update", ref: comDoc.ref, data: {authorName: anonymizedName}});
+      }
+    }
+
+    const allCitasWithParticipant = await db
+      .collection("Citas")
+      .where("participantUids", "array-contains", uid)
+      .get();
+    for (const doc of allCitasWithParticipant.docs) {
+      const data = doc.data();
+      let updated = false;
+      const participantes = (data.participantes || []).map(
+        (p: {uid: string; nombre: string}) => {
+          if (p.uid === uid) {
+            updated = true;
+            return {...p, nombre: anonymizedName};
+          }
+          return p;
+        }
+      );
+      if (updated) {
+        ops.push({type: "update", ref: doc.ref, data: {participantes}});
+      }
+    }
+
+    // ─── 6. Tareas: createdByName, assignedToName
+    const tareasCreated = await db
+      .collection("Tareas")
+      .where("createdByUid", "==", uid)
+      .get();
+    for (const doc of tareasCreated.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName}});
+    }
+
+    const tareasAssigned = await db
+      .collection("Tareas")
+      .where("assignedToUid", "==", uid)
+      .get();
+    for (const doc of tareasAssigned.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {assignedToName: anonymizedName}});
+    }
+
+    // ─── 7. DocumentosProyecto: createdByName, versiones[]
+    const docsCreated = await db
+      .collection("DocumentosProyecto")
+      .where("createdBy", "==", uid)
+      .get();
+    for (const doc of docsCreated.docs) {
+      const data = doc.data();
+      const versiones = (data.versiones || []).map(
+        (v: {subidoPor: string; subidoPorNombre: string}) => {
+          if (v.subidoPor === uid) {
+            return {...v, subidoPorNombre: anonymizedName};
+          }
+          return v;
+        }
+      );
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName, versiones}});
+    }
+
+    // ─── 8. CategoriasDocumento: createdByName
+    const catsCreated = await db
+      .collection("CategoriasDocumento")
+      .where("createdBy", "==", uid)
+      .get();
+    for (const doc of catsCreated.docs) {
+      ops.push({type: "update", ref: doc.ref, data: {createdByName: anonymizedName}});
+    }
+
+    // ─── 9. Eliminar registros propios del usuario
+    const collectionsToDelete = [
+      {name: "Notificaciones", field: "userId"},
+      {name: "NotificationConfig", field: "userId"},
+      {name: "projectAssignments", field: "userId"},
+      {name: "BitacoraDocumentos", field: "userId"},
+      {name: "chatAI", field: "userId"},
+    ];
+
+    for (const col of collectionsToDelete) {
+      const snap = await db
+        .collection(col.name)
+        .where(col.field, "==", uid)
+        .get();
+      for (const doc of snap.docs) {
+        ops.push({type: "delete", ref: doc.ref});
+      }
+    }
+
+    // ─── 10. Eliminar documento del usuario
+    ops.push({type: "delete", ref: db.collection("users").doc(uid)});
+
+    // Ejecutar operaciones en batches de 490
+    const BATCH_SIZE = 490;
+    for (let i = 0; i < ops.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      const chunk = ops.slice(i, i + BATCH_SIZE);
+      for (const op of chunk) {
+        if (op.type === "update") {
+          batch.update(op.ref, op.data);
+        } else {
+          batch.delete(op.ref);
+        }
+      }
+      await batch.commit();
+    }
+
+    // ─── 11. Eliminar cuenta de Firebase Auth
+    const adminAuth = getAuth();
+    await adminAuth.deleteUser(uid);
+
+    return {success: true, message: "Cuenta eliminada y datos anonimizados."};
+}
+
+/**
+ * Función invocable: el usuario elimina su PROPIA cuenta.
+ * Anonimiza todas las referencias y elimina Auth + Firestore doc.
+ */
+export const anonymizeAndDeleteUser = onCall(
+  {maxInstances: 10, timeoutSeconds: 120},
+  async (request) => {
+    const callerUid = request.auth?.uid;
+    if (!callerUid) {
+      throw new HttpsError("unauthenticated", "Se requiere autenticación.");
+    }
+    return performAnonymizeAndDelete(callerUid);
+  }
+);
+
+/**
+ * Función invocable: un Root elimina OTRA cuenta de usuario.
+ * Verifica que el caller sea Root y que el target no sea Root.
+ * Anonimiza todas las referencias y elimina Auth + Firestore doc.
+ */
+export const adminAnonymizeAndDeleteUser = onCall(
+  {maxInstances: 10, timeoutSeconds: 120},
+  async (request) => {
+    const callerUid = request.auth?.uid;
+    if (!callerUid) {
+      throw new HttpsError("unauthenticated", "Se requiere autenticación.");
+    }
+
+    // Verificar que el caller es Root
+    const callerDoc = await db.collection("users").doc(callerUid).get();
+    if (!callerDoc.exists || callerDoc.data()?.isRoot !== true) {
+      throw new HttpsError("permission-denied", "Solo usuarios Root pueden eliminar otras cuentas.");
+    }
+
+    const targetUid = request.data?.targetUid;
+    if (!targetUid || typeof targetUid !== "string") {
+      throw new HttpsError("invalid-argument", "Se requiere targetUid.");
+    }
+
+    // No permitir eliminar cuentas Root
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) {
+      throw new HttpsError("not-found", "Usuario objetivo no encontrado.");
+    }
+    if (targetDoc.data()?.isRoot === true) {
+      throw new HttpsError("permission-denied", "No se puede eliminar una cuenta Root.");
+    }
+
+    return performAnonymizeAndDelete(targetUid);
+  }
+);
+
 // ── Trigger: NUEVO USUARIO REGISTRADO ────────────────────
 
 /**
@@ -1235,11 +1576,22 @@ export const onNewUserCreated = auth.user().onCreate(
         photoUrl: userRecord.photoURL || null,
         isActive: true,
         isRoot: false,
+        registrationStatus: "pending",
         fcmTokens: [],
         pushGlobalEnabled: true,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
+    } else {
+      // Si el documento ya existe (creado por el cliente), asegurar
+      // que tenga registrationStatus: pending si no lo tiene.
+      const data = existingDoc.data();
+      if (!data?.registrationStatus) {
+        await userRef.update({
+          registrationStatus: "pending",
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
     }
 
     // 2. Notificar a todos los Root activos.
@@ -1261,11 +1613,168 @@ export const onNewUserCreated = auth.user().onCreate(
     if (recipientUids.length === 0) return;
 
     await sendNotifications(recipientUids, {
-      titulo: "Nuevo usuario registrado",
-      cuerpo: `${displayName} se ha registrado en ASTRO.`,
-      tipo: "nuevo_usuario",
+      titulo: "📋 Nueva solicitud de registro",
+      cuerpo: `${displayName} solicita acceso a ASTRO. Revisa las solicitudes pendientes.`,
+      tipo: "solicitud_registro",
       refType: "user",
       refId: uid,
+      projectId: "",
+      projectName: "",
+    });
+  }
+);
+
+// ── Trigger: CAMBIO DE ESTADO DE REGISTRO DE USUARIO ─────
+
+/**
+ * Se dispara cuando se actualiza un documento en `users/{uid}`.
+ * Detecta cambios en `registrationStatus` y envía notificaciones:
+ * - approved → push al usuario aprobado + notifica a otros Root.
+ * - rejected → push al usuario rechazado + notifica a otros Root.
+ */
+export const onUserStatusChanged = onDocumentUpdated(
+  "users/{uid}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!before || !after) return;
+
+    const oldStatus = before.registrationStatus;
+    const newStatus = after.registrationStatus;
+
+    // Solo actuar si el status cambió desde "pending"
+    if (oldStatus !== "pending" || oldStatus === newStatus) return;
+
+    const uid = event.params.uid;
+    const displayName = after.displayName || after.email || "Usuario";
+
+    if (newStatus === "approved") {
+      // Notificar al usuario aprobado
+      await sendNotifications([uid], {
+        titulo: "🎉 ¡Bienvenido a ASTRO!",
+        cuerpo: "Tu solicitud ha sido aprobada. Ya puedes acceder a la plataforma.",
+        tipo: "registro_aprobado",
+        refType: "user",
+        refId: uid,
+        projectId: "",
+        projectName: "",
+      });
+
+      // Notificar a otros Root
+      const rootSnap = await db
+        .collection("users")
+        .where("isRoot", "==", true)
+        .where("isActive", "==", true)
+        .get();
+
+      const approvedByUid = after.approvedBy || "";
+      const otherRoots = rootSnap.docs
+        .map((doc) => doc.id)
+        .filter((id) => id !== uid && id !== approvedByUid);
+
+      if (otherRoots.length > 0) {
+        await sendNotifications(otherRoots, {
+          titulo: "✅ Solicitud aprobada",
+          cuerpo: `${displayName} fue aprobado por un administrador.`,
+          tipo: "registro_aprobado_admin",
+          refType: "user",
+          refId: uid,
+          projectId: "",
+          projectName: "",
+        });
+      }
+    } else if (newStatus === "rejected") {
+      const reason = after.rejectionReason || "No se proporcionó motivo.";
+
+      // Notificar al usuario rechazado
+      await sendNotifications([uid], {
+        titulo: "Solicitud no aprobada",
+        cuerpo: `Tu solicitud fue revisada. Motivo: ${reason}`,
+        tipo: "registro_rechazado",
+        refType: "user",
+        refId: uid,
+        projectId: "",
+        projectName: "",
+      });
+
+      // Notificar a otros Root
+      const rootSnap = await db
+        .collection("users")
+        .where("isRoot", "==", true)
+        .where("isActive", "==", true)
+        .get();
+
+      const otherRoots = rootSnap.docs
+        .map((doc) => doc.id)
+        .filter((id) => id !== uid);
+
+      if (otherRoots.length > 0) {
+        await sendNotifications(otherRoots, {
+          titulo: "❌ Solicitud rechazada",
+          cuerpo: `La solicitud de ${displayName} fue rechazada.`,
+          tipo: "registro_rechazado_admin",
+          refType: "user",
+          refId: uid,
+          projectId: "",
+          projectName: "",
+        });
+      }
+    }
+  }
+);
+
+// ── Scheduled: SOLICITUDES DE REGISTRO PENDIENTES ────────
+
+/**
+ * Se ejecuta diariamente a las 09:00 AM (CDMX).
+ * Revisa si hay solicitudes de registro pendientes con más de
+ * 24 horas y envía un recordatorio a los usuarios Root.
+ */
+export const checkPendingRegistrations = onSchedule(
+  {
+    schedule: "every day 09:00",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const pendingSnap = await db
+      .collection("users")
+      .where("registrationStatus", "==", "pending")
+      .get();
+
+    if (pendingSnap.empty) return;
+
+    // Filtrar los que tienen más de 24 horas
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    let overdue = 0;
+
+    for (const doc of pendingSnap.docs) {
+      const data = doc.data();
+      const createdAt = data.createdAt?.toMillis?.() || 0;
+      if (now - createdAt > twentyFourHours) {
+        overdue++;
+      }
+    }
+
+    if (overdue === 0) return;
+
+    // Obtener usuarios Root activos
+    const rootSnap = await db
+      .collection("users")
+      .where("isRoot", "==", true)
+      .where("isActive", "==", true)
+      .get();
+
+    if (rootSnap.empty) return;
+
+    const rootUids = rootSnap.docs.map((doc) => doc.id);
+
+    await sendNotifications(rootUids, {
+      titulo: "⏳ Solicitudes pendientes de revisión",
+      cuerpo: `Hay ${overdue} solicitud(es) de registro con más de 24 horas sin revisar.`,
+      tipo: "recordatorio_solicitudes",
+      refType: "user",
+      refId: "",
       projectId: "",
       projectName: "",
     });

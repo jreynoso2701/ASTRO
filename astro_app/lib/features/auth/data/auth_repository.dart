@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
-/// Repositorio de autenticación — encapsula Firebase Auth y Google Sign-In.
+/// Repositorio de autenticación — encapsula Firebase Auth (email/contraseña).
 class AuthRepository {
   AuthRepository({FirebaseAuth? firebaseAuth})
     : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
@@ -36,24 +35,12 @@ class AuthRepository {
     );
   }
 
-  /// Iniciar sesión / Registrar con Google.
-  Future<UserCredential> signInWithGoogle() async {
-    final googleUser = await GoogleSignIn.instance.authenticate();
-    final googleAuth = googleUser.authentication;
-
-    final credential = GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
-    );
-
-    return _firebaseAuth.signInWithCredential(credential);
-  }
-
   /// Enviar correo de recuperación de contraseña.
   Future<void> sendPasswordResetEmail({required String email}) async {
     await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
 
-  /// Verifica si el usuario actual usa email/password (no Google).
+  /// Verifica si el usuario actual usa email/password.
   bool get isPasswordUser {
     final user = _firebaseAuth.currentUser;
     if (user == null) return false;
@@ -71,7 +58,7 @@ class AuthRepository {
     if (photoURL != null) await user.updatePhotoURL(photoURL);
   }
 
-  /// Re-autentica al usuario con email y contraseña (necesario antes de cambiar password).
+  /// Re-autentica al usuario con email y contraseña (necesario antes de cambiar password o eliminar cuenta).
   Future<void> reauthenticateWithEmail({
     required String email,
     required String password,
@@ -92,11 +79,16 @@ class AuthRepository {
     await user.updatePassword(newPassword);
   }
 
+  /// Elimina la cuenta de Firebase Auth del usuario actual.
+  /// Requiere re-autenticación previa.
+  Future<void> deleteAccount() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw StateError('No hay usuario autenticado.');
+    await user.delete();
+  }
+
   /// Cerrar sesión.
   Future<void> signOut() async {
-    await Future.wait([
-      _firebaseAuth.signOut(),
-      GoogleSignIn.instance.signOut(),
-    ]);
+    await _firebaseAuth.signOut();
   }
 }

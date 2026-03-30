@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:astro/core/models/registration_status.dart';
 import 'package:astro/core/models/user_role.dart';
 
 /// Modelo de usuario de ASTRO.
@@ -18,6 +19,11 @@ class AppUser {
     this.defaultEmpresaId,
     this.fcmTokens = const [],
     this.pushGlobalEnabled = true,
+    this.registrationStatus = RegistrationStatus.approved,
+    this.rejectionReason,
+    this.approvedBy,
+    this.approvedAt,
+    this.rejectedAt,
   });
 
   final String uid;
@@ -30,8 +36,22 @@ class AppUser {
   final String? defaultEmpresaId;
   final List<String> fcmTokens;
   final bool pushGlobalEnabled;
+  final RegistrationStatus registrationStatus;
+  final String? rejectionReason;
+  final String? approvedBy;
+  final DateTime? approvedAt;
+  final DateTime? rejectedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// `true` si el usuario está aprobado (o es usuario legacy sin campo).
+  bool get isApproved => registrationStatus == RegistrationStatus.approved;
+
+  /// `true` si el registro está pendiente de aprobación.
+  bool get isPending => registrationStatus == RegistrationStatus.pending;
+
+  /// `true` si el registro fue rechazado.
+  bool get isRejected => registrationStatus == RegistrationStatus.rejected;
 
   /// Rol efectivo global — Root si `isRoot`, de lo contrario Usuario.
   /// Los roles por proyecto se gestionan vía `projectAssignments`.
@@ -68,6 +88,17 @@ class AppUser {
               .toList() ??
           const [],
       pushGlobalEnabled: data['pushGlobalEnabled'] as bool? ?? true,
+      registrationStatus: RegistrationStatus.fromString(
+        data['registrationStatus'] as String?,
+      ),
+      rejectionReason: data['rejectionReason'] as String?,
+      approvedBy: data['approvedBy'] as String?,
+      approvedAt: data['approvedAt'] != null
+          ? parseDate(data['approvedAt'])
+          : null,
+      rejectedAt: data['rejectedAt'] != null
+          ? parseDate(data['rejectedAt'])
+          : null,
       createdAt: parseDate(data['createdAt'] ?? data['created_time']),
       updatedAt: parseDate(
         data['updatedAt'] ?? data['createdAt'] ?? data['created_time'],
@@ -89,6 +120,11 @@ class AppUser {
       if (defaultEmpresaId != null) 'defaultEmpresaId': defaultEmpresaId,
       'fcmTokens': fcmTokens,
       'pushGlobalEnabled': pushGlobalEnabled,
+      'registrationStatus': registrationStatus.value,
+      if (rejectionReason != null) 'rejectionReason': rejectionReason,
+      if (approvedBy != null) 'approvedBy': approvedBy,
+      if (approvedAt != null) 'approvedAt': Timestamp.fromDate(approvedAt!),
+      if (rejectedAt != null) 'rejectedAt': Timestamp.fromDate(rejectedAt!),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -105,6 +141,11 @@ class AppUser {
     String? defaultEmpresaId,
     List<String>? fcmTokens,
     bool? pushGlobalEnabled,
+    RegistrationStatus? registrationStatus,
+    String? rejectionReason,
+    String? approvedBy,
+    DateTime? approvedAt,
+    DateTime? rejectedAt,
     DateTime? updatedAt,
   }) {
     return AppUser(
@@ -118,6 +159,11 @@ class AppUser {
       defaultEmpresaId: defaultEmpresaId ?? this.defaultEmpresaId,
       fcmTokens: fcmTokens ?? this.fcmTokens,
       pushGlobalEnabled: pushGlobalEnabled ?? this.pushGlobalEnabled,
+      registrationStatus: registrationStatus ?? this.registrationStatus,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      approvedBy: approvedBy ?? this.approvedBy,
+      approvedAt: approvedAt ?? this.approvedAt,
+      rejectedAt: rejectedAt ?? this.rejectedAt,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
     );

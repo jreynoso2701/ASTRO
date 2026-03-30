@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -286,7 +287,7 @@ class _UserInfoSection extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Actions — solo visible para Root
-        if (isViewerRoot && !user.isRoot)
+        if (isViewerRoot && !user.isRoot) ...[
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -302,6 +303,14 @@ class _UserInfoSection extends StatelessWidget {
               ),
             ),
           ),
+
+          // Eliminar definitivamente — solo para usuarios desactivados
+          if (!user.isActive)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: _PermanentDeleteButton(user: user),
+            ),
+        ],
       ],
     );
   }
@@ -507,5 +516,134 @@ class _AssignmentsSection extends StatelessWidget {
       UserRole.soporte => const Color(0xFFFFC107),
       UserRole.usuario => const Color(0xFF4CAF50),
     };
+  }
+}
+
+// ── Botón de eliminación permanente ──────────────────────
+
+class _PermanentDeleteButton extends ConsumerStatefulWidget {
+  const _PermanentDeleteButton({required this.user});
+
+  final AppUser user;
+
+  @override
+  ConsumerState<_PermanentDeleteButton> createState() =>
+      _PermanentDeleteButtonState();
+}
+
+class _PermanentDeleteButtonState
+    extends ConsumerState<_PermanentDeleteButton> {
+  bool _isDeleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: _isDeleting ? null : () => _confirmDelete(context),
+        icon: _isDeleting
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.delete_forever),
+        label: Text(_isDeleting ? 'Eliminando...' : 'Eliminar definitivamente'),
+        style: FilledButton.styleFrom(
+          backgroundColor: theme.colorScheme.error,
+          foregroundColor: theme.colorScheme.onError,
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    final user = widget.user;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(
+          Icons.warning_amber_rounded,
+          color: Theme.of(ctx).colorScheme.error,
+          size: 48,
+        ),
+        title: const Text('Eliminar definitivamente'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '¿Eliminar permanentemente la cuenta de ${user.displayName}?',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Esta acción es IRREVERSIBLE. Se realizará lo siguiente:',
+            ),
+            const SizedBox(height: 8),
+            const Text('• Su nombre se anonimizará en todos los registros'),
+            const Text('• Se eliminarán sus datos personales'),
+            const Text('• Se eliminará su cuenta de autenticación'),
+            const Text('• No podrá volver a acceder a la plataforma'),
+            const SizedBox(height: 12),
+            const Text(
+              'Los archivos del proyecto se conservarán.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _executeDelete();
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Eliminar permanentemente'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _executeDelete() async {
+    setState(() => _isDeleting = true);
+
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'adminAnonymizeAndDeleteUser',
+        options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
+      );
+      await callable.call({'targetUid': widget.user.uid});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuario eliminado permanentemente')),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 }
