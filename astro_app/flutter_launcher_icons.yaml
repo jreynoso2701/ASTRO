@@ -10,6 +10,7 @@ flutter_launcher_icons:
 
   # ── iOS ──
   ios: true
+  image_path_ios: "assets/images/branding/logo_ios.png"
   remove_alpha_ios: true
 
   # ── Web ──
