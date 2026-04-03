@@ -14,6 +14,7 @@ import 'package:astro/features/documentation/providers/documento_providers.dart'
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
+import 'package:astro/features/avisos/providers/aviso_providers.dart';
 
 /// Pantalla de detalle/dashboard de un proyecto.
 class ProjectDetailScreen extends ConsumerWidget {
@@ -91,6 +92,10 @@ class ProjectDetailScreen extends ConsumerWidget {
             ),
             onTareasTap: () => context.push('/projects/$projectId/tareas'),
             pendingTareas: ref.watch(pendingTareaCountProvider(projectId)),
+            onAvisosTap: isRoot
+                ? () => context.push('/projects/$projectId/avisos')
+                : null,
+            avisoCount: isRoot ? ref.watch(avisoCountProvider(projectId)) : 0,
             onNotifSettingsTap: isRoot
                 ? () =>
                       context.push('/projects/$projectId/notification-settings')
@@ -175,6 +180,8 @@ class _ProjectInfoSection extends StatelessWidget {
     required this.citasProgramadas,
     required this.onTareasTap,
     required this.pendingTareas,
+    this.onAvisosTap,
+    this.avisoCount = 0,
     this.onNotifSettingsTap,
     this.descripcion,
   });
@@ -200,6 +207,8 @@ class _ProjectInfoSection extends StatelessWidget {
   final int citasProgramadas;
   final VoidCallback onTareasTap;
   final int pendingTareas;
+  final VoidCallback? onAvisosTap;
+  final int avisoCount;
   final VoidCallback? onNotifSettingsTap;
 
   @override
@@ -472,6 +481,23 @@ class _ProjectInfoSection extends StatelessWidget {
             label: const Text('Ver tareas'),
           ),
         ),
+
+        // Botón de avisos (solo Root)
+        if (isRoot && onAvisosTap != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: enabled ? onAvisosTap : null,
+              icon: Badge(
+                isLabelVisible: avisoCount > 0,
+                label: Text('$avisoCount'),
+                child: const Icon(Icons.campaign_outlined),
+              ),
+              label: const Text('Ver avisos'),
+            ),
+          ),
+        ],
 
         // Botón de notificaciones (solo Root)
         if (isRoot && onNotifSettingsTap != null) ...[

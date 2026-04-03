@@ -19,6 +19,7 @@ class AppUser {
     this.defaultEmpresaId,
     this.fcmTokens = const [],
     this.pushGlobalEnabled = true,
+    this.inAppNotificationsEnabled = true,
     this.registrationStatus = RegistrationStatus.approved,
     this.rejectionReason,
     this.approvedBy,
@@ -36,6 +37,7 @@ class AppUser {
   final String? defaultEmpresaId;
   final List<String> fcmTokens;
   final bool pushGlobalEnabled;
+  final bool inAppNotificationsEnabled;
   final RegistrationStatus registrationStatus;
   final String? rejectionReason;
   final String? approvedBy;
@@ -88,6 +90,8 @@ class AppUser {
               .toList() ??
           const [],
       pushGlobalEnabled: data['pushGlobalEnabled'] as bool? ?? true,
+      inAppNotificationsEnabled:
+          data['inAppNotificationsEnabled'] as bool? ?? true,
       registrationStatus: RegistrationStatus.fromString(
         data['registrationStatus'] as String?,
       ),
@@ -120,6 +124,7 @@ class AppUser {
       if (defaultEmpresaId != null) 'defaultEmpresaId': defaultEmpresaId,
       'fcmTokens': fcmTokens,
       'pushGlobalEnabled': pushGlobalEnabled,
+      'inAppNotificationsEnabled': inAppNotificationsEnabled,
       'registrationStatus': registrationStatus.value,
       if (rejectionReason != null) 'rejectionReason': rejectionReason,
       if (approvedBy != null) 'approvedBy': approvedBy,
@@ -141,6 +146,7 @@ class AppUser {
     String? defaultEmpresaId,
     List<String>? fcmTokens,
     bool? pushGlobalEnabled,
+    bool? inAppNotificationsEnabled,
     RegistrationStatus? registrationStatus,
     String? rejectionReason,
     String? approvedBy,
@@ -159,6 +165,8 @@ class AppUser {
       defaultEmpresaId: defaultEmpresaId ?? this.defaultEmpresaId,
       fcmTokens: fcmTokens ?? this.fcmTokens,
       pushGlobalEnabled: pushGlobalEnabled ?? this.pushGlobalEnabled,
+      inAppNotificationsEnabled:
+          inAppNotificationsEnabled ?? this.inAppNotificationsEnabled,
       registrationStatus: registrationStatus ?? this.registrationStatus,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       approvedBy: approvedBy ?? this.approvedBy,

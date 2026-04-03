@@ -203,7 +203,7 @@ class _MinutaDetailScreenState extends ConsumerState<MinutaDetailScreen> {
     final pdf = await MinutaPdfService.generate(minuta);
     await Printing.layoutPdf(
       onLayout: (_) async => pdf.save(),
-      name: 'Minuta_${minuta.folio}',
+      name: minuta.pdfFileName(),
     );
   }
 
@@ -212,7 +212,7 @@ class _MinutaDetailScreenState extends ConsumerState<MinutaDetailScreen> {
     final bytes = await pdf.save();
     await Printing.sharePdf(
       bytes: bytes,
-      filename: 'Minuta_${minuta.folio}.pdf',
+      filename: '${minuta.pdfFileName()}.pdf',
     );
   }
 }

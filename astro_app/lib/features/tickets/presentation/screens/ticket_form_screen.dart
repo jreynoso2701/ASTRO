@@ -18,6 +18,7 @@ import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/cita.dart';
+import 'package:astro/core/widgets/resolved_ref_text.dart';
 
 /// Coberturas V1 disponibles.
 const _coberturas = [
@@ -555,8 +556,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Chip(
                     avatar: const Icon(Icons.description_outlined, size: 16),
-                    label: Text(
-                      id.length > 12 ? '${id.substring(0, 12)}...' : id,
+                    label: ResolvedRefText(
+                      id: id,
+                      type: RefType.minuta,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     onDeleted: () => setState(() => _refMinutas.remove(id)),
@@ -589,8 +591,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Chip(
                     avatar: const Icon(Icons.event_outlined, size: 16),
-                    label: Text(
-                      id.length > 12 ? '${id.substring(0, 12)}...' : id,
+                    label: ResolvedRefText(
+                      id: id,
+                      type: RefType.cita,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     onDeleted: () => setState(() => _refCitas.remove(id)),

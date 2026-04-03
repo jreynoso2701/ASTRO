@@ -117,7 +117,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
           if (isWide) {
             return Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
                   width: 400,

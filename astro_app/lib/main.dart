@@ -9,6 +9,7 @@ import 'package:astro/core/theme/theme_provider.dart';
 import 'package:astro/core/router/app_router.dart';
 import 'package:astro/core/services/notification_service.dart';
 import 'package:astro/core/services/fcm_initializer.dart';
+import 'package:astro/core/services/in_app_notification_listener.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 Future<void> main() async {
@@ -46,6 +47,9 @@ class AstroApp extends ConsumerWidget {
         darkTheme: AppTheme.dark,
         themeMode: themeMode,
         routerConfig: router,
+        builder: (context, child) {
+          return InAppNotificationListener(child: child!);
+        },
       ),
     );
   }

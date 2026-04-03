@@ -105,6 +105,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     );
                   },
                 ),
+                _InAppNotificationToggleTile(
+                  enabled: profile.inAppNotificationsEnabled,
+                  onChanged: (value) async {
+                    await ref.read(userRepositoryProvider).updateUserFields(
+                      profile.uid,
+                      {'inAppNotificationsEnabled': value},
+                    );
+                  },
+                ),
 
                 const SizedBox(height: 24),
 
@@ -738,6 +747,38 @@ class _NotificationToggleTile extends StatelessWidget {
         title: const Text('Notificaciones push'),
         subtitle: Text(
           enabled ? 'Activadas' : 'Desactivadas',
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        value: enabled,
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _InAppNotificationToggleTile extends StatelessWidget {
+  const _InAppNotificationToggleTile({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: SwitchListTile(
+        secondary: Icon(
+          enabled ? Icons.mark_chat_read_outlined : Icons.chat_bubble_outline,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Notificaciones in-app'),
+        subtitle: Text(
+          enabled
+              ? 'Activadas — banners y sonidos al recibir'
+              : 'Desactivadas — modo concentración',
           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
         value: enabled,

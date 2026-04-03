@@ -59,7 +59,11 @@ enum NotificationType {
   citaActualizada('cita_actualizada', 'Cita actualizada'),
   citaCancelada('cita_cancelada', 'Cita cancelada'),
   citaCompletada('cita_completada', 'Cita completada'),
-  citaRecordatorio('cita_recordatorio', 'Recordatorio de cita');
+  citaRecordatorio('cita_recordatorio', 'Recordatorio de cita'),
+
+  // Avisos
+  avisoCreado('aviso_creado', 'Nuevo aviso'),
+  avisoUrgente('aviso_urgente', 'Aviso urgente');
 
   const NotificationType(this.value, this.label);
   final String value;
@@ -79,7 +83,8 @@ enum NotificationRefType {
   requerimiento('requerimiento'),
   cita('cita'),
   minuta('minuta'),
-  tarea('tarea');
+  tarea('tarea'),
+  aviso('aviso');
 
   const NotificationRefType(this.value);
   final String value;

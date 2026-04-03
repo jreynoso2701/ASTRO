@@ -624,6 +624,15 @@
         { "fieldPath": "empresaId", "order": "ASCENDING" },
         { "fieldPath": "estatusProyecto", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "Avisos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

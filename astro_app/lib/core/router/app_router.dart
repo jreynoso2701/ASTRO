@@ -53,6 +53,9 @@ import 'package:astro/features/tareas/presentation/screens/tareas_list_screen.da
 import 'package:astro/features/tareas/presentation/screens/tareas_global_screen.dart';
 import 'package:astro/features/tareas/presentation/screens/tarea_detail_screen.dart';
 import 'package:astro/features/tareas/presentation/screens/tarea_form_screen.dart';
+import 'package:astro/features/avisos/presentation/screens/aviso_list_screen.dart';
+import 'package:astro/features/avisos/presentation/screens/aviso_detail_screen.dart';
+import 'package:astro/features/avisos/presentation/screens/aviso_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -111,6 +114,12 @@ abstract final class AppRoutes {
   static const String citaNew = '/projects/:id/citas/new';
   static const String citaDetail = '/projects/:id/citas/:citaId';
   static const String citaEdit = '/projects/:id/citas/:citaId/edit';
+
+  // Avisos
+  static const String projectAvisos = '/projects/:id/avisos';
+  static const String avisoNew = '/projects/:id/avisos/new';
+  static const String avisoDetail = '/projects/:id/avisos/:avisoId';
+  static const String avisoEdit = '/projects/:id/avisos/:avisoId/edit';
 
   // Perfil
   static const String profile = '/profile';
@@ -575,6 +584,32 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.projectCitas,
         builder: (context, state) =>
             CitaListScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Rutas de avisos (más específicas primero)
+      GoRoute(
+        path: AppRoutes.avisoNew,
+        builder: (context, state) =>
+            AvisoFormScreen(projectId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.avisoEdit,
+        builder: (context, state) => AvisoFormScreen(
+          projectId: state.pathParameters['id']!,
+          avisoId: state.pathParameters['avisoId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.avisoDetail,
+        builder: (context, state) => AvisoDetailScreen(
+          projectId: state.pathParameters['id']!,
+          avisoId: state.pathParameters['avisoId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.projectAvisos,
+        builder: (context, state) =>
+            AvisoListScreen(projectId: state.pathParameters['id']!),
       ),
 
       // ── Rutas de tareas (más específicas primero)

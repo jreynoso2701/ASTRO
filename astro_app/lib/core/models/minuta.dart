@@ -239,6 +239,24 @@ class Minuta {
   int get compromisosVencidos =>
       compromisos.where((c) => c.status == CompromisoStatus.vencido).length;
 
+  /// Nombre base para el archivo PDF (sin extensión).
+  ///
+  /// Formato: `{folio}_{fecha}_v{version}`
+  /// Ejemplo: `MIN-PROJ-001_2026-04-03_v1.0.0`
+  ///
+  /// Si [secuencial] > 0 se agrega sufijo `_01`, `_02`, etc.
+  /// para diferenciar varias minutas generadas el mismo día.
+  String pdfFileName({int secuencial = 0}) {
+    final fechaStr = fecha != null
+        ? '${fecha!.year}-${fecha!.month.toString().padLeft(2, '0')}-${fecha!.day.toString().padLeft(2, '0')}'
+        : 'sin-fecha';
+    final base = '${folio}_${fechaStr}_v$version';
+    if (secuencial > 0) {
+      return '${base}_${secuencial.toString().padLeft(2, '0')}';
+    }
+    return base;
+  }
+
   factory Minuta.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
 

@@ -581,6 +581,41 @@
 - [x] **Texto del empty state actualizado** — Incluir "tareas" en la descripción de capacidades del asistente.
 - [x] Validación con `dart analyze`.
 
+### 2.7 Módulo de Avisos
+
+- [x] Modelo de datos `Aviso` en Firestore (colección `Avisos/{docId}`).
+- [x] Sub-modelo `AvisoLectura` (uid, leido, leidoAt) — sistema de read receipts estilo WhatsApp.
+- [x] Enum `AvisoPrioridad` (informativo, importante, urgente) con color y label.
+- [x] Campos: id, titulo, mensaje, prioridad, projectId, projectName, createdBy, createdByName, destinatarios (List<String>), todosLosUsuarios (bool), lecturas (Map<String, AvisoLectura>), isActive, expiresAt, createdAt, updatedAt.
+- [x] Computed: `leidoCount`, `totalDestinatarios`, `todosLeyeron`, `isExpired`.
+- [x] `AvisoRepository` — CRUD, `watchByProject` (Root), `watchByRecipient` (filtrado), `watchAviso`, `markAsRead`, `initializeLecturas`, `deactivate`.
+- [x] Providers Riverpod: `avisoRepositoryProvider`, `avisosByProjectProvider`, `avisosByRecipientProvider`, `visibleAvisosProvider` (rol-based), `avisoByIdProvider`, `avisoCountProvider`, `unreadAvisoCountProvider`, `avisoSearchProvider`, `filteredAvisosProvider`.
+- [x] Pantalla **Listado de Avisos** — búsqueda, contador, tarjetas con franja de prioridad, ícono, punto azul de no leído, preview de mensaje, chips de audiencia y prioridad, indicador de read receipts (Root: done_all + conteo), fecha.
+- [x] Pantalla **Detalle de Aviso** — banner de prioridad, título, meta (autor, fecha, expiración), mensaje completo, audience info, sección de read receipts (Root): barra de progreso, lista de usuarios con estado leído/no leído y timestamp. Auto-marca como leído al abrir.
+- [x] Pantalla **Formulario de Aviso** — título (max 120), mensaje (max 1000, multiline), selector de prioridad (SegmentedButton), toggle "Enviar a todos" con switch o selección individual de miembros del proyecto, fecha de expiración opcional. Modo edición para avisos existentes.
+- [x] Acceso **solo Root** — botón "Ver avisos" en detalle de proyecto (con badge de conteo), visible solo para usuarios Root.
+- [x] Rutas: `/projects/:id/avisos`, `avisos/new`, `avisos/:avisoId`, `avisos/:avisoId/edit`.
+- [x] `NotificationType` expandido — `avisoCreado`, `avisoUrgente`.
+- [x] `NotificationRefType` expandido — `aviso`.
+- [x] Bandeja de notificaciones actualizada — navegación a detalle de aviso + íconos (campaign_outlined / campaign).
+- [x] Cloud Function `onAvisoCreated` — trigger `onDocumentCreated("Avisos/{avisoId}")`: determina destinatarios (todos los miembros o lista específica), excluye al creador, envía push + notificación in-app con emoji por prioridad (📢/⚠️/🚨).
+- [x] Índice Firestore compuesto: `Avisos` → `projectId` ASC + `isActive` ASC + `createdAt` DESC.
+
+### 2.8 Notificaciones In-App (Toasts en tiempo real)
+
+- [x] **`NotificationSoundService`** — Genera tono de notificación WAV en memoria (880 Hz → 660 Hz, ding-dong de 300 ms) y lo reproduce con `audioplayers`. Incluye haptic feedback en mobile.
+- [x] **`InAppToastWidget`** — Banner overlay animado (slide-in desde arriba + fade). Diseño Nothing Phone: barra lateral de color por `refType`, icono por `NotificationType`, nombre del proyecto, título y cuerpo. Auto-dismiss 5 s, swipe-up para cerrar, tap para navegar al elemento.
+- [x] **`InAppNotificationListener`** — Widget wrapper dentro de `MaterialApp.router(builder:)`. Escucha `unreadNotificationsProvider` en tiempo real. Primera emisión: seed de IDs sin toast. Emisiones siguientes: detecta IDs nuevos y muestra toasts. Cola de máximo 3 simultáneos.
+- [x] Navegación desde toast — tap marca como leída y navega: ticket, requerimiento, minuta, tarea, cita, aviso (mismas rutas que inbox).
+- [x] **Campo `inAppNotificationsEnabled`** en `AppUser` (bool, default `true`) — toggle global para activar/desactivar banners y sonido.
+- [x] **Toggle en "Mi cuenta"** — `_InAppNotificationToggleTile` con switch, icono adaptativo, subtítulo "modo concentración" cuando está desactivado.
+- [x] Mismo filtrado que push — las Cloud Functions ya crean `Notificaciones/{docId}` solo para usuarios elegibles (según `NotificationConfig` por proyecto y categoría). El toggle in-app solo controla la presentación visual/sonora, no la creación del doc.
+- [x] Dependencia `audioplayers: ^6.1.0` añadida a `pubspec.yaml`.
+- [x] Carpeta `assets/sounds/` registrada en pubspec (preparada para sonidos personalizados futuros).
+- [x] Sin nuevos índices Firestore necesarios — reutiliza los queries existentes de `Notificaciones` (userId + createdAt).
+- [x] Sin cambios en Cloud Functions — el sistema aprovecha los docs `Notificaciones` que ya se crean.
+- [x] Sin cambios en Firestore Security Rules — la colección `Notificaciones` ya tiene reglas de acceso.
+
 ---
 
 ## Leyenda de Estados
@@ -595,4 +630,4 @@
 
 ---
 
-*Última actualización: Sign in with Apple (Guideline 4.8 — sign_in_with_apple + crypto deps, entitlements, AuthRepository, botón en login/register). Eliminación de cuenta (Guideline 5.1.1(v) — re-auth por proveedor, delete Firestore doc + Firebase Auth, UI en perfil). Respuesta modelo de negocio (Guideline 2.1(b)). Versión 2.3.25+16.*
+*Última actualización: Notificaciones In-App — toasts en tiempo real con sonido, toggle global, navegación desde banner (sección 2.8).*

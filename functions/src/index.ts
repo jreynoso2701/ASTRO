@@ -240,7 +240,7 @@ async function sendNotifications(
     titulo: string;
     cuerpo: string;
     tipo: string;
-    refType: "ticket" | "requerimiento" | "cita" | "minuta" | "tarea" | "proyecto" | "user";
+    refType: "ticket" | "requerimiento" | "cita" | "minuta" | "tarea" | "proyecto" | "user" | "aviso";
     refId: string;
     projectId: string;
     projectName: string;
@@ -909,6 +909,64 @@ export const onCitaUpdated = onDocumentUpdated(
         projectName,
       });
     }
+  }
+);
+
+// ── Trigger: AVISOS ──────────────────────────────────────
+
+/**
+ * Aviso creado → notificar a los destinatarios.
+ * Si todosLosUsuarios = true, se envía a todos los miembros del proyecto.
+ * Si no, se envía solo a los UIDs en destinatarios[].
+ * Avisos urgentes usan un tipo de notificación diferente.
+ */
+export const onAvisoCreated = onDocumentCreated(
+  "Avisos/{avisoId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const projectId = data.projectId as string | undefined;
+    if (!projectId) return;
+
+    const projectName = data.projectName as string ?? "";
+    const titulo = data.titulo as string ?? "Nuevo aviso";
+    const mensaje = data.mensaje as string ?? "";
+    const prioridad = data.prioridad as string ?? "informativo";
+    const createdBy = data.createdBy as string | undefined;
+    const todosLosUsuarios = data.todosLosUsuarios as boolean ?? false;
+    const destinatarios = (data.destinatarios as string[]) ?? [];
+    const avisoId = event.params.avisoId;
+
+    let recipientUids: string[];
+
+    if (todosLosUsuarios) {
+      // Enviar a todos los miembros activos del proyecto (excepto el creador)
+      const assignments = await getProjectAssignments(projectId);
+      recipientUids = Array.from(assignments)
+        .map((a) => a.userId)
+        .filter((uid) => uid !== createdBy);
+    } else {
+      // Enviar solo a los destinatarios específicos (excepto el creador)
+      recipientUids = destinatarios.filter((uid) => uid !== createdBy);
+    }
+
+    if (recipientUids.length === 0) return;
+
+    const isUrgente = prioridad === "urgente";
+    const tipo = isUrgente ? "aviso_urgente" : "aviso_creado";
+    const emoji = isUrgente ? "🚨" : prioridad === "importante" ? "⚠️" : "📢";
+    const preview = mensaje.length > 80 ? mensaje.substring(0, 80) + "…" : mensaje;
+
+    await sendNotifications(recipientUids, {
+      titulo: `${emoji} ${titulo}`,
+      cuerpo: preview,
+      tipo,
+      refType: "aviso",
+      refId: avisoId,
+      projectId,
+      projectName,
+    });
   }
 );
 

@@ -1007,7 +1007,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
 
       // Subir a Storage
       final storage = StorageService();
-      final fileName = 'Minuta_${savedMinuta.folio}.pdf';
+      final fileName = '${savedMinuta.pdfFileName()}.pdf';
       final pdfUrl = await storage.uploadBytes(
         'documentacion/${widget.projectId}/formales',
         Uint8List.fromList(pdfBytes),
