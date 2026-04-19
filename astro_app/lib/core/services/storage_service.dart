@@ -82,6 +82,28 @@ class StorageService {
     return ref.getDownloadURL();
   }
 
+  /// Descarga bytes de un archivo usando el SDK autenticado de Firebase.
+  ///
+  /// Esto funciona incluso cuando los tokens de descarga públicos han sido
+  /// invalidados (e.g., por Uniform Bucket-Level Access en GCS).
+  Future<Uint8List> getBytesFromUrl(
+    String downloadUrl, {
+    int maxSize = 100 * 1024 * 1024, // 100 MB
+  }) async {
+    final ref = _storage.refFromURL(downloadUrl);
+    final data = await ref.getData(maxSize);
+    if (data == null) throw Exception('No se pudieron obtener los bytes');
+    return data;
+  }
+
+  /// Obtiene una URL de descarga fresca desde Firebase Storage.
+  ///
+  /// Útil cuando los tokens antiguos almacenados en Firestore ya no funcionan.
+  Future<String> refreshDownloadUrl(String downloadUrl) async {
+    final ref = _storage.refFromURL(downloadUrl);
+    return ref.getDownloadURL();
+  }
+
   /// Elimina un archivo por su URL de descarga.
   Future<void> deleteByUrl(String downloadUrl) async {
     try {

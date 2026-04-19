@@ -6,15 +6,23 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:astro/core/services/storage_service.dart';
+
 /// Servicio para descargar archivos desde URLs de Firebase Storage.
 ///
 /// - **Imágenes/videos:** se guardan en la galería del dispositivo.
 /// - **Otros archivos:** se guardan en la carpeta de descargas.
 /// - **Web:** no soporta descarga directa (usar url_launcher como fallback).
+///
+/// Usa Firebase Storage SDK (autenticado) como método primario para evitar
+/// errores 403 por tokens de descarga invalidados.
 class DownloadService {
-  DownloadService({Dio? dio}) : _dio = dio ?? Dio();
+  DownloadService({Dio? dio, StorageService? storageService})
+    : _dio = dio ?? Dio(),
+      _storageService = storageService ?? StorageService();
 
   final Dio _dio;
+  final StorageService _storageService;
 
   /// Tipo de archivo derivado de la URL.
   static FileCategory categorize(String url) {
@@ -56,7 +64,18 @@ class DownloadService {
     final tempDir = await getTemporaryDirectory();
     final tempPath = '${tempDir.path}/$name';
 
-    await _dio.download(url, tempPath, onReceiveProgress: onProgress);
+    // Intentar con Firebase Storage SDK primero (autenticado).
+    if (isFirebaseStorageUrl(url)) {
+      try {
+        final bytes = await _storageService.getBytesFromUrl(url);
+        await File(tempPath).writeAsBytes(bytes);
+      } catch (_) {
+        // Fallback a Dio.
+        await _dio.download(url, tempPath, onReceiveProgress: onProgress);
+      }
+    } else {
+      await _dio.download(url, tempPath, onReceiveProgress: onProgress);
+    }
 
     // Guardar según tipo.
     if (category == FileCategory.image || category == FileCategory.video) {
@@ -78,13 +97,32 @@ class DownloadService {
     return finalPath;
   }
 
-  /// Descarga los bytes de un archivo (útil para PDF viewer).
+  /// Descarga los bytes de un archivo.
+  ///
+  /// Usa Firebase Storage SDK (autenticado) como método primario.
+  /// Si falla, intenta descarga directa con Dio como fallback.
   Future<Uint8List> downloadBytes(String url) async {
+    // Intentar con Firebase Storage SDK (autenticado, sin depender de tokens).
+    if (isFirebaseStorageUrl(url)) {
+      try {
+        return await _storageService.getBytesFromUrl(url);
+      } catch (_) {
+        // Fallback a Dio si el SDK falla.
+      }
+    }
+
     final response = await _dio.get<List<int>>(
       url,
       options: Options(responseType: ResponseType.bytes),
     );
     return Uint8List.fromList(response.data!);
+  }
+
+  /// Verifica si una URL es de Firebase Storage.
+  static bool isFirebaseStorageUrl(String url) {
+    return url.contains('firebasestorage.googleapis.com') ||
+        url.contains('firebasestorage.app') ||
+        url.contains('storage.googleapis.com');
   }
 
   Future<Directory> _getDownloadsDirectory() async {

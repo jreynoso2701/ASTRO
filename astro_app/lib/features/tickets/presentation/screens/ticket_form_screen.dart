@@ -7,6 +7,7 @@ import 'package:astro/core/models/ticket.dart';
 import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
 import 'package:astro/core/services/storage_service.dart';
+import 'package:astro/core/presentation/widgets/storage_image.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
@@ -936,16 +937,12 @@ class _EvidenceChip extends StatelessWidget {
     final isImage = _isImageUrl(url);
     return Chip(
       avatar: isImage
-          ? ClipRRect(
+          ? StorageImage(
+              url: url,
+              width: 24,
+              height: 24,
+              fit: BoxFit.cover,
               borderRadius: BorderRadius.circular(4),
-              child: Image.network(
-                url,
-                width: 24,
-                height: 24,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.broken_image, size: 18),
-              ),
             )
           : const Icon(Icons.attach_file, size: 18),
       label: Text(_fileName(url), style: Theme.of(context).textTheme.bodySmall),

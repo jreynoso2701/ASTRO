@@ -8,6 +8,7 @@ import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/presentation/widgets/storage_image.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/minutas/data/minuta_repository.dart';
@@ -1140,14 +1141,12 @@ class _AdjuntosCard extends StatelessWidget {
                     ),
                   ),
                   child: isImage
-                      ? ClipRRect(
+                      ? StorageImage(
+                          url: url,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            url,
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
                         )
                       : Chip(
                           avatar: const Icon(Icons.attach_file, size: 16),

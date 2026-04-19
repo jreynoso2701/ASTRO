@@ -10,6 +10,7 @@ import 'package:astro/core/models/requerimiento_comment.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/services/storage_service.dart';
+import 'package:astro/core/presentation/widgets/storage_image.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -1460,20 +1461,12 @@ class _ReqCommentAdjuntos extends StatelessWidget {
                 .map(
                   (url) => GestureDetector(
                     onTap: () => FileViewerScreen.open(context, url: url),
-                    child: ClipRRect(
+                    child: StorageImage(
+                      url: url,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        url,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80,
-                          height: 80,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
                     ),
                   ),
                 )

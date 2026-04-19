@@ -11,6 +11,7 @@ import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/utils/ticket_colors.dart';
 import 'package:astro/core/services/storage_service.dart';
+import 'package:astro/core/presentation/widgets/storage_image.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -848,61 +849,47 @@ class _TicketInfoSection extends StatelessWidget {
                         final isImg = _isImageUrl(url);
                         return GestureDetector(
                           onTap: () => _showEvidenceDialog(context, url),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: isImg
-                                ? Image.network(
-                                    url,
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 120,
-                                      height: 120,
-                                      color: theme
-                                          .colorScheme
-                                          .surfaceContainerHighest,
-                                      child: const Icon(
-                                        Icons.broken_image,
-                                        size: 32,
-                                      ),
-                                    ),
-                                  )
-                                : Container(
-                                    width: 120,
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      color: theme
-                                          .colorScheme
-                                          .surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          _fileIcon(url),
-                                          size: 32,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                          ),
-                                          child: Text(
-                                            _fileName(url),
-                                            style: theme.textTheme.labelSmall,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                          child: isImg
+                              ? StorageImage(
+                                  url: url,
+                                  width: 120,
+                                  height: 120,
+                                  fit: BoxFit.cover,
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    color: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                          ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _fileIcon(url),
+                                        size: 32,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                        ),
+                                        child: Text(
+                                          _fileName(url),
+                                          style: theme.textTheme.labelSmall,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                         );
                       },
                     ),
@@ -1794,20 +1781,12 @@ class _CommentAdjuntos extends StatelessWidget {
                 .map(
                   (url) => GestureDetector(
                     onTap: () => FileViewerScreen.open(context, url: url),
-                    child: ClipRRect(
+                    child: StorageImage(
+                      url: url,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        url,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80,
-                          height: 80,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.broken_image_outlined),
-                        ),
-                      ),
                     ),
                   ),
                 )

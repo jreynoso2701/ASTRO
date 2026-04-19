@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:astro/core/services/download_service.dart';
+import 'package:astro/core/services/storage_service.dart';
 
 /// Visor universal de archivos.
 ///
@@ -56,11 +57,33 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
   bool _downloading = false;
   String? _downloadResult;
 
+  /// URL resuelta (fresca) para acceso directo (imágenes, videos, abrir en navegador).
+  String? _resolvedUrl;
+  bool _resolvingUrl = false;
+
   @override
   void initState() {
     super.initState();
     _category = DownloadService.categorize(widget.url);
     _displayName = widget.fileName ?? DownloadService.fileName(widget.url);
+    _resolveUrl();
+  }
+
+  /// Obtiene una URL de descarga fresca desde Firebase Storage SDK.
+  Future<void> _resolveUrl() async {
+    if (!DownloadService.isFirebaseStorageUrl(widget.url)) {
+      _resolvedUrl = widget.url;
+      return;
+    }
+
+    setState(() => _resolvingUrl = true);
+    try {
+      final storage = StorageService();
+      _resolvedUrl = await storage.refreshDownloadUrl(widget.url);
+    } catch (_) {
+      _resolvedUrl = widget.url; // Fallback a URL original.
+    }
+    if (mounted) setState(() => _resolvingUrl = false);
   }
 
   // ── Descarga ───────────────────────────────────────────
@@ -107,7 +130,8 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
   }
 
   Future<void> _openExternal() async {
-    final uri = Uri.tryParse(widget.url);
+    final urlToOpen = _resolvedUrl ?? widget.url;
+    final uri = Uri.tryParse(urlToOpen);
     if (uri != null) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -162,12 +186,25 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
       ),
       body: SafeArea(
         child: switch (_category) {
-          FileCategory.image => _ImageViewer(
+          FileCategory.image =>
+            _resolvingUrl
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                : _ImageViewer(
+                    url: _resolvedUrl ?? widget.url,
+                    heroTag: widget.heroTag,
+                  ),
+          FileCategory.video =>
+            _resolvingUrl
+                ? const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                : _VideoViewer(url: _resolvedUrl ?? widget.url),
+          FileCategory.pdf => _PdfViewer(
             url: widget.url,
-            heroTag: widget.heroTag,
+            resolvedUrl: _resolvedUrl,
           ),
-          FileCategory.video => _VideoViewer(url: widget.url),
-          FileCategory.pdf => _PdfViewer(url: widget.url),
           FileCategory.other => _OtherFileViewer(
             url: widget.url,
             fileName: _displayName,
@@ -416,8 +453,9 @@ class _VideoControlsState extends State<_VideoControls> {
 // ═══════════════════════════════════════════════════════════
 
 class _PdfViewer extends StatefulWidget {
-  const _PdfViewer({required this.url});
+  const _PdfViewer({required this.url, this.resolvedUrl});
   final String url;
+  final String? resolvedUrl;
 
   @override
   State<_PdfViewer> createState() => _PdfViewerState();
@@ -436,6 +474,7 @@ class _PdfViewerState extends State<_PdfViewer> {
 
   Future<void> _loadPdf() async {
     try {
+      // Usar Firebase Storage SDK (autenticado) para descargar bytes.
       final service = DownloadService();
       final bytes = await service.downloadBytes(widget.url);
       if (!mounted) return;
@@ -460,7 +499,9 @@ class _PdfViewerState extends State<_PdfViewer> {
   }
 
   Future<void> _openInBrowser() async {
-    final uri = Uri.tryParse(widget.url);
+    // Usar la URL resuelta (con token fresco) en lugar de la original.
+    final urlToOpen = widget.resolvedUrl ?? widget.url;
+    final uri = Uri.tryParse(urlToOpen);
     if (uri != null) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
