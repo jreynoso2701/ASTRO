@@ -474,7 +474,11 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final assignments = ref.read(projectMembersProvider(widget.projectId));
 
     final soporteMembers = assignments
-        .where((m) => m.assignment.role.name == 'soporte')
+        .where(
+          (m) =>
+              m.assignment.role.name == 'soporte' ||
+              m.assignment.role.name == 'liderProyecto',
+        )
         .toList();
 
     if (!mounted) return;
@@ -487,7 +491,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           if (soporteMembers.isEmpty)
             const Padding(
               padding: EdgeInsets.all(24),
-              child: Text('No hay usuarios Soporte en este proyecto'),
+              child: Text(
+                'No hay usuarios Soporte o Líder Proyecto en este proyecto',
+              ),
             ),
           for (final m in soporteMembers)
             SimpleDialogOption(

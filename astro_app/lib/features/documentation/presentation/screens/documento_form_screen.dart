@@ -290,7 +290,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
       final profile = ref.read(currentUserProfileProvider).value;
       final proyecto = ref.read(proyectoByIdProvider(widget.projectId)).value;
       final userName = profile?.displayName ?? '';
-      final userRole = profile?.isRoot == true ? 'Root' : 'Soporte';
+      final userRole = profile?.isRoot == true ? 'Root' : 'Lider/Soporte';
 
       if (widget.isEdit) {
         await _updateDocument(repo, uid, userName, userRole);

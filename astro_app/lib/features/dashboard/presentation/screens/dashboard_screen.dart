@@ -65,14 +65,19 @@ class DashboardScreen extends ConsumerWidget {
     final width = MediaQuery.sizeOf(context).width;
 
     // El agente IA está disponible para Root, Supervisor y Soporte.
-    // El rol "Usuario" no tiene acceso al asistente de momento.
+    // Los roles "Usuario" y "Lider Proyecto" no tienen acceso al asistente.
     final uid = ref.watch(authStateProvider).value?.uid;
     final assignments = uid != null
         ? ref.watch(userAssignmentsProvider(uid)).value ?? []
         : <ProjectAssignment>[];
     final hasAiAccess =
         isRoot ||
-        assignments.any((a) => a.isActive && a.role != UserRole.usuario);
+        assignments.any(
+          (a) =>
+              a.isActive &&
+              a.role != UserRole.usuario &&
+              a.role != UserRole.liderProyecto,
+        );
     final showAiFab = profile != null && hasAiAccess;
 
     return Scaffold(

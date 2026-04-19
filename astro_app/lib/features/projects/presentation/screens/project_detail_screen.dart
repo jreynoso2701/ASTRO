@@ -792,6 +792,7 @@ class _MembersSection extends ConsumerWidget {
             final theme = Theme.of(ctx);
             // Roles asignables (excluir Root)
             final assignableRoles = [
+              UserRole.liderProyecto,
               UserRole.usuario,
               UserRole.supervisor,
               UserRole.soporte,
@@ -911,6 +912,7 @@ class _MembersSection extends ConsumerWidget {
   static Color _roleColor(UserRole role) {
     return switch (role) {
       UserRole.root => const Color(0xFFD71921),
+      UserRole.liderProyecto => const Color(0xFF9C27B0),
       UserRole.supervisor => const Color(0xFF2196F3),
       UserRole.soporte => const Color(0xFFFFC107),
       UserRole.usuario => const Color(0xFF4CAF50),
@@ -1052,11 +1054,18 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
                   labelText: 'Rol',
                   prefixIcon: Icon(Icons.shield_outlined),
                 ),
-                items: [UserRole.usuario, UserRole.supervisor, UserRole.soporte]
-                    .map(
-                      (r) => DropdownMenuItem(value: r, child: Text(r.label)),
-                    )
-                    .toList(),
+                items:
+                    [
+                          UserRole.liderProyecto,
+                          UserRole.usuario,
+                          UserRole.supervisor,
+                          UserRole.soporte,
+                        ]
+                        .map(
+                          (r) =>
+                              DropdownMenuItem(value: r, child: Text(r.label)),
+                        )
+                        .toList(),
                 onChanged: (v) {
                   if (v != null) setState(() => _selectedRole = v);
                 },

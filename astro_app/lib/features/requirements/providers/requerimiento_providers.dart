@@ -182,7 +182,7 @@ final archivedReqsByProjectProvider =
 
 // ── Permisos de archivo ──────────────────────────────────
 
-/// Solo Root y Supervisor pueden archivar/eliminar/descartar requerimientos.
+/// Solo Root, Supervisor y Lider Proyecto pueden archivar/eliminar/descartar requerimientos.
 final canArchiveReqProvider = Provider.family<bool, String>((ref, projectId) {
   final isRoot = ref.watch(isCurrentUserRootProvider);
   if (isRoot) return true;
@@ -193,7 +193,9 @@ final canArchiveReqProvider = Provider.family<bool, String>((ref, projectId) {
   final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
   return assignments.any(
     (a) =>
-        a.projectId == projectId && a.isActive && a.role == UserRole.supervisor,
+        a.projectId == projectId &&
+        a.isActive &&
+        (a.role == UserRole.supervisor || a.role == UserRole.liderProyecto),
   );
 });
 

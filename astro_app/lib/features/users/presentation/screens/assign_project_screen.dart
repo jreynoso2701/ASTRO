@@ -132,9 +132,17 @@ class _AssignProjectScreenState extends ConsumerState<AssignProjectScreen> {
             DropdownButtonFormField<UserRole>(
               initialValue: _selectedRole,
               decoration: const InputDecoration(hintText: 'Seleccionar rol...'),
-              items: [UserRole.supervisor, UserRole.usuario, UserRole.soporte]
-                  .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
-                  .toList(),
+              items:
+                  [
+                        UserRole.liderProyecto,
+                        UserRole.supervisor,
+                        UserRole.usuario,
+                        UserRole.soporte,
+                      ]
+                      .map(
+                        (r) => DropdownMenuItem(value: r, child: Text(r.label)),
+                      )
+                      .toList(),
               onChanged: (role) {
                 if (role != null) setState(() => _selectedRole = role);
               },
@@ -243,6 +251,8 @@ class _AssignProjectScreenState extends ConsumerState<AssignProjectScreen> {
   String _roleDescription(UserRole role) {
     return switch (role) {
       UserRole.root => 'Acceso total a la plataforma.',
+      UserRole.liderProyecto =>
+        'Lidera y gestiona los proyectos asignados. Puede gestionar tickets, requerimientos, documentación y módulos.',
       UserRole.supervisor =>
         'Puede revisar el progreso de usuarios, ver la evolución del proyecto, reportar y dar seguimiento a todos los incidentes.',
       UserRole.usuario =>

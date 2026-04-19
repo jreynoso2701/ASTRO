@@ -37,11 +37,12 @@ interface NotificationConfig {
   scopeCitas: "participante" | "proyecto" | "todos";
 }
 
-type UserRole = "Root" | "Supervisor" | "Soporte" | "Usuario";
+type UserRole = "Root" | "Lider Proyecto" | "Supervisor" | "Soporte" | "Usuario";
 
 function defaultScope(role: UserRole): "participante" | "proyecto" | "todos" {
   switch (role) {
   case "Root": return "todos";
+  case "Lider Proyecto": return "proyecto";
   case "Supervisor": return "proyecto";
   case "Soporte": return "proyecto";
   case "Usuario": return "participante";
@@ -469,7 +470,7 @@ export const onTicketUpdated = onDocumentUpdated(
 
       const assignments = await getProjectAssignments(projectId);
       const rootUids = assignments
-        .filter((a) => a.role === "Root" && a.userId !== updatedBy)
+        .filter((a) => (a.role === "Root" || a.role === "Lider Proyecto") && a.userId !== updatedBy)
         .map((a) => a.userId);
 
       if (rootUids.length > 0) {
@@ -709,7 +710,7 @@ export const onReqUpdated = onDocumentUpdated(
 
       const assignments = await getProjectAssignments(projectId);
       const rootUids = assignments
-        .filter((a) => a.role === "Root" && a.userId !== updatedBy)
+        .filter((a) => (a.role === "Root" || a.role === "Lider Proyecto") && a.userId !== updatedBy)
         .map((a) => a.userId);
 
       if (rootUids.length > 0) {
@@ -1010,7 +1011,7 @@ export const onModuloUpdated = onDocumentUpdated(
     const assignments = await getProjectAssignments(projectId);
     const recipientUids: string[] = [];
     for (const a of assignments) {
-      if ((a.role === "Root" || a.role === "Soporte") && a.userId !== updatedBy) {
+      if ((a.role === "Root" || a.role === "Soporte" || a.role === "Lider Proyecto") && a.userId !== updatedBy) {
         recipientUids.push(a.userId);
       }
     }
@@ -1250,7 +1251,7 @@ export const checkTicketDeadlines = onSchedule(
       // Obtener solo usuarios Root del proyecto
       const assignments = await getProjectAssignments(projectId);
       const rootUids = assignments
-        .filter((a) => a.role === "Root")
+        .filter((a) => a.role === "Root" || a.role === "Lider Proyecto")
         .map((a) => a.userId);
 
       if (rootUids.length === 0) continue;
@@ -2204,7 +2205,7 @@ export const checkTareaDeadlines = onSchedule(
 
       const assignments = await getProjectAssignments(projectId);
       for (const a of assignments) {
-        if (a.role === "Root" && !recipientUids.includes(a.userId)) {
+        if ((a.role === "Root" || a.role === "Lider Proyecto") && !recipientUids.includes(a.userId)) {
           recipientUids.push(a.userId);
         }
       }
@@ -2321,7 +2322,7 @@ async function _checkReqDeadlinesLogic(runTag: string): Promise<void> {
 
     const assignments = await getProjectAssignments(projectId);
     for (const a of assignments) {
-      if (a.role === "Root" && !recipientUids.includes(a.userId)) {
+      if ((a.role === "Root" || a.role === "Lider Proyecto") && !recipientUids.includes(a.userId)) {
         recipientUids.push(a.userId);
       }
     }
@@ -2570,10 +2571,10 @@ export const ticketsWithoutDeadlineReminder = onSchedule(
         ? ((projDoc.data()!.nombreProyecto as string) ?? projectId)
         : projectId;
 
-      // Solo notificar a Root y Soporte con push habilitado
+      // Solo notificar a Root, Soporte y Lider Proyecto con push habilitado
       const enabledRecipients: string[] = [];
       for (const m of members) {
-        if (m.role !== "Root" && m.role !== "Soporte") continue;
+        if (m.role !== "Root" && m.role !== "Soporte" && m.role !== "Lider Proyecto") continue;
         const config = await getNotifConfig(projectId, m.userId, m.role);
         if (config.pushEnabled) enabledRecipients.push(m.userId);
       }

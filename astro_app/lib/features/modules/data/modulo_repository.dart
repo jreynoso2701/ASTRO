@@ -84,4 +84,17 @@ class ModuloRepository {
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
   }
+
+  /// Verifica si un folio ya existe en algún módulo (global).
+  /// [excludeId] permite excluir un módulo (para edición).
+  Future<bool> isFolioTaken(String folio, {String? excludeId}) async {
+    final snap = await _ref
+        .where('folioModulo', isEqualTo: folio)
+        .limit(2)
+        .get();
+    final docs = excludeId != null
+        ? snap.docs.where((d) => d.id != excludeId).toList()
+        : snap.docs;
+    return docs.isNotEmpty;
+  }
 }

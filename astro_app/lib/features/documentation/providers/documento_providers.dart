@@ -324,7 +324,7 @@ final formalDocCountProvider = Provider.family<int, String>((ref, projectId) {
 
 /// Determina si el usuario actual puede gestionar (subir/editar) documentos
 /// formales en un proyecto dado.
-/// Solo Root y Soporte pueden gestionar.
+/// Solo Root, Soporte y Lider Proyecto pueden gestionar.
 final canManageDocumentsProvider = Provider.family<bool, String>((
   ref,
   projectId,
@@ -337,6 +337,9 @@ final canManageDocumentsProvider = Provider.family<bool, String>((
 
   final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
   return assignments.any(
-    (a) => a.projectId == projectId && a.isActive && a.role == UserRole.soporte,
+    (a) =>
+        a.projectId == projectId &&
+        a.isActive &&
+        (a.role == UserRole.soporte || a.role == UserRole.liderProyecto),
   );
 });

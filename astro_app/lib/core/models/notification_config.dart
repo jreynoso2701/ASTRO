@@ -25,6 +25,7 @@ enum NotificationScope {
   static NotificationScope defaultForRole(UserRole role) {
     return switch (role) {
       UserRole.root => NotificationScope.todos,
+      UserRole.liderProyecto => NotificationScope.proyecto,
       UserRole.supervisor => NotificationScope.proyecto,
       UserRole.soporte => NotificationScope.proyecto,
       UserRole.usuario => NotificationScope.participante,

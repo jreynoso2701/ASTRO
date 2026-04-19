@@ -85,7 +85,7 @@ final hasProjectAssignmentsProvider = Provider<bool?>((ref) {
 });
 
 /// Indica si el usuario actual puede gestionar módulos/funcionalidades
-/// de un proyecto: es Root global **o** tiene rol Soporte en ese proyecto.
+/// de un proyecto: es Root global **o** tiene rol Soporte o Lider Proyecto en ese proyecto.
 final canManageProjectProvider = Provider.family<bool, String>((
   ref,
   projectId,
@@ -98,7 +98,10 @@ final canManageProjectProvider = Provider.family<bool, String>((
 
   final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
   return assignments.any(
-    (a) => a.projectId == projectId && a.isActive && a.role == UserRole.soporte,
+    (a) =>
+        a.projectId == projectId &&
+        a.isActive &&
+        (a.role == UserRole.soporte || a.role == UserRole.liderProyecto),
   );
 });
 

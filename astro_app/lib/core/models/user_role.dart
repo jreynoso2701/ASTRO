@@ -1,6 +1,7 @@
 /// Roles del sistema ASTRO.
 enum UserRole {
   root('Root'),
+  liderProyecto('Lider Proyecto'),
   supervisor('Supervisor'),
   usuario('Usuario'),
   soporte('Soporte');

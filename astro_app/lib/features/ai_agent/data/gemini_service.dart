@@ -1117,7 +1117,8 @@ ${allowedProjects.map((p) {
 Permisos por rol:
   • Supervisor: Ve todo el proyecto, progreso de usuarios, reporta tickets, participa en minutas.
   • Usuario: Solo ve sus propios tickets, sus tareas, participa en minutas.
-  • Soporte: Ve todo del proyecto asignado, da soporte a tickets, levanta requerimientos.''';
+  • Soporte: Ve todo del proyecto asignado, da soporte a tickets, levanta requerimientos.
+  • Lider Proyecto: Lidera y gestiona proyectos asignados. Gestiona tickets, requerimientos, documentación y módulos. No tiene acceso al asistente IA.''';
 
     return '''
 ═══ IDENTIDAD ═══

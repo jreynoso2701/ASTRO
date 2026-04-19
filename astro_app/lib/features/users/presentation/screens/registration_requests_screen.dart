@@ -415,11 +415,18 @@ class _ApproveDialogState extends ConsumerState<_ApproveDialog> {
                 decoration: const InputDecoration(
                   hintText: 'Seleccionar rol...',
                 ),
-                items: [UserRole.supervisor, UserRole.usuario, UserRole.soporte]
-                    .map(
-                      (r) => DropdownMenuItem(value: r, child: Text(r.label)),
-                    )
-                    .toList(),
+                items:
+                    [
+                          UserRole.liderProyecto,
+                          UserRole.supervisor,
+                          UserRole.usuario,
+                          UserRole.soporte,
+                        ]
+                        .map(
+                          (r) =>
+                              DropdownMenuItem(value: r, child: Text(r.label)),
+                        )
+                        .toList(),
                 onChanged: (role) {
                   if (role != null) setState(() => _selectedRole = role);
                 },
@@ -462,6 +469,8 @@ class _ApproveDialogState extends ConsumerState<_ApproveDialog> {
 
   String _roleHint(UserRole role) {
     switch (role) {
+      case UserRole.liderProyecto:
+        return 'Lidera y gestiona proyectos asignados. Gestiona tickets, requerimientos, documentación y módulos.';
       case UserRole.supervisor:
         return 'Puede ver progreso de usuarios y todos los incidentes del proyecto.';
       case UserRole.soporte:

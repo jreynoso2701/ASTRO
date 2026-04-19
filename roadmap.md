@@ -64,6 +64,15 @@
 - [x] Guardia de acceso: solo Root ve la sección de usuarios.
 - [x] Permisos diferenciados por rol en UI.
 - [x] Edición inline de datos de usuario (nombre, teléfono).
+- [x] **Nuevo rol "Lider Proyecto"** — rol híbrido entre Root, Supervisor y Soporte para liderar proyectos asignados.
+  - [x] Enum `UserRole.liderProyecto` con label "Lider Proyecto".
+  - [x] Permisos: gestionar tickets, requerimientos, documentación y módulos de proyectos asignados. Archivar/descartar requerimientos. Asignar Soporte a tickets.
+  - [x] Restricciones: NO puede gestionar Proyectos, Empresas, Usuarios, Solicitudes de registro. NO tiene acceso a Agente IA ni Avisos.
+  - [x] Scope de notificaciones por defecto: `proyecto`.
+  - [x] Color de badge en UI: Púrpura (#9C27B0).
+  - [x] Disponible en todos los dropdowns de asignación de rol (assign, approval, edit role, add member).
+  - [x] Cloud Functions actualizadas: notificaciones de fecha compromiso, progreso de módulos, deadlines de tickets/reqs/tareas, tickets sin fecha.
+  - [x] Visibilidad: ve todos los tickets, requerimientos, minutas y documentación del proyecto (no limitado como Usuario).
 
 ### 1.4 Gestión de Proyectos
 

@@ -188,6 +188,26 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
 
     try {
       final repo = ref.read(moduloRepositoryProvider);
+      final folio = _folioController.text.trim().toUpperCase();
+
+      // ── Validar unicidad del folio ──
+      final taken = await repo.isFolioTaken(
+        folio,
+        excludeId: _isEditing ? widget.moduleId : null,
+      );
+      if (taken) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'El folio ya existe en otro módulo. Usa uno diferente.',
+            ),
+          ),
+        );
+        setState(() => _isSaving = false);
+        return;
+      }
+
       final now = DateTime.now();
       final projectName =
           ref
@@ -200,7 +220,7 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
         final modulo = Modulo(
           id: widget.moduleId!,
           nombreModulo: _nombreController.text.trim().toUpperCase(),
-          folioModulo: _folioController.text.trim().toUpperCase(),
+          folioModulo: folio,
           fkProyecto: projectName,
           estatusModulo: true,
           projectId: widget.projectId,
@@ -218,7 +238,7 @@ class _ModuleFormScreenState extends ConsumerState<ModuleFormScreen> {
         final modulo = Modulo(
           id: '',
           nombreModulo: _nombreController.text.trim().toUpperCase(),
-          folioModulo: _folioController.text.trim().toUpperCase(),
+          folioModulo: folio,
           fkProyecto: projectName,
           estatusModulo: true,
           projectId: widget.projectId,

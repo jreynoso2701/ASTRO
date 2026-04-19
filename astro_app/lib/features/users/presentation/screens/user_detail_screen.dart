@@ -329,6 +329,7 @@ class _UserInfoSection extends StatelessWidget {
   static Color _roleColor(UserRole role) {
     return switch (role) {
       UserRole.root => const Color(0xFFD71921),
+      UserRole.liderProyecto => const Color(0xFF9C27B0),
       UserRole.supervisor => const Color(0xFF2196F3),
       UserRole.soporte => const Color(0xFFFFC107),
       UserRole.usuario => const Color(0xFF4CAF50),
@@ -512,6 +513,7 @@ class _AssignmentsSection extends StatelessWidget {
   static Color _roleColor(UserRole role) {
     return switch (role) {
       UserRole.root => const Color(0xFFD71921),
+      UserRole.liderProyecto => const Color(0xFF9C27B0),
       UserRole.supervisor => const Color(0xFF2196F3),
       UserRole.soporte => const Color(0xFFFFC107),
       UserRole.usuario => const Color(0xFF4CAF50),

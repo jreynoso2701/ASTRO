@@ -88,6 +88,18 @@ El desarrollo y la gestión del proyecto se inspiran fuertemente en:
 - Gestiona **toda la plataforma**.
 - Control total sobre proyectos, usuarios, módulos, configuraciones y permisos.
 
+### Lider Proyecto
+- Lidera y gestiona los **proyectos asignados** por Root.
+- Híbrido entre Root, Supervisor y Soporte, pero con un nivel superior a ambos.
+- Permisos:
+  - Gestionar tickets, requerimientos, documentación y módulos de sus proyectos asignados.
+  - Archivar/descartar requerimientos.
+  - Asignar Soporte a tickets.
+  - Ver todos los tickets, requerimientos, minutas y documentación del proyecto.
+- Restricciones:
+  - **No puede** gestionar Proyectos, Empresas, Usuarios ni Solicitudes de registro.
+  - **No tiene** acceso al Agente IA ni a crear Avisos.
+
 ### Supervisor
 - Asignado comúnmente a **Gerentes, Supervisores, Dueños** de la empresa/negocio.
 - Permisos:
