@@ -20,6 +20,7 @@ import 'package:astro/core/models/minuta.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/rich_text_editor.dart';
 
 /// Coberturas V1 disponibles.
 const _coberturas = [
@@ -51,7 +52,8 @@ class TicketFormScreen extends ConsumerStatefulWidget {
 class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
-  final _descripcionController = TextEditingController();
+  final _richEditorKey = GlobalKey<RichTextEditorState>();
+  String _initialDescripcionMd = '';
 
   String? _selectedModuleId;
   String _selectedModuleName = '';
@@ -93,7 +95,6 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   @override
   void dispose() {
     _tituloController.dispose();
-    _descripcionController.dispose();
     super.dispose();
   }
 
@@ -125,7 +126,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
       ticketAsync.whenData((ticket) {
         if (ticket != null && !_isLoaded) {
           _tituloController.text = ticket.titulo;
-          _descripcionController.text = ticket.descripcion;
+          _initialDescripcionMd = ticket.descripcion;
           _selectedModuleId = ticket.moduleId;
           _selectedModuleName = ticket.moduleName;
           _priority = ticket.priority;
@@ -251,22 +252,20 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Descripción
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción *',
-                  prefixIcon: Icon(Icons.description_outlined),
-                  alignLabelWithHint: true,
+              // Descripción (Rich Text)
+              Text(
+                'Descripción *',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La descripción es obligatoria';
-                  }
-                  return null;
-                },
+              ),
+              const SizedBox(height: 8),
+              RichTextEditor(
+                key: _richEditorKey,
+                initialMarkdown: _initialDescripcionMd,
+                placeholder: 'Describe el ticket...',
+                minHeight: 120,
+                maxHeight: 300,
               ),
               const SizedBox(height: 16),
 
@@ -720,6 +719,16 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Validar descripción del editor enriquecido
+    final descripcionState = _richEditorKey.currentState;
+    if (descripcionState == null || descripcionState.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La descripción es obligatoria')),
+      );
+      return;
+    }
+    final descripcionMd = descripcionState.markdown;
+
     setState(() => _isSaving = true);
 
     try {
@@ -759,7 +768,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
         await repo.update(
           existing.copyWith(
             titulo: _tituloController.text.trim(),
-            descripcion: _descripcionController.text.trim(),
+            descripcion: descripcionMd,
             moduleId: _selectedModuleId,
             moduleName: _selectedModuleName,
             priority: _priority,
@@ -792,7 +801,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           id: '',
           folio: '',
           titulo: _tituloController.text.trim(),
-          descripcion: _descripcionController.text.trim(),
+          descripcion: descripcionMd,
           projectName: proyecto.nombreProyecto,
           moduleName: _selectedModuleName,
           status: TicketStatus.pendiente,

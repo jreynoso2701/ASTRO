@@ -20,6 +20,7 @@ import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/rich_text_editor.dart';
 
 /// Genera un ID corto para cada criterio de aceptación.
 String _shortId() => DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -48,9 +49,11 @@ class _RequerimientoFormScreenState
     extends ConsumerState<RequerimientoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
-  final _descripcionController = TextEditingController();
+  final _richDescripcionKey = GlobalKey<RichTextEditorState>();
+  String _initialDescripcionMd = '';
   final _moduloPropuestoController = TextEditingController();
-  final _observacionesController = TextEditingController();
+  final _richObservacionesKey = GlobalKey<RichTextEditorState>();
+  String _initialObservacionesMd = '';
 
   RequerimientoTipo _tipo = RequerimientoTipo.funcional;
   TicketPriority _prioridad = TicketPriority.media;
@@ -96,9 +99,7 @@ class _RequerimientoFormScreenState
   @override
   void dispose() {
     _tituloController.dispose();
-    _descripcionController.dispose();
     _moduloPropuestoController.dispose();
-    _observacionesController.dispose();
     for (final c in _criterios) {
       c.controller.dispose();
     }
@@ -171,17 +172,20 @@ class _RequerimientoFormScreenState
               ),
               const SizedBox(height: 16),
 
-              // ── Descripción ──
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción *',
-                  prefixIcon: Icon(Icons.description_outlined),
-                  alignLabelWithHint: true,
+              // ── Descripción (Rich Text) ──
+              Text(
+                'Descripción *',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                maxLines: 4,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 8),
+              RichTextEditor(
+                key: _richDescripcionKey,
+                initialMarkdown: _initialDescripcionMd,
+                placeholder: 'Describe el requerimiento...',
+                minHeight: 100,
+                maxHeight: 250,
               ),
               const SizedBox(height: 16),
 
@@ -365,17 +369,24 @@ class _RequerimientoFormScreenState
                   ),
                 const SizedBox(height: 12),
 
-                // Observaciones internas
-                if (isRoot)
-                  TextFormField(
-                    controller: _observacionesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Observaciones internas (Root)',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      alignLabelWithHint: true,
+                // Observaciones internas (Rich Text)
+                if (isRoot) ...[
+                  Text(
+                    'Observaciones internas (Root)',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    maxLines: 3,
                   ),
+                  const SizedBox(height: 8),
+                  RichTextEditor(
+                    key: _richObservacionesKey,
+                    initialMarkdown: _initialObservacionesMd,
+                    placeholder: 'Observaciones internas...',
+                    toolbarLevel: RichTextToolbarLevel.mini,
+                    minHeight: 80,
+                    maxHeight: 200,
+                  ),
+                ],
                 const SizedBox(height: 16),
               ],
 
@@ -741,7 +752,7 @@ class _RequerimientoFormScreenState
 
   void _loadReq(Requerimiento req) {
     _tituloController.text = req.titulo;
-    _descripcionController.text = req.descripcion;
+    _initialDescripcionMd = req.descripcion;
     _tipo = req.tipo;
     _prioridad = req.prioridad;
     _selectedModuleId = req.moduleId;
@@ -752,7 +763,7 @@ class _RequerimientoFormScreenState
     _faseAsignada = req.faseAsignada;
     _porcentajeAvance = req.porcentajeAvance;
     _porcentajeManual = req.porcentajeManual;
-    _observacionesController.text = req.observacionesRoot ?? '';
+    _initialObservacionesMd = req.observacionesRoot ?? '';
     _fechaCompromiso = req.fechaCompromiso;
     _existingAdjuntos.addAll(req.adjuntos);
     _refMinutas.addAll(req.refMinutas);
@@ -775,6 +786,22 @@ class _RequerimientoFormScreenState
 
   Future<void> _save(String projectName, String empresaName) async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validar descripción del editor enriquecido
+    final descripcionState = _richDescripcionKey.currentState;
+    if (descripcionState == null || descripcionState.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La descripción es obligatoria')),
+      );
+      return;
+    }
+    final descripcionMd = descripcionState.markdown;
+
+    final observacionesState = _richObservacionesKey.currentState;
+    final observacionesMd =
+        (observacionesState != null && !observacionesState.isEmpty)
+        ? observacionesState.markdown
+        : '';
 
     setState(() => _isSaving = true);
 
@@ -831,7 +858,7 @@ class _RequerimientoFormScreenState
         await repo.update(
           existing.copyWith(
             titulo: _tituloController.text.trim(),
-            descripcion: _descripcionController.text.trim(),
+            descripcion: descripcionMd,
             tipo: _tipo,
             prioridad: _prioridad,
             moduleName: _usarModuloPropuesto ? null : _selectedModuleName,
@@ -846,8 +873,8 @@ class _RequerimientoFormScreenState
             refCitas: _refCitas,
             porcentajeAvance: pct,
             porcentajeManual: _porcentajeManual,
-            observacionesRoot: _observacionesController.text.trim().isNotEmpty
-                ? _observacionesController.text.trim()
+            observacionesRoot: observacionesMd.isNotEmpty
+                ? observacionesMd
                 : null,
             fechaCompromiso: _fechaCompromiso,
           ),
@@ -868,7 +895,7 @@ class _RequerimientoFormScreenState
           id: '',
           folio: '', // Se genera en el repo
           titulo: _tituloController.text.trim(),
-          descripcion: _descripcionController.text.trim(),
+          descripcion: descripcionMd,
           tipo: _tipo,
           prioridad: _prioridad,
           status: RequerimientoStatus.propuesto,
@@ -889,8 +916,8 @@ class _RequerimientoFormScreenState
           refCitas: _refCitas,
           porcentajeAvance: pct,
           porcentajeManual: _porcentajeManual,
-          observacionesRoot: _observacionesController.text.trim().isNotEmpty
-              ? _observacionesController.text.trim()
+          observacionesRoot: observacionesMd.isNotEmpty
+              ? observacionesMd
               : null,
           fechaCompromiso: _fechaCompromiso,
           createdAt: DateTime.now(),

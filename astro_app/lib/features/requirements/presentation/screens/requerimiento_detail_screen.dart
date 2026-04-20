@@ -16,6 +16,8 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/rich_text_editor.dart';
+import 'package:astro/core/widgets/rich_text_viewer.dart';
 
 /// Pantalla de detalle de un requerimiento.
 class RequerimientoDetailScreen extends ConsumerStatefulWidget {
@@ -35,15 +37,9 @@ class RequerimientoDetailScreen extends ConsumerStatefulWidget {
 
 class _RequerimientoDetailScreenState
     extends ConsumerState<RequerimientoDetailScreen> {
-  final _commentController = TextEditingController();
+  final _commentEditorKey = GlobalKey<RichTextEditorState>();
   bool _sending = false;
   List<XFile> _pendingFiles = [];
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +106,7 @@ class _RequerimientoDetailScreenState
 
           final commentsSection = _CommentsSection(
             comments: comments,
-            controller: _commentController,
+            editorKey: _commentEditorKey,
             sending: _sending,
             pendingFiles: _pendingFiles,
             currentUserId: currentUserId,
@@ -182,7 +178,7 @@ class _RequerimientoDetailScreenState
                 ),
               ),
               _CommentInput(
-                controller: _commentController,
+                editorKey: _commentEditorKey,
                 sending: _sending,
                 pendingFiles: _pendingFiles,
                 onSend: () => _sendComment(req.id),
@@ -300,8 +296,9 @@ class _RequerimientoDetailScreenState
   }
 
   Future<void> _sendComment(String reqId) async {
-    final text = _commentController.text.trim();
-    if (text.isEmpty && _pendingFiles.isEmpty) return;
+    final editorState = _commentEditorKey.currentState;
+    final text = editorState?.markdown ?? '';
+    if ((editorState?.isEmpty ?? true) && _pendingFiles.isEmpty) return;
 
     final profile = ref.read(currentUserProfileProvider).value;
     if (profile == null) return;
@@ -333,7 +330,7 @@ class _RequerimientoDetailScreenState
               adjuntos: adjuntosUrls,
             ),
           );
-      _commentController.clear();
+      _commentEditorKey.currentState?.clear();
       setState(() => _pendingFiles = []);
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -671,7 +668,7 @@ class _InfoSection extends StatelessWidget {
         const SizedBox(height: 12),
 
         // Descripción
-        Text(req.descripcion, style: theme.textTheme.bodyMedium),
+        RichTextViewer(markdown: req.descripcion),
         const SizedBox(height: 16),
 
         // Info cards
@@ -885,10 +882,7 @@ class _InfoSection extends StatelessWidget {
             color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(
-                req.observacionesRoot!,
-                style: theme.textTheme.bodyMedium,
-              ),
+              child: RichTextViewer(markdown: req.observacionesRoot!),
             ),
           ),
           const SizedBox(height: 16),
@@ -1198,7 +1192,7 @@ class _AdjuntoChip extends StatelessWidget {
 class _CommentsSection extends StatelessWidget {
   const _CommentsSection({
     required this.comments,
-    required this.controller,
+    required this.editorKey,
     required this.sending,
     required this.pendingFiles,
     required this.currentUserId,
@@ -1209,7 +1203,7 @@ class _CommentsSection extends StatelessWidget {
   });
 
   final List<RequerimientoComment> comments;
-  final TextEditingController controller;
+  final GlobalKey<RichTextEditorState> editorKey;
   final bool sending;
   final List<XFile> pendingFiles;
   final String currentUserId;
@@ -1271,7 +1265,7 @@ class _CommentsSection extends StatelessWidget {
 
         // Input
         _CommentInput(
-          controller: controller,
+          editorKey: editorKey,
           sending: sending,
           pendingFiles: pendingFiles,
           onSend: onSend,
@@ -1417,7 +1411,7 @@ class _CommentTile extends StatelessWidget {
             ),
             if (comment.text.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text(comment.text, style: theme.textTheme.bodyMedium),
+              RichTextViewer(markdown: comment.text),
             ],
             // Adjuntos
             if (comment.adjuntos.isNotEmpty) ...[
@@ -1543,7 +1537,7 @@ class _ReqCommentAdjuntos extends StatelessWidget {
 
 class _CommentInput extends StatelessWidget {
   const _CommentInput({
-    required this.controller,
+    required this.editorKey,
     required this.sending,
     required this.pendingFiles,
     required this.onSend,
@@ -1551,7 +1545,7 @@ class _CommentInput extends StatelessWidget {
     required this.onRemoveFile,
   });
 
-  final TextEditingController controller;
+  final GlobalKey<RichTextEditorState> editorKey;
   final bool sending;
   final List<XFile> pendingFiles;
   final VoidCallback onSend;
@@ -1664,16 +1658,12 @@ class _CommentInput extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    hintText: 'Escribe un comentario...',
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => onSend(),
+                child: RichTextEditor(
+                  key: editorKey,
+                  toolbarLevel: RichTextToolbarLevel.mini,
+                  minHeight: 60,
+                  maxHeight: 150,
+                  placeholder: 'Escribe un comentario...',
                 ),
               ),
               IconButton(

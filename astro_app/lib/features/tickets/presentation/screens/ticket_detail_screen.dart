@@ -17,6 +17,8 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/rich_text_editor.dart';
+import 'package:astro/core/widgets/rich_text_viewer.dart';
 
 /// Pantalla de detalle de un ticket con hilo de comentarios.
 class TicketDetailScreen extends ConsumerStatefulWidget {
@@ -34,13 +36,12 @@ class TicketDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
-  final _commentController = TextEditingController();
+  final _commentEditorKey = GlobalKey<RichTextEditorState>();
   bool _sending = false;
   List<XFile> _pendingFiles = [];
 
   @override
   void dispose() {
-    _commentController.dispose();
     super.dispose();
   }
 
@@ -106,7 +107,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
           final commentsSection = _CommentsSection(
             comments: comments,
-            controller: _commentController,
+            editorKey: _commentEditorKey,
             sending: _sending,
             pendingFiles: _pendingFiles,
             currentUserId: currentUserId,
@@ -185,7 +186,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               ),
               // Input de comentario
               _CommentInput(
-                controller: _commentController,
+                editorKey: _commentEditorKey,
                 sending: _sending,
                 pendingFiles: _pendingFiles,
                 onSend: () => _sendComment(ticket.id),
@@ -323,8 +324,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
   }
 
   Future<void> _sendComment(String ticketId) async {
-    final text = _commentController.text.trim();
-    if (text.isEmpty && _pendingFiles.isEmpty) return;
+    final editorState = _commentEditorKey.currentState;
+    final text = editorState?.markdown ?? '';
+    if ((editorState?.isEmpty ?? true) && _pendingFiles.isEmpty) return;
 
     final profile = ref.read(currentUserProfileProvider).value;
     if (profile == null) return;
@@ -357,7 +359,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               adjuntos: adjuntosUrls,
             ),
           );
-      _commentController.clear();
+      _commentEditorKey.currentState?.clear();
       setState(() => _pendingFiles = []);
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -644,8 +646,17 @@ class _TicketInfoSection extends StatelessWidget {
                     label: 'Fecha',
                     value: _formatDateTime(ticket.createdAt!),
                   ),
-                if (ticket.descripcion.isNotEmpty)
-                  _InfoRow(label: 'Descripción', value: ticket.descripcion),
+                if (ticket.descripcion.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Descripción',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  RichTextViewer(markdown: ticket.descripcion),
+                ],
               ],
             ),
           ),
@@ -1505,7 +1516,7 @@ class _BitacoraEntry extends StatelessWidget {
 class _CommentsSection extends StatelessWidget {
   const _CommentsSection({
     required this.comments,
-    required this.controller,
+    required this.editorKey,
     required this.sending,
     required this.pendingFiles,
     required this.currentUserId,
@@ -1516,7 +1527,7 @@ class _CommentsSection extends StatelessWidget {
   });
 
   final List<TicketComment> comments;
-  final TextEditingController controller;
+  final GlobalKey<RichTextEditorState> editorKey;
   final bool sending;
   final List<XFile> pendingFiles;
   final String currentUserId;
@@ -1561,7 +1572,7 @@ class _CommentsSection extends StatelessWidget {
                 ),
         ),
         _CommentInput(
-          controller: controller,
+          editorKey: editorKey,
           sending: sending,
           pendingFiles: pendingFiles,
           onSend: onSend,
@@ -1720,7 +1731,7 @@ class _CommentTile extends StatelessWidget {
             ),
             if (comment.text.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(comment.text, style: theme.textTheme.bodyMedium),
+              RichTextViewer(markdown: comment.text),
             ],
             // Adjuntos
             if (comment.adjuntos.isNotEmpty) ...[
@@ -1870,7 +1881,7 @@ class _CommentAdjuntos extends StatelessWidget {
 
 class _CommentInput extends StatelessWidget {
   const _CommentInput({
-    required this.controller,
+    required this.editorKey,
     required this.sending,
     required this.pendingFiles,
     required this.onSend,
@@ -1878,7 +1889,7 @@ class _CommentInput extends StatelessWidget {
     required this.onRemoveFile,
   });
 
-  final TextEditingController controller;
+  final GlobalKey<RichTextEditorState> editorKey;
   final bool sending;
   final List<XFile> pendingFiles;
   final VoidCallback onSend;
@@ -1989,16 +2000,12 @@ class _CommentInput extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    hintText: 'Escribe un comentario...',
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => onSend(),
+                child: RichTextEditor(
+                  key: editorKey,
+                  toolbarLevel: RichTextToolbarLevel.mini,
+                  placeholder: 'Escribe un comentario...',
+                  minHeight: 60,
+                  maxHeight: 150,
                 ),
               ),
               const SizedBox(width: 8),
