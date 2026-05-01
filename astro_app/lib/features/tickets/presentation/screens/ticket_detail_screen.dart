@@ -18,6 +18,8 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_editor.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 import 'package:astro/core/widgets/rich_text_viewer.dart';
 
 /// Pantalla de detalle de un ticket con hilo de comentarios.
@@ -991,6 +993,14 @@ class _TicketInfoSection extends StatelessWidget {
               ),
             ),
           ),
+        ],
+
+        const SizedBox(height: 16),
+
+        // Etiquetas
+        if (ticket.etiquetaIds.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _EtiquetasSection(etiquetaIds: ticket.etiquetaIds),
         ],
 
         const SizedBox(height: 16),
@@ -2039,6 +2049,45 @@ class _CommentInput extends StatelessWidget {
   String _ext(String name) {
     final parts = name.split('.');
     return parts.length > 1 ? '.${parts.last}' : '';
+  }
+}
+
+/// Card that resolves and displays etiquetaIds for the ticket detail.
+class _EtiquetasSection extends ConsumerWidget {
+  const _EtiquetasSection({required this.etiquetaIds});
+  final List<String> etiquetaIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(etiquetaIds));
+    final etiquetas = etiquetasAsync.value ?? [];
+    if (etiquetas.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ETIQUETAS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 24),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: etiquetas
+                  .map((e) => EtiquetaChip(etiqueta: e))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

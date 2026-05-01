@@ -100,6 +100,9 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ? () =>
                       context.push('/projects/$projectId/notification-settings')
                 : null,
+            onEtiquetasTap: ref.watch(canManageProjectProvider(projectId))
+                ? () => context.push('/projects/$projectId/etiquetas')
+                : null,
           );
 
           final membersSection = _MembersSection(
@@ -183,6 +186,7 @@ class _ProjectInfoSection extends StatelessWidget {
     this.onAvisosTap,
     this.avisoCount = 0,
     this.onNotifSettingsTap,
+    this.onEtiquetasTap,
     this.descripcion,
   });
 
@@ -210,6 +214,7 @@ class _ProjectInfoSection extends StatelessWidget {
   final VoidCallback? onAvisosTap;
   final int avisoCount;
   final VoidCallback? onNotifSettingsTap;
+  final VoidCallback? onEtiquetasTap;
 
   @override
   Widget build(BuildContext context) {
@@ -508,6 +513,19 @@ class _ProjectInfoSection extends StatelessWidget {
               onPressed: onNotifSettingsTap,
               icon: const Icon(Icons.notifications_outlined),
               label: const Text('Configurar notificaciones'),
+            ),
+          ),
+        ],
+
+        // Botón de etiquetas (Root, Lider, Soporte)
+        if (onEtiquetasTap != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: enabled ? onEtiquetasTap : null,
+              icon: const Icon(Icons.label_outlined),
+              label: const Text('Etiquetas del proyecto'),
             ),
           ),
         ],

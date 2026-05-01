@@ -21,6 +21,9 @@ import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_editor.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_picker.dart';
 
 /// Genera un ID corto para cada criterio de aceptación.
 String _shortId() => DateTime.now().microsecondsSinceEpoch.toRadixString(36);
@@ -75,6 +78,9 @@ class _RequerimientoFormScreenState
 
   // Citas vinculadas
   final List<String> _refCitas = [];
+
+  // Etiquetas asignadas
+  final List<String> _etiquetaIds = [];
 
   // Fecha compromiso
   DateTime? _fechaCompromiso;
@@ -297,6 +303,10 @@ class _RequerimientoFormScreenState
 
               // ── Citas vinculadas ──
               _buildCitasSection(projectName),
+              const SizedBox(height: 24),
+
+              // ── Etiquetas ──
+              _buildEtiquetasSection(context),
               const SizedBox(height: 24),
 
               // ── Campos Root/Soporte ──
@@ -661,6 +671,64 @@ class _RequerimientoFormScreenState
     );
   }
 
+  Widget _buildEtiquetasSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ETIQUETAS',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            letterSpacing: 1,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const Divider(),
+        const SizedBox(height: 8),
+        if (_etiquetaIds.isNotEmpty)
+          Consumer(
+            builder: (context, ref, _) {
+              final etiquetasAsync = ref.watch(
+                etiquetasByIdsProvider(_etiquetaIds),
+              );
+              final etiquetas = etiquetasAsync.value ?? [];
+              return Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: etiquetas
+                    .map(
+                      (e) => EtiquetaChip(
+                        etiqueta: e,
+                        onDelete: () =>
+                            setState(() => _etiquetaIds.remove(e.id)),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        TextButton.icon(
+          onPressed: () async {
+            final selected = await EtiquetaPicker.show(
+              context,
+              ref,
+              projectId: widget.projectId,
+              selectedIds: List.from(_etiquetaIds),
+            );
+            if (selected != null) {
+              setState(() {
+                _etiquetaIds
+                  ..clear()
+                  ..addAll(selected);
+              });
+            }
+          },
+          icon: const Icon(Icons.label_outline),
+          label: const Text('Gestionar etiquetas'),
+        ),
+      ],
+    );
+  }
+
   Future<void> _searchCitas(String projectName) async {
     final citas = ref.read(citasByProjectProvider(projectName)).value ?? [];
     if (!mounted) return;
@@ -768,6 +836,8 @@ class _RequerimientoFormScreenState
     _existingAdjuntos.addAll(req.adjuntos);
     _refMinutas.addAll(req.refMinutas);
     _refCitas.addAll(req.refCitas);
+    // load etiquetaIds if editing
+    _etiquetaIds.addAll(req.etiquetaIds);
 
     for (final c in req.criteriosAceptacion) {
       _criterios.add(
@@ -871,6 +941,7 @@ class _RequerimientoFormScreenState
             adjuntos: allAdjuntos,
             refMinutas: _refMinutas,
             refCitas: _refCitas,
+            etiquetaIds: _etiquetaIds,
             porcentajeAvance: pct,
             porcentajeManual: _porcentajeManual,
             observacionesRoot: observacionesMd.isNotEmpty

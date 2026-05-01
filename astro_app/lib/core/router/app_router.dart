@@ -56,6 +56,8 @@ import 'package:astro/features/tareas/presentation/screens/tarea_form_screen.dar
 import 'package:astro/features/avisos/presentation/screens/aviso_list_screen.dart';
 import 'package:astro/features/avisos/presentation/screens/aviso_detail_screen.dart';
 import 'package:astro/features/avisos/presentation/screens/aviso_form_screen.dart';
+import 'package:astro/features/etiquetas/presentation/screens/etiquetas_screen.dart';
+import 'package:astro/features/etiquetas/presentation/screens/etiqueta_form_screen.dart';
 
 /// Rutas nombradas.
 abstract final class AppRoutes {
@@ -142,6 +144,15 @@ abstract final class AppRoutes {
 
   // Pantalla de carga inicial
   static const String loading = '/loading';
+
+  // Etiquetas
+  static const String globalEtiquetas = '/etiquetas';
+  static const String globalEtiquetaNew = '/etiquetas/new';
+  static const String globalEtiquetaEdit = '/etiquetas/:etiquetaId/edit';
+  static const String projectEtiquetas = '/projects/:id/etiquetas';
+  static const String projectEtiquetaNew = '/projects/:id/etiquetas/new';
+  static const String projectEtiquetaEdit =
+      '/projects/:id/etiquetas/:etiquetaId/edit';
 }
 
 /// Notifier que dispara re-evaluación de redirects cuando cambia el estado
@@ -688,6 +699,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.projectDetail,
         builder: (context, state) =>
             ProjectDetailScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      // ── Etiquetas globales ────────────────────────────
+      GoRoute(
+        path: AppRoutes.globalEtiquetas,
+        builder: (context, state) => const EtiquetasScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.globalEtiquetaNew,
+        builder: (context, state) => const EtiquetaFormScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.globalEtiquetaEdit,
+        builder: (context, state) =>
+            EtiquetaFormScreen(etiquetaId: state.pathParameters['etiquetaId']),
+      ),
+
+      // ── Etiquetas por proyecto ────────────────────────
+      GoRoute(
+        path: AppRoutes.projectEtiquetas,
+        builder: (context, state) =>
+            EtiquetasScreen(projectId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: AppRoutes.projectEtiquetaNew,
+        builder: (context, state) =>
+            EtiquetaFormScreen(projectId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: AppRoutes.projectEtiquetaEdit,
+        builder: (context, state) => EtiquetaFormScreen(
+          projectId: state.pathParameters['id'],
+          etiquetaId: state.pathParameters['etiquetaId'],
+        ),
       ),
     ],
   );

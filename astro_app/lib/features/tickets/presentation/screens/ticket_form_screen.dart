@@ -21,6 +21,9 @@ import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_editor.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_picker.dart';
 
 /// Coberturas V1 disponibles.
 const _coberturas = [
@@ -78,6 +81,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
   // Citas vinculadas
   final List<String> _refCitas = [];
+
+  // Etiquetas asignadas
+  final List<String> _etiquetaIds = [];
 
   @override
   void initState() {
@@ -141,6 +147,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           _existingEvidencias.addAll(ticket.evidencias);
           _refMinutas.addAll(ticket.refMinutas);
           _refCitas.addAll(ticket.refCitas);
+          _etiquetaIds.addAll(ticket.etiquetaIds);
           _isLoaded = true;
           if (mounted) setState(() {});
         }
@@ -610,6 +617,60 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
               const SizedBox(height: 32),
 
+              // ── Etiquetas ──────────────────────────────────────
+              Text(
+                'ETIQUETAS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              if (_etiquetaIds.isNotEmpty)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final etiquetasAsync = ref.watch(
+                      etiquetasByIdsProvider(_etiquetaIds),
+                    );
+                    final etiquetas = etiquetasAsync.value ?? [];
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: etiquetas
+                          .map(
+                            (e) => EtiquetaChip(
+                              etiqueta: e,
+                              onDelete: () =>
+                                  setState(() => _etiquetaIds.remove(e.id)),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
+              TextButton.icon(
+                onPressed: () async {
+                  final selected = await EtiquetaPicker.show(
+                    context,
+                    ref,
+                    projectId: widget.projectId,
+                    selectedIds: List.from(_etiquetaIds),
+                  );
+                  if (selected != null) {
+                    setState(() {
+                      _etiquetaIds
+                        ..clear()
+                        ..addAll(selected);
+                    });
+                  }
+                },
+                icon: const Icon(Icons.label_outline),
+                label: const Text('Gestionar etiquetas'),
+              ),
+
+              const SizedBox(height: 32),
+
               // Botón guardar
               FilledButton.icon(
                 onPressed: _isSaving ? null : _save,
@@ -782,6 +843,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
             evidencias: allEvidencias,
             refMinutas: _refMinutas,
             refCitas: _refCitas,
+            etiquetaIds: _etiquetaIds,
           ),
           updatedBy: profile.uid,
         );
@@ -819,6 +881,7 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           solucionProgramada: solucionStr,
           refMinutas: _refMinutas,
           refCitas: _refCitas,
+          etiquetaIds: _etiquetaIds,
         );
 
         final ticketId = await repo.create(ticket);

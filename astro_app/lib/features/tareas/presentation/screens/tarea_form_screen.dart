@@ -23,8 +23,12 @@ import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/rich_text_editor.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_picker.dart';
 
 /// Pantalla de creación / edición de tarea.
 class TareaFormScreen extends ConsumerStatefulWidget {
@@ -60,7 +64,8 @@ class TareaFormScreen extends ConsumerStatefulWidget {
 class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
-  final _descripcionController = TextEditingController();
+  final _richDescripcionKey = GlobalKey<RichTextEditorState>();
+  String _initialDescripcionMd = '';
 
   String? _selectedModuleId;
   String _selectedModuleName = '';
@@ -84,6 +89,9 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   final List<String> _refCitas = [];
   int? _refCompromisoNumero;
 
+  // Etiquetas asignadas
+  final List<String> _etiquetaIds = [];
+
   // Subtareas
   final List<Subtarea> _subtareas = [];
 
@@ -101,7 +109,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
         _tituloController.text = widget.initialTitulo!;
       }
       if (widget.initialDescripcion != null) {
-        _descripcionController.text = widget.initialDescripcion!;
+        _initialDescripcionMd = widget.initialDescripcion!;
       }
       _assignedToUid = widget.initialAssignedToUid;
       _assignedToName = widget.initialAssignedToName;
@@ -116,7 +124,6 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   @override
   void dispose() {
     _tituloController.dispose();
-    _descripcionController.dispose();
     super.dispose();
   }
 
@@ -152,7 +159,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
       tareaAsync.whenData((tarea) {
         if (tarea != null && !_isLoaded) {
           _tituloController.text = tarea.titulo;
-          _descripcionController.text = tarea.descripcion;
+          _initialDescripcionMd = tarea.descripcion;
           _selectedModuleId = tarea.moduleId;
           _selectedModuleName = tarea.moduleName ?? '';
           _prioridad = tarea.prioridad;
@@ -165,6 +172,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
           _refRequerimientos.addAll(tarea.refRequerimientos);
           _refMinutas.addAll(tarea.refMinutas);
           _refCitas.addAll(tarea.refCitas);
+          _etiquetaIds.addAll(tarea.etiquetaIds);
           _refCompromisoNumero = tarea.refCompromisoNumero;
           _subtareas.addAll(tarea.subtareas);
           _isLoaded = true;
@@ -265,21 +273,20 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               const SizedBox(height: 16),
 
               // Descripción
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción *',
-                  prefixIcon: Icon(Icons.description_outlined),
-                  alignLabelWithHint: true,
+              Text(
+                'Descripción *',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'La descripción es obligatoria';
-                  }
-                  return null;
-                },
+              ),
+              const SizedBox(height: 8),
+              RichTextEditor(
+                key: _richDescripcionKey,
+                initialMarkdown: _initialDescripcionMd,
+                toolbarLevel: RichTextToolbarLevel.full,
+                placeholder: 'Describe la tarea...',
+                minHeight: 150,
+                maxHeight: 400,
               ),
               const SizedBox(height: 16),
 
@@ -706,6 +713,60 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
                 ),
               ),
 
+              const SizedBox(height: 24),
+
+              // ── Etiquetas ─────────────────────────────
+              Text(
+                'ETIQUETAS',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  letterSpacing: 1,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              if (_etiquetaIds.isNotEmpty)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final etiquetasAsync = ref.watch(
+                      etiquetasByIdsProvider(_etiquetaIds),
+                    );
+                    final etiquetas = etiquetasAsync.value ?? [];
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: etiquetas
+                          .map(
+                            (e) => EtiquetaChip(
+                              etiqueta: e,
+                              onDelete: () =>
+                                  setState(() => _etiquetaIds.remove(e.id)),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
+              TextButton.icon(
+                onPressed: () async {
+                  final selected = await EtiquetaPicker.show(
+                    context,
+                    ref,
+                    projectId: widget.projectId,
+                    selectedIds: List.from(_etiquetaIds),
+                  );
+                  if (selected != null) {
+                    setState(() {
+                      _etiquetaIds
+                        ..clear()
+                        ..addAll(selected);
+                    });
+                  }
+                },
+                icon: const Icon(Icons.label_outline),
+                label: const Text('Gestionar etiquetas'),
+              ),
+
               const SizedBox(height: 32),
 
               // ── Guardar ───────────────────────────────
@@ -771,6 +832,17 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validar descripción del editor enriquecido
+    final descripcionState = _richDescripcionKey.currentState;
+    if (descripcionState == null || descripcionState.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('La descripción es obligatoria')),
+      );
+      return;
+    }
+    final descripcionMd = descripcionState.markdown;
+
     setState(() => _isSaving = true);
 
     try {
@@ -801,7 +873,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
         id: widget.tareaId ?? '',
         folio: '', // Se genera en create.
         titulo: _tituloController.text.trim(),
-        descripcion: _descripcionController.text.trim(),
+        descripcion: descripcionMd,
         projectId: widget.projectId,
         projectName: proyecto.nombreProyecto,
         status: _isEditing ? _status : TareaStatus.pendiente,
@@ -818,6 +890,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
         refRequerimientos: _refRequerimientos,
         refMinutas: _refMinutas,
         refCitas: _refCitas,
+        etiquetaIds: _etiquetaIds,
         refCompromisoNumero: _refCompromisoNumero,
         subtareas: _subtareas,
       );

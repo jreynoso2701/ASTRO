@@ -18,6 +18,8 @@ import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_editor.dart';
 import 'package:astro/core/widgets/rich_text_viewer.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 /// Pantalla de detalle de un requerimiento.
 class RequerimientoDetailScreen extends ConsumerStatefulWidget {
@@ -866,6 +868,12 @@ class _InfoSection extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
+        // Etiquetas
+        if (req.etiquetaIds.isNotEmpty) ...[
+          _ReqEtiquetasCard(etiquetaIds: req.etiquetaIds),
+          const SizedBox(height: 16),
+        ],
+
         // Observaciones Root (solo visible para Root/Soporte)
         if (isManager &&
             req.observacionesRoot != null &&
@@ -1709,4 +1717,42 @@ String _formatDate(DateTime? date) {
 String _formatDateTime(DateTime date) {
   return '${date.day}/${date.month}/${date.year} '
       '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+}
+
+class _ReqEtiquetasCard extends ConsumerWidget {
+  const _ReqEtiquetasCard({required this.etiquetaIds});
+  final List<String> etiquetaIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(etiquetaIds));
+    final etiquetas = etiquetasAsync.value ?? [];
+    if (etiquetas.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ETIQUETAS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 24),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: etiquetas
+                  .map((e) => EtiquetaChip(etiqueta: e))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

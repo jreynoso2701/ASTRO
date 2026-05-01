@@ -15,6 +15,9 @@ import 'package:astro/features/minutas/data/minuta_repository.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/rich_text_viewer.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 /// Pantalla de detalle de una tarea.
 class TareaDetailScreen extends ConsumerStatefulWidget {
@@ -250,6 +253,7 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
           final hasSubtareas = tarea.subtareas.isNotEmpty;
           final hasDescription = tarea.descripcion.isNotEmpty;
           final hasAdjuntos = tarea.adjuntos.isNotEmpty;
+          final hasEtiquetas = tarea.etiquetaIds.isNotEmpty;
           final hasRefs =
               tarea.refTickets.isNotEmpty ||
               tarea.refRequerimientos.isNotEmpty ||
@@ -369,6 +373,10 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
                 if (hasRefs) ...[
                   const SizedBox(height: 16),
                   _ReferencesCard(tarea: tarea, projectId: widget.projectId),
+                ],
+                if (hasEtiquetas) ...[
+                  const SizedBox(height: 16),
+                  _TareaEtiquetasCard(etiquetaIds: tarea.etiquetaIds),
                 ],
                 const SizedBox(height: 24),
               ],
@@ -1035,7 +1043,7 @@ class _DescriptionCard extends StatelessWidget {
               ),
             ),
             const Divider(height: 16),
-            Text(descripcion, style: theme.textTheme.bodyMedium),
+            RichTextViewer(markdown: descripcion),
           ],
         ),
       ),
@@ -1272,6 +1280,46 @@ class _ReferencesCard extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right, size: 20),
                 onTap: () => context.push('/projects/$projectId/citas/$citaId'),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Etiquetas Card ────────────────────────────────────────────
+
+class _TareaEtiquetasCard extends ConsumerWidget {
+  const _TareaEtiquetasCard({required this.etiquetaIds});
+  final List<String> etiquetaIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(etiquetaIds));
+    final etiquetas = etiquetasAsync.value ?? [];
+    if (etiquetas.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ETIQUETAS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 24),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: etiquetas
+                  .map((e) => EtiquetaChip(etiqueta: e))
+                  .toList(),
+            ),
           ],
         ),
       ),

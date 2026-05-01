@@ -625,6 +625,36 @@
 - [x] Sin cambios en Cloud Functions — el sistema aprovecha los docs `Notificaciones` que ya se crean.
 - [x] Sin cambios en Firestore Security Rules — la colección `Notificaciones` ya tiene reglas de acceso.
 
+### 2.9 Editor de Texto Enriquecido (Rich Text)
+
+- [x] **Dependencias** — `flutter_quill: ^11.5.0`, `markdown_quill: ^4.3.0`, `dart_quill_delta`, `markdown`, `flutter_localizations: sdk: flutter`.
+- [x] **Widget `RichTextEditor`** — editor WYSIWYG reutilizable (`lib/core/widgets/rich_text_editor.dart`). GlobalKey-accessible vía `RichTextEditorState`. Getter `markdown` retorna Delta JSON (`jsonEncode(delta.toJson())`). Getter `isEmpty` usa `plainText.isEmpty`. `setMarkdown(text)` auto-detecta formato (Delta JSON → Markdown → texto plano). `clear()`. Parámetros: `placeholder`, `toolbarLevel` (full/mini), `minHeight`, `maxHeight`, `initialMarkdown`, `onChanged`, `focusNode`, `autoFocus`.
+- [x] **Widget `RichTextViewer`** — visor de solo lectura (`lib/core/widgets/rich_text_viewer.dart`). Acepta `markdown:` que puede ser Delta JSON, Markdown legado o texto plano. Auto-detección en `_markdownToDelta`. Compatible con web nativamente (flutter_quill).
+- [x] **Formato de almacenamiento** — Delta JSON (`[{"insert":"..."}]`). Backward compatibility con contenido Markdown legado vía `MarkdownToDelta` de `markdown_quill`.
+- [x] **Delegados de localización** — `localizationsDelegates`, `supportedLocales`, `locale: Locale('es')` en `main.dart` para internacionalización de flutter_quill.
+- [x] **Integración Tickets** — `ticket_form_screen.dart`: campo Descripción reemplazado por `RichTextEditor` (toolbar completo). `ticket_detail_screen.dart`: descripción y comentarios renderizados con `RichTextViewer`; campo de comentario con `RichTextEditor` (toolbar mini).
+- [x] **Integración Requerimientos** — `requerimiento_form_screen.dart`: campos Descripción y Observaciones con `RichTextEditor` (toolbar completo y mini respectivamente). `requerimiento_detail_screen.dart`: descripción, observaciones Root y comentarios con `RichTextViewer`; campo de comentario con `RichTextEditor` mini.
+- [x] **Integración Tareas** — `tarea_form_screen.dart`: campo Descripción reemplazado por `RichTextEditor` (toolbar completo); pre-llenado desde `initialDescripcion` (compromisos de minuta). `tarea_detail_screen.dart`: `_DescriptionCard` muestra descripción con `RichTextViewer`.
+- [x] Compatible con web (flutter_quill soporta web nativamente sin configuración adicional).
+
+### 2.10 Sistema de Etiquetas (Labels)
+
+- [x] **Modelo `Etiqueta`** (`lib/core/models/etiqueta.dart`) — campos: `id, nombre, colorHex, icono?, esGlobal, projectId?, projectName?, createdByUid, createdByName, isActive, createdAt?, updatedAt?`. Computed: `Color get color`. Constantes: `kEtiquetaPresetColors` (20 colores), `kEtiquetaPresetIcons` (20 iconos). Colección Firestore: `Etiquetas`.
+- [x] **`EtiquetaRepository`** (`lib/features/etiquetas/data/etiqueta_repository.dart`) — métodos: `getById`, `watchGlobal`, `watchByProject`, `watchAvailableForProject`, `watchByIds`, `create`, `update`, `deactivate`, `activate`, `importGlobal`.
+- [x] **Providers** (`lib/features/etiquetas/providers/etiqueta_providers.dart`) — `etiquetaRepositoryProvider`, `globalEtiquetasProvider`, `projectEtiquetasProvider`, `availableEtiquetasProvider`, `etiquetasByIdsProvider`, `canManageGlobalEtiquetasProvider`, `canManageProjectEtiquetasProvider`.
+- [x] **Widget `EtiquetaChip`** — chip individual con color de fondo, ícono opcional, nombre. Variante `compact`. Soporte `onDelete`. Método público estático `resolveIcon(String?)` para resolver nombre de ícono a `IconData`.
+- [x] **Widget `EtiquetasRow`** — fila de chips con overflow "+N". Parámetros: `etiquetas, compact, maxVisible`.
+- [x] **Widget `EtiquetaPicker`** — selector modal (`DraggableScrollableSheet`). Búsqueda, secciones (Globales / Del Proyecto), checkmarks. API: `EtiquetaPicker.show(context, ref, projectId:, selectedIds:)` → `List<String>?`.
+- [x] **`EtiquetaFormScreen`** — CRUD de etiquetas. Soporta `etiqueta?` (objeto), `etiquetaId?` (carga por ID desde router), `projectId?`, `projectName?`. Grid de 20 colores preset, grid de 20 íconos + "ninguno", preview en vivo, validación de nombre.
+- [x] **`EtiquetasScreen`** — pantalla de gestión. Sin `projectId`: gestión global. Con `projectId`: TabBar (Global | Del Proyecto) + botón importar etiquetas globales.
+- [x] **Integración en modelos** — campo `etiquetaIds: List<String>` añadido a: `Ticket`, `Requerimiento`, `Tarea`, `Cita`. Incluye: constructor default, `fromFirestore`, `toFirestore`, `copyWith`.
+- [x] **Integración en formularios** — sección "ETIQUETAS" con picker y chips de borrado individual en: `ticket_form_screen`, `requerimiento_form_screen`, `tarea_form_screen`, `cita_form_screen`.
+- [x] **Integración en detalle** — sección/card de etiquetas asignadas (no vacía) en: `ticket_detail_screen`, `requerimiento_detail_screen`, `tarea_detail_screen`, `cita_detail_screen`.
+- [x] **Rutas GoRouter** — 6 rutas añadidas: `globalEtiquetas`, `globalEtiquetaNew`, `globalEtiquetaEdit`, `projectEtiquetas`, `projectEtiquetaNew`, `projectEtiquetaEdit`.
+- [x] **GestionScreen** — tile "Etiquetas" (ícono `label`, color morado) visible solo para Root. Navega a `/etiquetas`.
+- [x] **ProjectDetailScreen** — botón "Etiquetas del proyecto" visible para Root, Lider Proyecto y Soporte (via `canManageProjectProvider`). Navega a `/projects/:id/etiquetas`.
+- [x] **Firestore Security Rules** — reglas para colección `Etiquetas`: lectura autenticada global; creación global solo Root; creación por proyecto Root/Lider/Soporte; actualización/eliminación por creador o Root.
+
 ---
 
 ## Leyenda de Estados
@@ -639,4 +669,4 @@
 
 ---
 
-*Última actualización: Notificaciones In-App — toasts en tiempo real con sonido, toggle global, navegación desde banner (sección 2.8).*
+*Última actualización: Texto enriquecido (Rich Text) — editor WYSIWYG con flutter_quill integrado en Tickets, Requerimientos y Tareas. Formato Delta JSON. Compatible web (sección 2.9).*

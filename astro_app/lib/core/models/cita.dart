@@ -92,6 +92,7 @@ class Cita {
     this.refRequerimientos = const [],
     this.refMinutas = const [],
     this.refMinuta,
+    this.etiquetaIds = const [],
     this.participantUids = const [],
     this.agenda = const [],
     this.recordatorios = const [15, 60],
@@ -124,6 +125,9 @@ class Cita {
   final List<String> refRequerimientos;
   final List<String> refMinutas; // Minutas referenciadas (seguimiento)
   final String? refMinuta; // Minuta generada tras la reunión
+
+  // Etiquetas asignadas
+  final List<String> etiquetaIds;
 
   /// UIDs desnormalizados de participantes + createdBy (para consultas cross-project).
   final List<String> participantUids;
@@ -195,6 +199,7 @@ class Cita {
       refRequerimientos: parseStrList(data['refRequerimientos']),
       refMinutas: parseStrList(data['refMinutas']),
       refMinuta: data['refMinuta'] as String?,
+      etiquetaIds: parseStrList(data['etiquetaIds']),
       participantUids: parseStrList(data['participantUids']),
       agenda: (data['agenda'] is List)
           ? (data['agenda'] as List)
@@ -234,6 +239,7 @@ class Cita {
       if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refMinuta != null) 'refMinuta': refMinuta,
+      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
       'participantUids': participantUids,
       if (agenda.isNotEmpty) 'agenda': agenda.map((a) => a.toMap()).toList(),
       'recordatorios': recordatorios,
@@ -265,6 +271,7 @@ class Cita {
     List<String>? refRequerimientos,
     List<String>? refMinutas,
     String? refMinuta,
+    List<String>? etiquetaIds,
     List<String>? participantUids,
     List<AgendaItem>? agenda,
     List<int>? recordatorios,
@@ -295,6 +302,7 @@ class Cita {
       refRequerimientos: refRequerimientos ?? this.refRequerimientos,
       refMinutas: refMinutas ?? this.refMinutas,
       refMinuta: refMinuta ?? this.refMinuta,
+      etiquetaIds: etiquetaIds ?? this.etiquetaIds,
       participantUids: participantUids ?? this.participantUids,
       agenda: agenda ?? this.agenda,
       recordatorios: recordatorios ?? this.recordatorios,

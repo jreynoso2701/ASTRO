@@ -11,6 +11,8 @@ import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 /// Pantalla de detalle de una cita.
 class CitaDetailScreen extends ConsumerWidget {
@@ -725,6 +727,12 @@ class _CitaInfoSection extends ConsumerWidget {
           ),
         ],
 
+        // ── Etiquetas ────────────────────────────────────────
+        if (cita.etiquetaIds.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _CitaEtiquetasCard(etiquetaIds: cita.etiquetaIds),
+        ],
+
         // ── Referencias ─────────────────────────────────────
         if (cita.refMinutas.isNotEmpty ||
             cita.refTickets.isNotEmpty ||
@@ -828,6 +836,44 @@ class _CitaInfoSection extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _CitaEtiquetasCard extends ConsumerWidget {
+  const _CitaEtiquetasCard({required this.etiquetaIds});
+  final List<String> etiquetaIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(etiquetaIds));
+    final etiquetas = etiquetasAsync.value ?? [];
+    if (etiquetas.isEmpty) return const SizedBox.shrink();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ETIQUETAS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 24),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: etiquetas
+                  .map((e) => EtiquetaChip(etiqueta: e))
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

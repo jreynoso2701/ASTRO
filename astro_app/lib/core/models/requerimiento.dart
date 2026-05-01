@@ -97,6 +97,7 @@ class Requerimiento {
     this.adjuntos = const [],
     this.refMinutas = const [],
     this.refCitas = const [],
+    this.etiquetaIds = const [],
     this.fechaCompromiso,
     this.motivoRechazo,
     this.observacionesRoot,
@@ -146,6 +147,9 @@ class Requerimiento {
   // Vínculos futuros (Fase 2)
   final List<String> refMinutas;
   final List<String> refCitas;
+
+  // Etiquetas asignadas
+  final List<String> etiquetaIds;
 
   // Fecha compromiso (obligatoria para En Desarrollo, Implementado, Completado)
   final DateTime? fechaCompromiso;
@@ -233,6 +237,7 @@ class Requerimiento {
       adjuntos: parseStrList(data['adjuntos']),
       refMinutas: parseStrList(data['refMinutas']),
       refCitas: parseStrList(data['refCitas']),
+      etiquetaIds: parseStrList(data['etiquetaIds']),
       fechaCompromiso: parseDate(data['fechaCompromiso']),
       motivoRechazo: data['motivoRechazo'] as String?,
       observacionesRoot: data['observacionesRoot'] as String?,
@@ -269,6 +274,7 @@ class Requerimiento {
       if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
+      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
       if (fechaCompromiso != null)
         'fechaCompromiso': Timestamp.fromDate(fechaCompromiso!),
       if (motivoRechazo != null) 'motivoRechazo': motivoRechazo,
@@ -304,6 +310,7 @@ class Requerimiento {
     List<String>? adjuntos,
     List<String>? refMinutas,
     List<String>? refCitas,
+    List<String>? etiquetaIds,
     DateTime? fechaCompromiso,
     String? motivoRechazo,
     String? observacionesRoot,
@@ -337,6 +344,7 @@ class Requerimiento {
       adjuntos: adjuntos ?? this.adjuntos,
       refMinutas: refMinutas ?? this.refMinutas,
       refCitas: refCitas ?? this.refCitas,
+      etiquetaIds: etiquetaIds ?? this.etiquetaIds,
       fechaCompromiso: fechaCompromiso ?? this.fechaCompromiso,
       motivoRechazo: motivoRechazo ?? this.motivoRechazo,
       observacionesRoot: observacionesRoot ?? this.observacionesRoot,

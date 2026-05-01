@@ -17,6 +17,9 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_picker.dart';
 
 /// Pantalla de creación / edición de cita.
 class CitaFormScreen extends ConsumerStatefulWidget {
@@ -52,6 +55,9 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
   final List<String> _refTickets = [];
   final List<String> _refRequerimientos = [];
   final List<String> _refMinutas = [];
+
+  // Etiquetas asignadas
+  final List<String> _etiquetaIds = [];
 
   // Agenda
   final List<AgendaItem> _agenda = [];
@@ -118,6 +124,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
           _refMinutas
             ..clear()
             ..addAll(cita.refMinutas);
+          _etiquetaIds.addAll(cita.etiquetaIds);
           _agenda
             ..clear()
             ..addAll(cita.agenda);
@@ -414,6 +421,52 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
                 },
               ),
 
+              const SizedBox(height: 24),
+
+              // ── Etiquetas ─────────────────────────────
+              _SectionHeader(label: 'ETIQUETAS'),
+              const SizedBox(height: 8),
+              if (_etiquetaIds.isNotEmpty)
+                Consumer(
+                  builder: (context, ref, _) {
+                    final etiquetasAsync = ref.watch(
+                      etiquetasByIdsProvider(_etiquetaIds),
+                    );
+                    final etiquetas = etiquetasAsync.value ?? [];
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: etiquetas
+                          .map(
+                            (e) => EtiquetaChip(
+                              etiqueta: e,
+                              onDelete: () =>
+                                  setState(() => _etiquetaIds.remove(e.id)),
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
+                ),
+              TextButton.icon(
+                onPressed: () async {
+                  final selected = await EtiquetaPicker.show(
+                    context,
+                    ref,
+                    projectId: widget.projectId,
+                    selectedIds: List.from(_etiquetaIds),
+                  );
+                  if (selected != null) {
+                    setState(() {
+                      _etiquetaIds
+                        ..clear()
+                        ..addAll(selected);
+                    });
+                  }
+                },
+                icon: const Icon(Icons.label_outline),
+                label: const Text('Gestionar etiquetas'),
+              ),
               const SizedBox(height: 24),
 
               // ── Notas ─────────────────────────────────
@@ -829,6 +882,7 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
         refTickets: _refTickets,
         refRequerimientos: _refRequerimientos,
         refMinutas: _refMinutas,
+        etiquetaIds: _etiquetaIds,
         notas: _notasController.text.trim().isNotEmpty
             ? _notasController.text.trim()
             : null,

@@ -27,6 +27,7 @@ class Ticket {
     this.evidencias = const [],
     this.refMinutas = const [],
     this.refCitas = const [],
+    this.etiquetaIds = const [],
     this.solucionProgramada,
     this.porcentajeAvance = 0,
     this.isActive = true,
@@ -60,6 +61,7 @@ class Ticket {
   final List<String> evidencias; // V1: evidenciasIncidente
   final List<String> refMinutas; // IDs de minutas vinculadas
   final List<String> refCitas; // IDs de citas vinculadas
+  final List<String> etiquetaIds; // IDs de etiquetas asignadas
   final String? solucionProgramada; // V1: fhCompromisoSol
   final double porcentajeAvance; // V1: porcentajeAvance (0-100)
   final bool isActive;
@@ -132,6 +134,7 @@ class Ticket {
       evidencias: parseList(data['evidenciasIncidente']),
       refMinutas: parseList(data['refMinutas']),
       refCitas: parseList(data['refCitas']),
+      etiquetaIds: parseList(data['etiquetaIds']),
       solucionProgramada: _parseDateString(data['fhCompromisoSol']),
       porcentajeAvance: _parseDouble(data['porcentajeAvance']) ?? 0,
       isActive: data['isActive'] as bool? ?? true,
@@ -163,6 +166,7 @@ class Ticket {
       if (evidencias.isNotEmpty) 'evidenciasIncidente': evidencias,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
+      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
       if (solucionProgramada != null) 'fhCompromisoSol': solucionProgramada,
       'porcentajeAvance': porcentajeAvance,
       'isActive': isActive,
@@ -210,6 +214,7 @@ class Ticket {
     List<String>? evidencias,
     List<String>? refMinutas,
     List<String>? refCitas,
+    List<String>? etiquetaIds,
     String? solucionProgramada,
     double? porcentajeAvance,
     bool? isActive,
@@ -240,6 +245,7 @@ class Ticket {
       evidencias: evidencias ?? this.evidencias,
       refMinutas: refMinutas ?? this.refMinutas,
       refCitas: refCitas ?? this.refCitas,
+      etiquetaIds: etiquetaIds ?? this.etiquetaIds,
       solucionProgramada: solucionProgramada ?? this.solucionProgramada,
       porcentajeAvance: porcentajeAvance ?? this.porcentajeAvance,
       isActive: isActive ?? this.isActive,

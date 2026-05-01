@@ -28,6 +28,7 @@ class Tarea {
     this.refRequerimientos = const [],
     this.refMinutas = const [],
     this.refCitas = const [],
+    this.etiquetaIds = const [],
     this.refCompromisoNumero,
     this.subtareas = const [],
     this.isActive = true,
@@ -60,6 +61,9 @@ class Tarea {
   final List<String> refMinutas;
   final List<String> refCitas;
   final int? refCompromisoNumero;
+
+  // Etiquetas asignadas
+  final List<String> etiquetaIds;
 
   // Subtareas embebidas
   final List<Subtarea> subtareas;
@@ -114,6 +118,7 @@ class Tarea {
       ),
       refMinutas: parseRefList(data['refMinutas'], data['refMinutaId']),
       refCitas: parseList(data['refCitas']),
+      etiquetaIds: parseList(data['etiquetaIds']),
       refCompromisoNumero: (data['refCompromisoNumero'] as num?)?.toInt(),
       subtareas:
           (data['subtareas'] as List<dynamic>?)
@@ -149,6 +154,7 @@ class Tarea {
       if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
+      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
       if (refCompromisoNumero != null)
         'refCompromisoNumero': refCompromisoNumero,
       if (subtareas.isNotEmpty)
@@ -181,6 +187,7 @@ class Tarea {
     List<String>? refRequerimientos,
     List<String>? refMinutas,
     List<String>? refCitas,
+    List<String>? etiquetaIds,
     int? refCompromisoNumero,
     List<Subtarea>? subtareas,
     bool? isActive,
@@ -208,6 +215,7 @@ class Tarea {
       refRequerimientos: refRequerimientos ?? this.refRequerimientos,
       refMinutas: refMinutas ?? this.refMinutas,
       refCitas: refCitas ?? this.refCitas,
+      etiquetaIds: etiquetaIds ?? this.etiquetaIds,
       refCompromisoNumero: refCompromisoNumero ?? this.refCompromisoNumero,
       subtareas: subtareas ?? this.subtareas,
       isActive: isActive ?? this.isActive,
