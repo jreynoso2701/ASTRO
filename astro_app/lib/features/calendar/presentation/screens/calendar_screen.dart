@@ -10,6 +10,8 @@ import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 /// Pantalla de Calendario global — muestra citas de todos los proyectos
 /// del usuario actual. Toggle entre vista mensual y agenda.
@@ -714,6 +716,25 @@ class _CitaCard extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    // Etiquetas
+                    if (cita.etiquetaIds.isNotEmpty)
+                      Builder(
+                        builder: (_) {
+                          final idsKey = cita.etiquetaIds.join(',');
+                          final etiquetas =
+                              ref.watch(etiquetasByIdsProvider(idsKey)).value ??
+                              [];
+                          if (etiquetas.isEmpty) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 5),
+                            child: EtiquetasRow(
+                              etiquetas: etiquetas,
+                              compact: true,
+                              maxVisible: 3,
+                            ),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),

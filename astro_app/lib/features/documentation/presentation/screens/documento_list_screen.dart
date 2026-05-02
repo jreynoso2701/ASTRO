@@ -9,6 +9,9 @@ import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
 
 /// Pantalla de documentación de un proyecto con dos tabs:
 /// - Formales: documentos gestionados (memorias, contratos, etc.)
@@ -193,6 +196,9 @@ class _FormalesTab extends ConsumerWidget {
     final filteredDocs = ref.watch(filteredDocumentosProvider(projectId));
     final categoriaFilter = ref.watch(docCategoriaFilterProvider);
     final allCategorias = ref.watch(allCategoriasProvider(projectId));
+    final etiquetaFilter = ref.watch(docEtiquetaFilterProvider);
+    final availableEtiquetas =
+        ref.watch(availableEtiquetasProvider(projectId)).value ?? [];
 
     return AdaptiveBody(
       maxWidth: 960,
@@ -235,6 +241,16 @@ class _FormalesTab extends ConsumerWidget {
                   '${filteredDocs.length} documento${filteredDocs.length == 1 ? '' : 's'}',
                   style: theme.textTheme.bodySmall,
                 ),
+                const Spacer(),
+                if (availableEtiquetas.isNotEmpty)
+                  EtiquetaFilterButton(
+                    etiquetas: availableEtiquetas,
+                    selectedIds: etiquetaFilter,
+                    onToggle: (id) =>
+                        ref.read(docEtiquetaFilterProvider.notifier).toggle(id),
+                    onClear: () =>
+                        ref.read(docEtiquetaFilterProvider.notifier).clear(),
+                  ),
               ],
             ),
           ),
@@ -471,14 +487,14 @@ class _CompartidosTab extends ConsumerWidget {
 
 // ── Document Card ────────────────────────────────────────
 
-class _DocumentCard extends StatelessWidget {
+class _DocumentCard extends ConsumerWidget {
   const _DocumentCard({required this.documento, required this.onTap});
 
   final DocumentoProyecto documento;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Card(
@@ -592,6 +608,24 @@ class _DocumentCard extends StatelessWidget {
                   ),
                 ],
               ),
+              // Etiquetas
+              if (documento.etiquetaIds.isNotEmpty)
+                Builder(
+                  builder: (_) {
+                    final idsKey = documento.etiquetaIds.join(',');
+                    final etiquetas =
+                        ref.watch(etiquetasByIdsProvider(idsKey)).value ?? [];
+                    if (etiquetas.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: EtiquetasRow(
+                        etiquetas: etiquetas,
+                        compact: true,
+                        maxVisible: 3,
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),

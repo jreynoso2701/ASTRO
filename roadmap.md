@@ -356,6 +356,7 @@
 - [x] Versión bumped a `2.5.1+20`.
 - [x] Versión bumped a `2.5.2+21`.
 - [x] Versión bumped a `2.5.3+22`.
+- [x] Versión bumped a `2.5.4+23`.
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
 - [x] Build de release para Android (`flutter build appbundle`) — AAB 54.6MB.
 - [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11), v11-v14 (intermedias), v15 (2.2.22+15).
@@ -663,6 +664,11 @@
 - [x] **Bugfix — `etiquetasByIdsProvider` con parámetro por valor** — parámetro del provider cambiado de `List<String>` (igualdad por referencia) a `String` (IDs sorted+joined, igualdad por valor). Corrige bug donde agregar/quitar etiquetas en formularios no se reflejaba visualmente (Riverpod devolvía caché por ver la misma referencia de lista).
 - [x] **Bugfix — Etiquetas no se guardaban al editar** — `toFirestore()` en `Ticket`, `Tarea`, `Cita` y `Requerimiento` tenía `if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds` — con `merge: true` en Firestore, el campo se omitía cuando la lista era vacía o reducida, dejando el valor viejo. Corregido a `'etiquetaIds': etiquetaIds` (siempre incluido).
 - [x] **Bugfix — `watchAvailableForProject`** — query ahora filtra por `projectId + isActive` (antes hacía scan completo sin filtro de proyecto, causaba `permission-denied`).
+- [x] **Filtro de etiquetas en Tickets** (`TicketEtiquetaFilterNotifier`, `ticketEtiquetaFilterProvider`) — `EtiquetaFilterButton` en `ticket_list_screen.dart`. Lógica OR: si el ticket tiene al menos una de las etiquetas seleccionadas, se muestra. Sin selección = sin filtro. Chips visibles en `_TicketTile`.
+- [x] **Filtro de etiquetas en Requerimientos** (`ReqEtiquetaFilterNotifier`, `reqEtiquetaFilterProvider`) — `EtiquetaFilterButton` en `requerimiento_list_screen.dart`. Mismo patrón OR. Chips visibles en `_ReqCard`.
+- [x] **Filtro de etiquetas en Tareas** (`TareaEtiquetaFilterNotifier`, `tareaEtiquetaFilterProvider`) — `EtiquetaFilterButton` en `tareas_list_screen.dart`. Chips visibles en `_TareaTile`.
+- [x] **Filtro de etiquetas en Citas** (`CitaEtiquetaFilterNotifier`, `citaEtiquetaFilterProvider`) — `EtiquetaFilterButton` en `cita_list_screen.dart`. Chips visibles en `_CitaCard`.
+- [x] **Filtro + gestión de etiquetas en Documentos** — campo `etiquetaIds: List<String>` añadido al modelo `DocumentoProyecto` (constructor, `fromFirestore`, `toFirestore`, `copyWith`). Sección ETIQUETAS con `EtiquetaPicker` en `documento_form_screen.dart`. Card de etiquetas en `documento_detail_screen.dart` con botón "Gestionar etiquetas". `DocEtiquetaFilterNotifier` + `docEtiquetaFilterProvider` + filtro OR en `filteredDocumentosProvider`. `EtiquetaFilterButton` en `documento_list_screen.dart` (`_FormalesTab`). Chips visibles en `_DocumentCard`.
 
 ### 2.10.1 Correcciones y Estabilidad de Formularios
 
@@ -683,4 +689,4 @@
 
 ---
 
-*Última actualización: v2.5.2+21 — Sistema de Etiquetas (2.10) completado y estabilizado: concepto global eliminado, EtiquetaPicker simplificado, Firestore rules simplificadas, bugfix de persistencia en `toFirestore()` (etiquetaIds siempre en payload), bugfix de `etiquetasByIdsProvider` (parámetro por valor), bugfix de descripción borrada al hacer scroll (`AutomaticKeepAliveClientMixin` en RichTextEditor), bugfix de crash al guardar ticket sin módulo seleccionado.*
+*Última actualización: v2.5.3+22 — Filtro de etiquetas extendido a Tareas, Citas y Documentos. `DocumentoProyecto` actualizado con `etiquetaIds`. Formulario, detalle y lista de documentos con gestión completa de etiquetas. `EtiquetaFilterButton` en todas las pantallas de lista. Chips de etiquetas visibles en tarjetas/tiles de todas las entidades.*

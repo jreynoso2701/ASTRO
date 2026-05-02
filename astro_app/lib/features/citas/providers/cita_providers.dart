@@ -66,6 +66,27 @@ final citaStatusFilterProvider =
       CitaStatusFilterNotifier.new,
     );
 
+class CitaEtiquetaFilterNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void toggle(String id) {
+    final current = state;
+    if (current.contains(id)) {
+      state = {...current}..remove(id);
+    } else {
+      state = {...current, id};
+    }
+  }
+
+  void clear() => state = {};
+}
+
+final citaEtiquetaFilterProvider =
+    NotifierProvider<CitaEtiquetaFilterNotifier, Set<String>>(
+      CitaEtiquetaFilterNotifier.new,
+    );
+
 /// Citas filtradas para un proyecto dado.
 final filteredCitasProvider = Provider.family<List<Cita>, String>((
   ref,
@@ -80,9 +101,14 @@ final filteredCitasProvider = Provider.family<List<Cita>, String>((
 
   final query = ref.watch(citaSearchProvider).toUpperCase();
   final statusFilter = ref.watch(citaStatusFilterProvider);
+  final etiquetaFilter = ref.watch(citaEtiquetaFilterProvider);
 
   return allCitas.where((c) {
     if (statusFilter != null && c.status != statusFilter) return false;
+    if (etiquetaFilter.isNotEmpty) {
+      final hasMatch = c.etiquetaIds.any((id) => etiquetaFilter.contains(id));
+      if (!hasMatch) return false;
+    }
     if (query.isNotEmpty) {
       final matchesQuery =
           c.titulo.toUpperCase().contains(query) ||

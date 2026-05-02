@@ -81,6 +81,27 @@ final tareaPrioridadFilterProvider =
       TareaPrioridadFilterNotifier.new,
     );
 
+class TareaEtiquetaFilterNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void toggle(String id) {
+    final current = state;
+    if (current.contains(id)) {
+      state = {...current}..remove(id);
+    } else {
+      state = {...current, id};
+    }
+  }
+
+  void clear() => state = {};
+}
+
+final tareaEtiquetaFilterProvider =
+    NotifierProvider<TareaEtiquetaFilterNotifier, Set<String>>(
+      TareaEtiquetaFilterNotifier.new,
+    );
+
 // ── Tareas filtradas con visibilidad por rol ─────────────
 
 /// Tareas filtradas para un proyecto dado.
@@ -120,10 +141,15 @@ final filteredTareasProvider = Provider.family<List<Tarea>, String>((
   final query = ref.watch(tareaSearchProvider).toUpperCase();
   final statusFilter = ref.watch(tareaStatusFilterProvider);
   final prioridadFilter = ref.watch(tareaPrioridadFilterProvider);
+  final etiquetaFilter = ref.watch(tareaEtiquetaFilterProvider);
 
   return allTareas.where((t) {
     if (statusFilter != null && t.status != statusFilter) return false;
     if (prioridadFilter != null && t.prioridad != prioridadFilter) return false;
+    if (etiquetaFilter.isNotEmpty) {
+      final hasMatch = t.etiquetaIds.any((id) => etiquetaFilter.contains(id));
+      if (!hasMatch) return false;
+    }
     if (query.isNotEmpty) {
       final matchesQuery =
           t.titulo.toUpperCase().contains(query) ||

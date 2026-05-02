@@ -14,6 +14,9 @@ import 'package:astro/features/documentation/providers/documento_providers.dart'
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_picker.dart';
 
 /// Pantalla de creación / edición de documento formal.
 /// Si [documentId] es null → modo creación.
@@ -46,6 +49,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
   String? _selectedFileName;
   bool _saving = false;
   bool _didLoad = false;
+  List<String> _etiquetaIds = [];
 
   @override
   void dispose() {
@@ -72,6 +76,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
         _tituloCtrl.text = existingDoc.titulo;
         _descripcionCtrl.text = existingDoc.descripcion ?? '';
         _selectedCategoria = existingDoc.categoria;
+        _etiquetaIds = List.from(existingDoc.etiquetaIds);
         _didLoad = true;
       }
     }
@@ -222,6 +227,63 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
 
                     const SizedBox(height: 32),
 
+                    // Etiquetas
+                    Text(
+                      'ETIQUETAS',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        letterSpacing: 1,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    if (_etiquetaIds.isNotEmpty)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final etiquetasAsync = ref.watch(
+                            etiquetasByIdsProvider(
+                              ([..._etiquetaIds]..sort()).join(','),
+                            ),
+                          );
+                          final etiquetas = etiquetasAsync.value ?? [];
+                          return Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: etiquetas
+                                .map(
+                                  (e) => EtiquetaChip(
+                                    etiqueta: e,
+                                    onDelete: () => setState(
+                                      () => _etiquetaIds.remove(e.id),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          );
+                        },
+                      ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final selected = await EtiquetaPicker.show(
+                          context,
+                          ref,
+                          projectId: widget.projectId,
+                          selectedIds: List.from(_etiquetaIds),
+                        );
+                        if (selected != null) {
+                          setState(() {
+                            _etiquetaIds
+                              ..clear()
+                              ..addAll(selected);
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.label_outline),
+                      label: const Text('Gestionar etiquetas'),
+                    ),
+
+                    const SizedBox(height: 32),
+
                     // Botón guardar
                     SizedBox(
                       height: 48,
@@ -367,6 +429,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
       archivoSize: fileSize,
       versionActual: 1,
       versiones: [version],
+      etiquetaIds: List.from(_etiquetaIds),
       createdAt: now,
     );
 
@@ -463,6 +526,7 @@ class _DocumentoFormScreenState extends ConsumerState<DocumentoFormScreen> {
           ? null
           : _descripcionCtrl.text.trim(),
       categoria: _selectedCategoria,
+      etiquetaIds: List.from(_etiquetaIds),
     );
     await repo.update(updated);
 

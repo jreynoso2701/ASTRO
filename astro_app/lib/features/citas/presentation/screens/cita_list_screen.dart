@@ -7,6 +7,9 @@ import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
 
 /// Pantalla de listado de citas de un proyecto.
 class CitaListScreen extends ConsumerWidget {
@@ -40,6 +43,9 @@ class CitaListScreen extends ConsumerWidget {
         final filteredCitas = ref.watch(filteredCitasProvider(projectId));
         final searchQuery = ref.watch(citaSearchProvider);
         final statusFilter = ref.watch(citaStatusFilterProvider);
+        final etiquetaFilter = ref.watch(citaEtiquetaFilterProvider);
+        final availableEtiquetas =
+            ref.watch(availableEtiquetasProvider(projectId)).value ?? [];
 
         return Scaffold(
           appBar: AppBar(
@@ -130,6 +136,18 @@ class CitaListScreen extends ConsumerWidget {
                               '${filteredCitas.length} cita${filteredCitas.length == 1 ? '' : 's'}',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
+                            const Spacer(),
+                            if (availableEtiquetas.isNotEmpty)
+                              EtiquetaFilterButton(
+                                etiquetas: availableEtiquetas,
+                                selectedIds: etiquetaFilter,
+                                onToggle: (id) => ref
+                                    .read(citaEtiquetaFilterProvider.notifier)
+                                    .toggle(id),
+                                onClear: () => ref
+                                    .read(citaEtiquetaFilterProvider.notifier)
+                                    .clear(),
+                              ),
                           ],
                         ),
                       ),
@@ -235,14 +253,14 @@ class _FilterChip extends StatelessWidget {
 
 // ── Cita Card ────────────────────────────────────────────
 
-class _CitaCard extends StatelessWidget {
+class _CitaCard extends ConsumerWidget {
   const _CitaCard({required this.cita, required this.onTap});
 
   final Cita cita;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final dateStr = cita.fecha != null
@@ -327,6 +345,24 @@ class _CitaCard extends StatelessWidget {
                   ],
                 ],
               ),
+              // Etiquetas
+              if (cita.etiquetaIds.isNotEmpty)
+                Builder(
+                  builder: (_) {
+                    final idsKey = cita.etiquetaIds.join(',');
+                    final etiquetas =
+                        ref.watch(etiquetasByIdsProvider(idsKey)).value ?? [];
+                    if (etiquetas.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: EtiquetasRow(
+                        etiquetas: etiquetas,
+                        compact: true,
+                        maxVisible: 3,
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),

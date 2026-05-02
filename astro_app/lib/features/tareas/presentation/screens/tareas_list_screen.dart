@@ -8,6 +8,9 @@ import 'package:astro/core/models/tarea_prioridad.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
 
 /// Pantalla de listado de tareas de un proyecto.
 class TareasListScreen extends ConsumerWidget {
@@ -42,6 +45,9 @@ class TareasListScreen extends ConsumerWidget {
         final searchQuery = ref.watch(tareaSearchProvider);
         final statusFilter = ref.watch(tareaStatusFilterProvider);
         final prioridadFilter = ref.watch(tareaPrioridadFilterProvider);
+        final etiquetaFilter = ref.watch(tareaEtiquetaFilterProvider);
+        final availableEtiquetas =
+            ref.watch(availableEtiquetasProvider(projectId)).value ?? [];
         final canArchive = ref.watch(canArchiveTareaProvider(projectId));
 
         return Scaffold(
@@ -169,6 +175,18 @@ class TareasListScreen extends ConsumerWidget {
                             '${filteredTareas.length} tarea${filteredTareas.length == 1 ? '' : 's'}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
+                          const Spacer(),
+                          if (availableEtiquetas.isNotEmpty)
+                            EtiquetaFilterButton(
+                              etiquetas: availableEtiquetas,
+                              selectedIds: etiquetaFilter,
+                              onToggle: (id) => ref
+                                  .read(tareaEtiquetaFilterProvider.notifier)
+                                  .toggle(id),
+                              onClear: () => ref
+                                  .read(tareaEtiquetaFilterProvider.notifier)
+                                  .clear(),
+                            ),
                         ],
                       ),
                     ),
@@ -269,14 +287,14 @@ class _FilterChip extends StatelessWidget {
 
 // ── Tarea tile ───────────────────────────────────────────
 
-class _TareaTile extends StatelessWidget {
+class _TareaTile extends ConsumerWidget {
   const _TareaTile({required this.tarea, required this.projectId});
 
   final Tarea tarea;
   final String projectId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final statusColor = TareasListScreen._statusColor(tarea.status);
     final prioridadColor = TareasListScreen._prioridadColor(tarea.prioridad);
@@ -326,6 +344,7 @@ class _TareaTile extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
+                      // Fecha entrega + asignado
                       Row(
                         children: [
                           if (tarea.assignedToName != null) ...[
@@ -364,6 +383,28 @@ class _TareaTile extends StatelessWidget {
                           ],
                         ],
                       ),
+                      // Etiquetas
+                      if (tarea.etiquetaIds.isNotEmpty)
+                        Builder(
+                          builder: (_) {
+                            final idsKey = tarea.etiquetaIds.join(',');
+                            final etiquetas =
+                                ref
+                                    .watch(etiquetasByIdsProvider(idsKey))
+                                    .value ??
+                                [];
+                            if (etiquetas.isEmpty)
+                              return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 5),
+                              child: EtiquetasRow(
+                                etiquetas: etiquetas,
+                                compact: true,
+                                maxVisible: 3,
+                              ),
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),

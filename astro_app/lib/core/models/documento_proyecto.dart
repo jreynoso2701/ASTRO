@@ -25,6 +25,7 @@ class DocumentoProyecto {
     this.archivoSize,
     this.versionActual = 1,
     this.versiones = const [],
+    this.etiquetaIds = const [],
     this.isActive = true,
     this.createdAt,
     this.updatedAt,
@@ -51,6 +52,9 @@ class DocumentoProyecto {
   // Versionado
   final int versionActual;
   final List<DocumentoVersion> versiones;
+
+  // Etiquetas
+  final List<String> etiquetaIds;
 
   // Control
   final bool isActive;
@@ -98,6 +102,11 @@ class DocumentoProyecto {
       archivoSize: (data['archivoSize'] as num?)?.toInt(),
       versionActual: (data['versionActual'] as num?)?.toInt() ?? 1,
       versiones: parseVersiones(data['versiones']),
+      etiquetaIds:
+          (data['etiquetaIds'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          [],
       isActive: data['isActive'] as bool? ?? true,
       createdAt: parseDate(data['createdAt']),
       updatedAt: parseDate(data['updatedAt']),
@@ -123,6 +132,7 @@ class DocumentoProyecto {
       if (archivoSize != null) 'archivoSize': archivoSize,
       'versionActual': versionActual,
       'versiones': versiones.map((v) => v.toMap()).toList(),
+      'etiquetaIds': etiquetaIds,
       'isActive': isActive,
       if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
       'updatedAt': Timestamp.fromDate(now),
@@ -146,6 +156,7 @@ class DocumentoProyecto {
     int? archivoSize,
     int? versionActual,
     List<DocumentoVersion>? versiones,
+    List<String>? etiquetaIds,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -168,6 +179,7 @@ class DocumentoProyecto {
       archivoSize: archivoSize ?? this.archivoSize,
       versionActual: versionActual ?? this.versionActual,
       versiones: versiones ?? this.versiones,
+      etiquetaIds: etiquetaIds ?? this.etiquetaIds,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

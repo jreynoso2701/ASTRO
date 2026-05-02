@@ -94,6 +94,27 @@ final docCategoriaFilterProvider =
       DocCategoriaFilterNotifier.new,
     );
 
+class DocEtiquetaFilterNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void toggle(String id) {
+    final current = state;
+    if (current.contains(id)) {
+      state = {...current}..remove(id);
+    } else {
+      state = {...current, id};
+    }
+  }
+
+  void clear() => state = {};
+}
+
+final docEtiquetaFilterProvider =
+    NotifierProvider<DocEtiquetaFilterNotifier, Set<String>>(
+      DocEtiquetaFilterNotifier.new,
+    );
+
 // ── Documentos formales filtrados ────────────────────────
 
 /// Documentos formales filtrados para un proyecto.
@@ -136,10 +157,17 @@ final filteredDocumentosProvider =
 
       final query = ref.watch(docSearchProvider).toUpperCase();
       final categoriaFilter = ref.watch(docCategoriaFilterProvider);
+      final etiquetaFilter = ref.watch(docEtiquetaFilterProvider);
 
       return allDocs.where((d) {
         if (categoriaFilter != null && d.categoria != categoriaFilter) {
           return false;
+        }
+        if (etiquetaFilter.isNotEmpty) {
+          final hasMatch = d.etiquetaIds.any(
+            (id) => etiquetaFilter.contains(id),
+          );
+          if (!hasMatch) return false;
         }
         if (query.isNotEmpty) {
           final matchesQuery =

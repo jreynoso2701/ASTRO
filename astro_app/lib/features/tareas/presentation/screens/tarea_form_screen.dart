@@ -291,34 +291,55 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               const SizedBox(height: 16),
 
               // Asignado a (miembros del proyecto)
-              DropdownButtonFormField<String>(
-                initialValue: _assignedToUid,
-                decoration: const InputDecoration(
-                  labelText: 'Asignar a',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: null,
-                    child: Text('Sin asignar'),
-                  ),
-                  ...members.map((m) {
-                    return DropdownMenuItem<String>(
-                      value: m.assignment.userId,
-                      child: Text(m.user?.displayName ?? m.assignment.userId),
-                    );
-                  }),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _assignedToUid = value;
-                    _assignedToName = value != null
-                        ? members
-                              .firstWhere((m) => m.assignment.userId == value)
-                              .user
-                              ?.displayName
-                        : null;
-                  });
+              Builder(
+                builder: (context) {
+                  // Deduplicate by userId — safety against duplicate Firestore docs
+                  final seen = <String>{};
+                  final uniqueMembers = members
+                      .where((m) => seen.add(m.assignment.userId))
+                      .toList();
+                  // Guard: only use _assignedToUid as initialValue if it exists in items
+                  final assignedValue =
+                      uniqueMembers.any(
+                        (m) => m.assignment.userId == _assignedToUid,
+                      )
+                      ? _assignedToUid
+                      : null;
+                  return DropdownButtonFormField<String>(
+                    key: ValueKey('assigned_${uniqueMembers.length}'),
+                    initialValue: assignedValue,
+                    decoration: const InputDecoration(
+                      labelText: 'Asignar a',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('Sin asignar'),
+                      ),
+                      ...uniqueMembers.map((m) {
+                        return DropdownMenuItem<String>(
+                          value: m.assignment.userId,
+                          child: Text(
+                            m.user?.displayName ?? m.assignment.userId,
+                          ),
+                        );
+                      }),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        _assignedToUid = value;
+                        _assignedToName = value != null
+                            ? uniqueMembers
+                                  .firstWhere(
+                                    (m) => m.assignment.userId == value,
+                                  )
+                                  .user
+                                  ?.displayName
+                            : null;
+                      });
+                    },
+                  );
                 },
               ),
               const SizedBox(height: 16),

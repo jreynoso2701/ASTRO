@@ -9,6 +9,8 @@ import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 /// Pantalla global de tareas (cross-proyecto) para la navegación principal.
 class TareasGlobalScreen extends ConsumerStatefulWidget {
@@ -233,57 +235,41 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
     );
   }
 
-  void _showProjectPicker(BuildContext context, List<dynamic> projects) {
+  Future<void> _showProjectPicker(
+    BuildContext context,
+    List<dynamic> projects,
+  ) async {
     if (projects.length == 1) {
       final p = projects.first;
       context.push('/projects/${p.id}/tareas/new');
       return;
     }
 
-    showModalBottomSheet<void>(
+    // Ordenar por nombre A → Z una sola vez.
+    final sorted = [...projects]
+      ..sort(
+        (a, b) => a.nombreProyecto.toLowerCase().compareTo(
+          b.nombreProyecto.toLowerCase(),
+        ),
+      );
+
+    // Retorna el ID del proyecto seleccionado. La navegación ocurre
+    // DESPUÉS del await, cuando el sheet ya terminó de cerrarse.
+    final selectedId = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.6,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                child: Text(
-                  'Selecciona un proyecto',
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
-              ),
-              const Divider(),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: projects.length,
-                  itemBuilder: (_, i) {
-                    final p = projects[i];
-                    return ListTile(
-                      leading: const Icon(Icons.folder_outlined),
-                      title: Text(p.nombreProyecto),
-                      subtitle: Text(p.fkEmpresa),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        context.push('/projects/${p.id}/tareas/new');
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
+      // removeViewInsets evita que el sheet se redimensione al aparecer
+      // el teclado, cortando el flood de viewport-metrics que causaba ANR.
+      builder: (ctx) => MediaQuery.removeViewInsets(
+        removeBottom: true,
+        context: ctx,
+        child: _ProjectPickerSheet(projects: sorted),
       ),
     );
+
+    if (selectedId != null && context.mounted) {
+      context.push('/projects/$selectedId/tareas/new');
+    }
   }
 
   Future<void> _bulkArchiveTareas(
@@ -343,6 +329,107 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
   };
 }
 
+// ── Project picker sheet ─────────────────────────────────
+
+class _ProjectPickerSheet extends StatefulWidget {
+  const _ProjectPickerSheet({required this.projects});
+
+  final List<dynamic> projects;
+
+  @override
+  State<_ProjectPickerSheet> createState() => _ProjectPickerSheetState();
+}
+
+class _ProjectPickerSheetState extends State<_ProjectPickerSheet> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _searchController.text.toLowerCase().trim();
+    final filtered = query.isEmpty
+        ? widget.projects
+        : widget.projects
+              .where(
+                (p) =>
+                    p.nombreProyecto.toLowerCase().contains(query) ||
+                    p.fkEmpresa.toLowerCase().contains(query),
+              )
+              .toList();
+
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Focus trap: captura el foco inicial para que el teclado
+            // NO se abra automáticamente al aparecer el sheet.
+            const Focus(autofocus: true, child: SizedBox.shrink()),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+              child: Text(
+                'Selecciona un proyecto',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Buscar proyecto...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          tooltip: 'Limpiar',
+                          onPressed: () =>
+                              setState(() => _searchController.clear()),
+                        )
+                      : null,
+                  isDense: true,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const Divider(),
+            Flexible(
+              child: filtered.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: Text('Sin resultados')),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final p = filtered[i];
+                        return ListTile(
+                          leading: const Icon(Icons.folder_outlined),
+                          title: Text(p.nombreProyecto),
+                          subtitle: Text(p.fkEmpresa),
+                          onTap: () => Navigator.pop(context, p.id as String),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Filter chip ──────────────────────────────────────────
 
 class _FilterChip extends StatelessWidget {
@@ -373,7 +460,7 @@ class _FilterChip extends StatelessWidget {
 
 // ── Global tarea tile ────────────────────────────────────
 
-class _GlobalTareaTile extends StatelessWidget {
+class _GlobalTareaTile extends ConsumerWidget {
   const _GlobalTareaTile({
     required this.tarea,
     required this.projectId,
@@ -385,7 +472,7 @@ class _GlobalTareaTile extends StatelessWidget {
   final String projectName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final statusColor = _TareasGlobalScreenState.statusColor(tarea.status);
     final prioridadColor = _TareasGlobalScreenState.prioridadColor(
@@ -505,6 +592,28 @@ class _GlobalTareaTile extends StatelessWidget {
                           ],
                         ],
                       ),
+                      // Etiquetas
+                      if (tarea.etiquetaIds.isNotEmpty)
+                        Builder(
+                          builder: (_) {
+                            final idsKey = tarea.etiquetaIds.join(',');
+                            final etiquetas =
+                                ref
+                                    .watch(etiquetasByIdsProvider(idsKey))
+                                    .value ??
+                                [];
+                            if (etiquetas.isEmpty)
+                              return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 5),
+                              child: EtiquetasRow(
+                                etiquetas: etiquetas,
+                                compact: true,
+                                maxVisible: 3,
+                              ),
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),

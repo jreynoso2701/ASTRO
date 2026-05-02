@@ -95,6 +95,8 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
     ref.watch(allTicketsByProjectProvider(projectName));
     ref.watch(allRequerimientosByProjectProvider(projectName));
     ref.watch(minutasByProjectProvider(projectName));
+    // Pre-calentar miembros del proyecto para que estén listos al agregar participantes
+    ref.watch(projectMembersProvider(widget.projectId));
 
     // Si estamos editando, cargar datos
     if (_isEditing && !_isLoaded) {
@@ -542,10 +544,11 @@ class _CitaFormScreenState extends ConsumerState<CitaFormScreen> {
     final members = ref.read(projectMembersProvider(widget.projectId));
     final addedUids = _participantes.map((p) => p.uid).toSet();
 
-    // Filtrar miembros ya agregados
+    // Deduplicate by uid and filter already-added members
+    final seen = <String>{};
     final available = members.where((m) {
       final u = m.user;
-      return u != null && !addedUids.contains(u.uid);
+      return u != null && seen.add(u.uid) && !addedUids.contains(u.uid);
     }).toList();
 
     if (available.isEmpty) {

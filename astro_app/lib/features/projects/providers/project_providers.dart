@@ -96,7 +96,10 @@ final projectMembersProvider =
       final allUsers = ref.watch(allUsersProvider).value ?? [];
       final userMap = {for (final u in allUsers) u.uid: u};
 
+      // Deduplicate by userId — keep first assignment per user
+      final seen = <String>{};
       return assignments
+          .where((a) => seen.add(a.userId))
           .map((a) => (assignment: a, user: userMap[a.userId]))
           .toList();
     });

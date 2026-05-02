@@ -8,6 +8,8 @@ import 'package:astro/features/documentation/providers/documento_providers.dart'
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 import 'package:intl/intl.dart';
 
 /// Pantalla de detalle de un documento formal.
@@ -80,6 +82,30 @@ class DocumentoDetailScreen extends ConsumerWidget {
                 _DocumentHeader(documento: documento),
                 const SizedBox(height: 16),
                 _DocumentInfo(documento: documento),
+                if (documento.etiquetaIds.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _DocEtiquetasCard(etiquetaIds: documento.etiquetaIds),
+                ],
+                if (canEdit) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final canManageEtiquetas = ref.watch(
+                          canManageProjectEtiquetasProvider(projectId),
+                        );
+                        if (!canManageEtiquetas) return const SizedBox.shrink();
+                        return OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/projects/$projectId/etiquetas'),
+                          icon: const Icon(Icons.label_outline, size: 18),
+                          label: const Text('Gestionar etiquetas'),
+                        );
+                      },
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 _CurrentFile(documento: documento),
                 if (documento.versiones.length > 1) ...[
@@ -583,6 +609,50 @@ class _InfoRow extends StatelessWidget {
           ),
           Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],
+      ),
+    );
+  }
+}
+
+// ── Etiquetas Card ───────────────────────────────────────
+
+class _DocEtiquetasCard extends ConsumerWidget {
+  const _DocEtiquetasCard({required this.etiquetaIds});
+
+  final List<String> etiquetaIds;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final idsKey = ([...etiquetaIds]..sort()).join(',');
+    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(idsKey));
+    final etiquetas = etiquetasAsync.value ?? [];
+
+    if (etiquetas.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ETIQUETAS',
+              style: theme.textTheme.labelSmall?.copyWith(
+                letterSpacing: 1,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: etiquetas
+                  .map((e) => EtiquetaChip(etiqueta: e))
+                  .toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

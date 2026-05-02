@@ -992,8 +992,15 @@ class _AssigneeDropdown extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final members = ref.watch(projectMembersProvider(projectId));
-    final activeMembers = members.where((m) => m.user != null).toList()
-      ..sort((a, b) => (a.user!.displayName).compareTo(b.user!.displayName));
+    // Deduplicate by userId, keep only members with resolved user
+    final seen = <String>{};
+    final activeMembers =
+        members
+            .where((m) => m.user != null && seen.add(m.assignment.userId))
+            .toList()
+          ..sort(
+            (a, b) => (a.user!.displayName).compareTo(b.user!.displayName),
+          );
 
     return DropdownButtonFormField<String>(
       initialValue: activeMembers.any((m) => m.user!.uid == selectedUid)
