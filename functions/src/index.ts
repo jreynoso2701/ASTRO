@@ -232,6 +232,11 @@ async function getReqRecipients(
   return Array.from(recipients);
 }
 
+/** Prefija el texto con "[name] " si el nombre de proyecto no está vacío. */
+function pfx(name: string): string {
+  return name ? `[${name}] ` : "";
+}
+
 /**
  * Envía push y crea notificación in-app para cada destinatario.
  */
@@ -354,7 +359,7 @@ export const onTicketCreated = onDocumentCreated(
     );
 
     await sendNotifications(recipients, {
-      titulo: `Nuevo ticket: ${folio}`,
+      titulo: `${pfx(projectName)}Nuevo ticket: ${folio}`,
       cuerpo: titulo,
       tipo: "ticket_creado",
       refType: "ticket",
@@ -394,7 +399,7 @@ export const onTicketUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} → ${after.status}`,
+        titulo: `${pfx(projectName)}${folio} → ${after.status}`,
         cuerpo: `El estado del ticket cambió a "${after.status}"`,
         tipo: "ticket_status",
         refType: "ticket",
@@ -413,7 +418,7 @@ export const onTicketUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} asignado`,
+        titulo: `${pfx(projectName)}${folio} asignado`,
         cuerpo: `Ticket asignado a ${after.assignedToName ?? "alguien"}`,
         tipo: "ticket_asignado",
         refType: "ticket",
@@ -432,7 +437,7 @@ export const onTicketUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} — prioridad cambiada`,
+        titulo: `${pfx(projectName)}${folio} — prioridad cambiada`,
         cuerpo: `Nueva prioridad: ${after.priority}`,
         tipo: "ticket_prioridad",
         refType: "ticket",
@@ -477,7 +482,7 @@ export const onTicketUpdated = onDocumentUpdated(
         const esNueva = beforeFhStr === null;
         const accion = esNueva ? "estableció" : "modificó";
         await sendNotifications(rootUids, {
-          titulo: `📅 ${folio} — fecha compromiso`,
+          titulo: `${pfx(projectName)}📅 ${folio} — fecha compromiso`,
           cuerpo: `${updatedByName} ${accion} la fecha compromiso al ${fechaStr}.`,
           tipo: "ticket_fecha_compromiso",
           refType: "ticket",
@@ -534,7 +539,7 @@ export const onTicketCommentCreated = onDocumentCreated(
       : commentText;
 
     await sendNotifications(recipients, {
-      titulo: `Comentario en ${folio}`,
+      titulo: `${pfx(projectName)}Comentario en ${folio}`,
       cuerpo: `${authorName}: ${preview}`,
       tipo: "ticket_comentario",
       refType: "ticket",
@@ -578,7 +583,7 @@ export const onReqCreated = onDocumentCreated(
     );
 
     await sendNotifications(recipients, {
-      titulo: `Nuevo requerimiento: ${folio}`,
+      titulo: `${pfx(projectName)}Nuevo requerimiento: ${folio}`,
       cuerpo: titulo,
       tipo: "req_creado",
       refType: "requerimiento",
@@ -623,7 +628,7 @@ export const onReqUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} → ${after.status}`,
+        titulo: `${pfx(projectName)}${folio} → ${after.status}`,
         cuerpo: `El estado del requerimiento cambió a "${after.status}"`,
         tipo: "req_status",
         refType: "requerimiento",
@@ -642,7 +647,7 @@ export const onReqUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} asignado`,
+        titulo: `${pfx(projectName)}${folio} asignado`,
         cuerpo: `Requerimiento asignado a ${after.assignedToName ?? "alguien"}`,
         tipo: "req_asignado",
         refType: "requerimiento",
@@ -661,7 +666,7 @@ export const onReqUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} — fase asignada`,
+        titulo: `${pfx(projectName)}${folio} — fase asignada`,
         cuerpo: `Fase: ${after.faseAsignada}`,
         tipo: "req_fase",
         refType: "requerimiento",
@@ -680,7 +685,7 @@ export const onReqUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} — prioridad cambiada`,
+        titulo: `${pfx(projectName)}${folio} — prioridad cambiada`,
         cuerpo: `Nueva prioridad: ${after.prioridad}`,
         tipo: "req_prioridad",
         refType: "requerimiento",
@@ -717,7 +722,7 @@ export const onReqUpdated = onDocumentUpdated(
         const esNueva = beforeFecha === null;
         const accion = esNueva ? "estableció" : "modificó";
         await sendNotifications(rootUids, {
-          titulo: `📅 ${folio} — fecha compromiso`,
+          titulo: `${pfx(projectName)}📅 ${folio} — fecha compromiso`,
           cuerpo: `${updatedByName} ${accion} la fecha compromiso al ${fechaStr}.`,
           tipo: "req_fecha_compromiso",
           refType: "requerimiento",
@@ -777,7 +782,7 @@ export const onReqCommentCreated = onDocumentCreated(
     const preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
 
     await sendNotifications(recipients, {
-      titulo: `Comentario en ${folio}`,
+      titulo: `${pfx(projectName)}Comentario en ${folio}`,
       cuerpo: `${authorName}: ${preview}`,
       tipo: "req_comentario",
       refType: "requerimiento",
@@ -815,7 +820,7 @@ export const onCitaCreated = onDocumentCreated(
     );
 
     await sendNotifications(recipients, {
-      titulo: `Nueva cita: ${folio}`,
+      titulo: `${pfx(projectName)}Nueva cita: ${folio}`,
       cuerpo: titulo,
       tipo: "cita_creada",
       refType: "cita",
@@ -859,7 +864,7 @@ export const onCitaUpdated = onDocumentUpdated(
 
       if (isCancelled) {
         await sendNotifications(recipients, {
-          titulo: `${folio} cancelada`,
+          titulo: `${pfx(projectName)}${folio} cancelada`,
           cuerpo: `La cita "${after.titulo ?? ""}" ha sido cancelada`,
           tipo: "cita_cancelada",
           refType: "cita",
@@ -869,7 +874,7 @@ export const onCitaUpdated = onDocumentUpdated(
         });
       } else if (isCompleted) {
         await sendNotifications(recipients, {
-          titulo: `${folio} completada`,
+          titulo: `${pfx(projectName)}${folio} completada`,
           cuerpo: `La cita "${after.titulo ?? ""}" ha sido completada`,
           tipo: "cita_completada",
           refType: "cita",
@@ -879,7 +884,7 @@ export const onCitaUpdated = onDocumentUpdated(
         });
       } else {
         await sendNotifications(recipients, {
-          titulo: `${folio} → ${newStatus}`,
+          titulo: `${pfx(projectName)}${folio} → ${newStatus}`,
           cuerpo: `El estado de la cita cambió a "${newStatus}"`,
           tipo: "cita_actualizada",
           refType: "cita",
@@ -901,7 +906,7 @@ export const onCitaUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} — horario actualizado`,
+        titulo: `${pfx(projectName)}${folio} — horario actualizado`,
         cuerpo: `La cita "${after.titulo ?? ""}" cambió de fecha/hora`,
         tipo: "cita_actualizada",
         refType: "cita",
@@ -1119,7 +1124,7 @@ export const checkCitaReminders = onSchedule(
 
           promises.push(
             sendNotifications(participantUids, {
-              titulo: `Recordatorio: ${titulo}`,
+              titulo: `${pfx(projectName)}Recordatorio: ${titulo}`,
               cuerpo: `En ${label} — ${projectName}`,
               tipo: "cita_recordatorio",
               refType: "cita",
@@ -1258,7 +1263,7 @@ export const checkTicketDeadlines = onSchedule(
 
       promises.push(
         sendNotifications(rootUids, {
-          titulo: `${emoji} ${folio} — ${label}`,
+          titulo: `${pfx(projectName)}${emoji} ${folio} — ${label}`,
           cuerpo: titulo,
           tipo: `ticket_deadline_${zone}`,
           refType: "ticket",
@@ -2043,7 +2048,7 @@ export const onTareaCreated = onDocumentCreated(
     );
 
     await sendNotifications(recipients, {
-      titulo: `Nueva tarea: ${folio}`,
+      titulo: `${pfx(projectName)}Nueva tarea: ${folio}`,
       cuerpo: titulo,
       tipo: "tarea_creada",
       refType: "tarea",
@@ -2083,7 +2088,7 @@ export const onTareaUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} → ${after.status}`,
+        titulo: `${pfx(projectName)}${folio} → ${after.status}`,
         cuerpo: `El estado de la tarea cambió a "${after.status}"`,
         tipo: "tarea_status",
         refType: "tarea",
@@ -2102,7 +2107,7 @@ export const onTareaUpdated = onDocumentUpdated(
         updatedBy
       );
       await sendNotifications(recipients, {
-        titulo: `${folio} asignada`,
+        titulo: `${pfx(projectName)}${folio} asignada`,
         cuerpo: `Tarea asignada a ${after.assignedToName ?? "alguien"}`,
         tipo: "tarea_asignada",
         refType: "tarea",
@@ -2214,7 +2219,7 @@ export const checkTareaDeadlines = onSchedule(
 
       promises.push(
         sendNotifications(recipientUids, {
-          titulo: `${emoji} ${folio} — ${label}`,
+          titulo: `${pfx(projectName)}${emoji} ${folio} — ${label}`,
           cuerpo: titulo,
           tipo: `tarea_deadline_${zone}`,
           refType: "tarea",
@@ -2331,7 +2336,7 @@ async function _checkReqDeadlinesLogic(runTag: string): Promise<void> {
 
     promises.push(
       sendNotifications(recipientUids, {
-        titulo: `${emoji} ${folio} — ${label}`,
+        titulo: `${pfx(projectName)}${emoji} ${folio} — ${label}`,
         cuerpo: titulo,
         tipo: `req_deadline_${zone}`,
         refType: "requerimiento",

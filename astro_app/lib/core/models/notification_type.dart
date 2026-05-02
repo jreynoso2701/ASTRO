@@ -63,7 +63,10 @@ enum NotificationType {
 
   // Avisos
   avisoCreado('aviso_creado', 'Nuevo aviso'),
-  avisoUrgente('aviso_urgente', 'Aviso urgente');
+  avisoUrgente('aviso_urgente', 'Aviso urgente'),
+
+  // Resumen diario
+  resumenDiario('resumen_diario', 'Resumen del día');
 
   const NotificationType(this.value, this.label);
   final String value;
@@ -84,7 +87,8 @@ enum NotificationRefType {
   cita('cita'),
   minuta('minuta'),
   tarea('tarea'),
-  aviso('aviso');
+  aviso('aviso'),
+  proyecto('proyecto');
 
   const NotificationRefType(this.value);
   final String value;

@@ -357,6 +357,7 @@
 - [x] Versión bumped a `2.5.2+21`.
 - [x] Versión bumped a `2.5.3+22`.
 - [x] Versión bumped a `2.5.4+23`.
+- [x] Versión bumped a `2.5.5+24`.
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
 - [x] Build de release para Android (`flutter build appbundle`) — AAB 54.6MB.
 - [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11), v11-v14 (intermedias), v15 (2.2.22+15).
@@ -689,4 +690,4 @@
 
 ---
 
-*Última actualización: v2.5.3+22 — Filtro de etiquetas extendido a Tareas, Citas y Documentos. `DocumentoProyecto` actualizado con `etiquetaIds`. Formulario, detalle y lista de documentos con gestión completa de etiquetas. `EtiquetaFilterButton` en todas las pantallas de lista. Chips de etiquetas visibles en tarjetas/tiles de todas las entidades.*
+*Última actualización: v2.5.5+24 — Notificaciones con nombre de proyecto: todas las Cloud Functions (25) actualizadas con helper `pfx()` para anteponer `[NOMBRE_PROYECTO]` al título de push e in-app. Fix de tap en notificaciones "Resumen del día": `resumenDiario` añadido a `NotificationType`, `proyecto` añadido a `NotificationRefType`, navegación a `/projects/{refId}` en inbox, listener y toast widget.*

@@ -201,6 +201,7 @@ class _InAppToastWidgetState extends State<InAppToastWidget>
       NotificationRefType.cita => const Color(0xFFFF9800), // Naranja
       NotificationRefType.minuta => const Color(0xFF8E24AA), // Púrpura
       NotificationRefType.aviso => const Color(0xFFFFB300), // Ámbar
+      NotificationRefType.proyecto => const Color(0xFF78909C), // Gris azulado
     };
   }
 
@@ -242,6 +243,7 @@ class _InAppToastWidgetState extends State<InAppToastWidget>
       NotificationType.citaRecordatorio => Icons.notifications_active_outlined,
       NotificationType.avisoCreado => Icons.campaign_outlined,
       NotificationType.avisoUrgente => Icons.campaign,
+      NotificationType.resumenDiario => Icons.bar_chart_outlined,
     };
   }
 }

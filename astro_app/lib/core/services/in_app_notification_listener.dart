@@ -156,6 +156,8 @@ class _InAppNotificationListenerState
         router.push('/projects/${n.projectId}/citas/${n.refId}');
       case NotificationRefType.aviso:
         router.push('/projects/${n.projectId}/avisos/${n.refId}');
+      case NotificationRefType.proyecto:
+        router.push('/projects/${n.refId}');
     }
   }
 }
