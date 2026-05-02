@@ -4,47 +4,18 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/etiqueta.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/screens/etiqueta_form_screen.dart';
-import 'package:astro/features/auth/providers/auth_providers.dart';
-import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 
-/// Pantalla de gestión de etiquetas.
-///
-/// - Sin [projectId]: muestra solo etiquetas globales (solo Root).
-/// - Con [projectId]: muestra tabs Globales + Del Proyecto, con opción de importar.
-class EtiquetasScreen extends ConsumerStatefulWidget {
-  const EtiquetasScreen({this.projectId, super.key});
+/// Pantalla de gestión de etiquetas de un proyecto.
+class EtiquetasScreen extends ConsumerWidget {
+  const EtiquetasScreen({required this.projectId, super.key});
 
-  final String? projectId;
+  final String projectId;
 
   @override
-  ConsumerState<EtiquetasScreen> createState() => _EtiquetasScreenState();
-}
-
-class _EtiquetasScreenState extends ConsumerState<EtiquetasScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  bool get _hasProject => widget.projectId != null;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: _hasProject ? 2 : 1, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final canManageGlobal = ref.watch(canManageGlobalEtiquetasProvider);
-    final canManageProject = _hasProject
-        ? ref.watch(canManageProjectEtiquetasProvider(widget.projectId!))
-        : false;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canManage = ref.watch(canManageProjectEtiquetasProvider(projectId));
+    final etiquetasAsync = ref.watch(projectEtiquetasProvider(projectId));
 
     return Scaffold(
       appBar: AppBar(
@@ -53,15 +24,6 @@ class _EtiquetasScreenState extends ConsumerState<EtiquetasScreen>
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
-        bottom: _hasProject
-            ? TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'GLOBALES'),
-                  Tab(text: 'DEL PROYECTO'),
-                ],
-              )
-            : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -70,185 +32,48 @@ class _EtiquetasScreenState extends ConsumerState<EtiquetasScreen>
               showSearch(
                 context: context,
                 delegate: _EtiquetaSearchDelegate(
-                  projectId: widget.projectId,
+                  projectId: projectId,
                   ref: ref,
                 ),
               );
             },
           ),
-          if (canManageGlobal && !_hasProject)
+          if (canManage)
             IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Nueva etiqueta global',
-              onPressed: () => _openForm(context),
-            ),
-          if (_hasProject && canManageProject)
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Nueva etiqueta de proyecto',
-              onPressed: () => _openProjectForm(context),
+              tooltip: 'Nueva etiqueta',
+              onPressed: () => _openForm(context, ref),
             ),
         ],
       ),
-      body: _hasProject
-          ? TabBarView(
-              controller: _tabController,
-              children: [
-                _GlobalTab(
-                  canManage: canManageGlobal,
-                  projectId: widget.projectId,
-                  onImport: canManageProject ? _importGlobal : null,
-                ),
-                _ProjectTab(
-                  projectId: widget.projectId!,
-                  canManage: canManageProject,
-                ),
-              ],
-            )
-          : _GlobalTab(canManage: canManageGlobal),
+      body: etiquetasAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (etiquetas) {
+          if (etiquetas.isEmpty) {
+            return _EmptyState(
+              icon: Icons.label_off,
+              message: 'Ninguna etiqueta',
+              sub: 'Sé el primero en añadir una etiqueta a este proyecto.',
+              canManage: canManage,
+              onAdd: canManage ? () => _openForm(context, ref) : null,
+            );
+          }
+          return _EtiquetaList(etiquetas: etiquetas, canManage: canManage);
+        },
+      ),
     );
   }
 
-  Future<void> _openForm(BuildContext context) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const EtiquetaFormScreen()));
-  }
-
-  Future<void> _openProjectForm(BuildContext context) async {
-    final project = _hasProject
-        ? ref.read(proyectoByIdProvider(widget.projectId!)).value
-        : null;
+  Future<void> _openForm(BuildContext context, WidgetRef ref) async {
+    final project = ref.read(proyectoByIdProvider(projectId)).value;
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => EtiquetaFormScreen(
-          projectId: widget.projectId,
+          projectId: projectId,
           projectName: project?.nombreProyecto,
         ),
       ),
-    );
-  }
-
-  Future<void> _importGlobal(BuildContext context, Etiqueta global) async {
-    final project = ref.read(proyectoByIdProvider(widget.projectId!)).value;
-    final authUser = ref.read(authStateProvider).value;
-    final profile = ref.read(currentUserProfileProvider).value;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Importar etiqueta'),
-        content: Text(
-          '¿Deseas importar la etiqueta global "${global.nombre}" como copia en este proyecto? '
-          'Podrás editarla de forma independiente.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Importar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      try {
-        await ref
-            .read(etiquetaRepositoryProvider)
-            .importGlobal(
-              global: global,
-              projectId: widget.projectId!,
-              projectName: project?.nombreProyecto ?? '',
-              byUid: authUser?.uid ?? '',
-              byName: profile?.displayName ?? authUser?.email ?? '',
-            );
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Etiqueta "${global.nombre}" importada al proyecto',
-              ),
-            ),
-          );
-          _tabController.animateTo(1);
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error al importar: $e')));
-        }
-      }
-    }
-  }
-}
-
-// ── Tab de Globales ──────────────────────────────────────
-
-class _GlobalTab extends ConsumerWidget {
-  const _GlobalTab({this.canManage = false, this.projectId, this.onImport});
-
-  final bool canManage;
-  final String? projectId;
-  final Future<void> Function(BuildContext, Etiqueta)? onImport;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final etiquetasAsync = ref.watch(globalEtiquetasProvider);
-
-    return etiquetasAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (etiquetas) {
-        if (etiquetas.isEmpty) {
-          return const _EmptyState(
-            icon: Icons.public_off,
-            message: 'No hay etiquetas globales',
-            sub:
-                'Crea una etiqueta global para que esté disponible en todos los proyectos.',
-          );
-        }
-        return _EtiquetaList(
-          etiquetas: etiquetas,
-          canManage: canManage,
-          showImport: onImport != null,
-          onImport: onImport != null ? (e) => onImport!(context, e) : null,
-        );
-      },
-    );
-  }
-}
-
-// ── Tab de Proyecto ──────────────────────────────────────
-
-class _ProjectTab extends ConsumerWidget {
-  const _ProjectTab({required this.projectId, this.canManage = false});
-
-  final String projectId;
-  final bool canManage;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final etiquetasAsync = ref.watch(projectEtiquetasProvider(projectId));
-
-    return etiquetasAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (etiquetas) {
-        if (etiquetas.isEmpty) {
-          return const _EmptyState(
-            icon: Icons.label_off,
-            message: 'Sin etiquetas de proyecto',
-            sub:
-                'Crea etiquetas específicas para este proyecto o importa desde las globales.',
-          );
-        }
-        return _EtiquetaList(etiquetas: etiquetas, canManage: canManage);
-      },
     );
   }
 }
@@ -256,17 +81,10 @@ class _ProjectTab extends ConsumerWidget {
 // ── Lista de Etiquetas ───────────────────────────────────
 
 class _EtiquetaList extends ConsumerWidget {
-  const _EtiquetaList({
-    required this.etiquetas,
-    required this.canManage,
-    this.showImport = false,
-    this.onImport,
-  });
+  const _EtiquetaList({required this.etiquetas, required this.canManage});
 
   final List<Etiqueta> etiquetas;
   final bool canManage;
-  final bool showImport;
-  final Future<void> Function(Etiqueta)? onImport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -276,29 +94,17 @@ class _EtiquetaList extends ConsumerWidget {
       separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
       itemBuilder: (_, i) {
         final e = etiquetas[i];
-        return _EtiquetaListTile(
-          etiqueta: e,
-          canManage: canManage,
-          showImport: showImport,
-          onImport: onImport != null ? () => onImport!(e) : null,
-        );
+        return _EtiquetaListTile(etiqueta: e, canManage: canManage);
       },
     );
   }
 }
 
 class _EtiquetaListTile extends ConsumerWidget {
-  const _EtiquetaListTile({
-    required this.etiqueta,
-    required this.canManage,
-    this.showImport = false,
-    this.onImport,
-  });
+  const _EtiquetaListTile({required this.etiqueta, required this.canManage});
 
   final Etiqueta etiqueta;
   final bool canManage;
-  final bool showImport;
-  final VoidCallback? onImport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -334,33 +140,26 @@ class _EtiquetaListTile extends ConsumerWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showImport)
-            IconButton(
-              icon: const Icon(Icons.download_outlined),
-              tooltip: 'Importar al proyecto',
-              onPressed: onImport,
-              iconSize: 20,
-            ),
-          if (canManage) ...[
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Editar',
-              iconSize: 20,
-              onPressed: () => _edit(context),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              tooltip: 'Desactivar',
-              iconSize: 20,
-              color: theme.colorScheme.error,
-              onPressed: () => _confirmDelete(context, ref),
-            ),
-          ],
-        ],
-      ),
+      trailing: canManage
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Editar',
+                  iconSize: 20,
+                  onPressed: () => _edit(context),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Desactivar',
+                  iconSize: 20,
+                  color: theme.colorScheme.error,
+                  onPressed: () => _confirmDelete(context, ref),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -448,11 +247,15 @@ class _EmptyState extends StatelessWidget {
     required this.icon,
     required this.message,
     required this.sub,
+    this.canManage = false,
+    this.onAdd,
   });
 
   final IconData icon;
   final String message;
   final String sub;
+  final bool canManage;
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -478,6 +281,14 @@ class _EmptyState extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            if (canManage && onAdd != null) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+                label: const Text('Añadir etiqueta'),
+              ),
+            ],
           ],
         ),
       ),
@@ -488,9 +299,9 @@ class _EmptyState extends StatelessWidget {
 // ── Search delegate ──────────────────────────────────────
 
 class _EtiquetaSearchDelegate extends SearchDelegate<void> {
-  _EtiquetaSearchDelegate({this.projectId, required this.ref});
+  _EtiquetaSearchDelegate({required this.projectId, required this.ref});
 
-  final String? projectId;
+  final String projectId;
   final WidgetRef ref;
 
   @override
@@ -514,9 +325,7 @@ class _EtiquetaSearchDelegate extends SearchDelegate<void> {
   Widget buildSuggestions(BuildContext context) => _buildList(context);
 
   Widget _buildList(BuildContext context) {
-    final stream = projectId != null
-        ? ref.watch(availableEtiquetasProvider(projectId!))
-        : ref.watch(globalEtiquetasProvider);
+    final stream = ref.watch(projectEtiquetasProvider(projectId));
 
     return stream.when(
       loading: () => const Center(child: CircularProgressIndicator()),

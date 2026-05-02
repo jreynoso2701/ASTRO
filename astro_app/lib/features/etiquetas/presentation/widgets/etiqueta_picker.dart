@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/etiqueta.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
@@ -106,6 +107,26 @@ class _EtiquetaPickerState extends ConsumerState<EtiquetaPicker> {
                       ),
                     ),
                   ),
+                  // Botón para ir a gestionar etiquetas
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final canManage = ref.watch(
+                        canManageProjectEtiquetasProvider(widget.projectId),
+                      );
+                      if (!canManage) return const SizedBox.shrink();
+                      return IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          context.push(
+                            '/projects/${widget.projectId}/etiquetas',
+                          );
+                        },
+                        icon: const Icon(Icons.settings_outlined, size: 20),
+                        tooltip: 'Gestionar etiquetas',
+                        visualDensity: VisualDensity.compact,
+                      );
+                    },
+                  ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(_selected),
                     child: const Text('Confirmar'),
@@ -140,40 +161,51 @@ class _EtiquetaPickerState extends ConsumerState<EtiquetaPicker> {
                       )
                       .toList();
                   if (filtered.isEmpty) {
-                    return const Center(
-                      child: Text('No hay etiquetas disponibles'),
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.label_off_outlined, size: 48),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Sin etiquetas en este proyecto',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Crea etiquetas para organizar tickets, tareas, citas y requerimientos.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                context.push(
+                                  '/projects/${widget.projectId}/etiquetas',
+                                );
+                              },
+                              icon: const Icon(Icons.add, size: 18),
+                              label: const Text('Gestionar etiquetas'),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   }
-                  // Separar globales y de proyecto
-                  final globals = filtered.where((e) => e.esGlobal).toList();
-                  final projLabels = filtered
-                      .where((e) => !e.esGlobal)
-                      .toList();
-
-                  return ListView(
+                  return ListView.builder(
                     controller: scrollController,
-                    children: [
-                      if (globals.isNotEmpty) ...[
-                        _sectionHeader(context, 'GLOBALES'),
-                        ...globals.map(
-                          (e) => _EtiquetaTile(
-                            etiqueta: e,
-                            isSelected: _selected.contains(e.id),
-                            onTap: () => _toggle(e.id),
-                          ),
-                        ),
-                      ],
-                      if (projLabels.isNotEmpty) ...[
-                        _sectionHeader(context, 'DEL PROYECTO'),
-                        ...projLabels.map(
-                          (e) => _EtiquetaTile(
-                            etiqueta: e,
-                            isSelected: _selected.contains(e.id),
-                            onTap: () => _toggle(e.id),
-                          ),
-                        ),
-                      ],
-                    ],
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) {
+                      final e = filtered[i];
+                      return _EtiquetaTile(
+                        etiqueta: e,
+                        isSelected: _selected.contains(e.id),
+                        onTap: () => _toggle(e.id),
+                      );
+                    },
                   );
                 },
               ),
@@ -192,19 +224,6 @@ class _EtiquetaPickerState extends ConsumerState<EtiquetaPicker> {
         _selected.add(id);
       }
     });
-  }
-
-  Widget _sectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          letterSpacing: 1.2,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-        ),
-      ),
-    );
   }
 }
 
@@ -242,17 +261,6 @@ class _EtiquetaTile extends StatelessWidget {
             : null,
       ),
       title: Text(etiqueta.nombre, style: const TextStyle(fontSize: 14)),
-      subtitle: etiqueta.esGlobal
-          ? Text(
-              'Global',
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-            )
-          : null,
       trailing: isSelected
           ? Icon(Icons.check_circle, color: color)
           : Icon(

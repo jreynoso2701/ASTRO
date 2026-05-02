@@ -239,7 +239,7 @@ class Cita {
       if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refMinuta != null) 'refMinuta': refMinuta,
-      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
+      'etiquetaIds': etiquetaIds,
       'participantUids': participantUids,
       if (agenda.isNotEmpty) 'agenda': agenda.map((a) => a.toMap()).toList(),
       'recordatorios': recordatorios,

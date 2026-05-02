@@ -62,7 +62,8 @@ class RichTextEditor extends StatefulWidget {
   State<RichTextEditor> createState() => RichTextEditorState();
 }
 
-class RichTextEditorState extends State<RichTextEditor> {
+class RichTextEditorState extends State<RichTextEditor>
+    with AutomaticKeepAliveClientMixin {
   late QuillController _controller;
   late FocusNode _focusNode;
   bool _ownFocusNode = false;
@@ -92,6 +93,9 @@ class RichTextEditorState extends State<RichTextEditor> {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     _ownFocusNode = widget.focusNode == null;
@@ -117,6 +121,7 @@ class RichTextEditorState extends State<RichTextEditor> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Requerido por AutomaticKeepAliveClientMixin
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

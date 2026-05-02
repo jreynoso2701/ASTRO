@@ -53,6 +53,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     final commentsAsync = ref.watch(ticketCommentsProvider(widget.ticketId));
     final canManage = ref.watch(canManageProjectProvider(widget.projectId));
     final isRoot = ref.watch(isCurrentUserRootProvider);
+    final canManageEtiquetas = ref.watch(
+      canManageProjectEtiquetasProvider(widget.projectId),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -94,6 +97,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             projectId: widget.projectId,
             canManage: canManage || isRoot,
             isRoot: isRoot,
+            canManageEtiquetas: canManageEtiquetas,
             systemComments: comments
                 .where((c) => c.type != CommentType.comment)
                 .toList(),
@@ -550,6 +554,7 @@ class _TicketInfoSection extends StatelessWidget {
     required this.projectId,
     required this.canManage,
     required this.isRoot,
+    required this.canManageEtiquetas,
     required this.systemComments,
     required this.onStatusChange,
     required this.onArchive,
@@ -560,6 +565,7 @@ class _TicketInfoSection extends StatelessWidget {
   final String projectId;
   final bool canManage;
   final bool isRoot;
+  final bool canManageEtiquetas;
   final List<TicketComment> systemComments;
   final ValueChanged<TicketStatus> onStatusChange;
   final VoidCallback onArchive;
@@ -998,9 +1004,21 @@ class _TicketInfoSection extends StatelessWidget {
         const SizedBox(height: 16),
 
         // Etiquetas
-        if (ticket.etiquetaIds.isNotEmpty) ...[
-          const SizedBox(height: 16),
+        if (ticket.etiquetaIds.isNotEmpty)
           _EtiquetasSection(etiquetaIds: ticket.etiquetaIds),
+        if (canManageEtiquetas) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/projects/$projectId/etiquetas'),
+              icon: const Icon(Icons.label_outline, size: 18),
+              label: const Text('Gestionar etiquetas'),
+              style: OutlinedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
         ],
 
         const SizedBox(height: 16),
@@ -2060,7 +2078,9 @@ class _EtiquetasSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(etiquetaIds));
+    final etiquetasAsync = ref.watch(
+      etiquetasByIdsProvider(([...etiquetaIds]..sort()).join(',')),
+    );
     final etiquetas = etiquetasAsync.value ?? [];
     if (etiquetas.isEmpty) return const SizedBox.shrink();
     return Card(

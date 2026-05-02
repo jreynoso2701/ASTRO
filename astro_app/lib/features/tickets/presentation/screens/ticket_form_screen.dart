@@ -213,33 +213,49 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
               ],
 
               // Módulo (obligatorio)
-              DropdownButtonFormField<String>(
-                initialValue: _selectedModuleId,
-                decoration: const InputDecoration(
-                  labelText: 'Módulo *',
-                  prefixIcon: Icon(Icons.view_module_outlined),
+              if (modulesAsync.isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (modules.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Este proyecto no tiene módulos activos. Crea al menos uno antes de registrar un ticket.',
+                    style: TextStyle(color: Colors.orange),
+                  ),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: _selectedModuleId,
+                  decoration: const InputDecoration(
+                    labelText: 'Módulo *',
+                    prefixIcon: Icon(Icons.view_module_outlined),
+                  ),
+                  items: modules.map((m) {
+                    return DropdownMenuItem<String>(
+                      value: m.id,
+                      child: Text(m.nombreModulo),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedModuleId = value;
+                      _selectedModuleName = modules
+                          .firstWhere((m) => m.id == value)
+                          .nombreModulo;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Selecciona un módulo';
+                    }
+                    return null;
+                  },
                 ),
-                items: modules.map((m) {
-                  return DropdownMenuItem<String>(
-                    value: m.id,
-                    child: Text(m.nombreModulo),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedModuleId = value;
-                    _selectedModuleName = modules
-                        .firstWhere((m) => m.id == value)
-                        .nombreModulo;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Selecciona un módulo';
-                  }
-                  return null;
-                },
-              ),
               const SizedBox(height: 16),
 
               // Título
@@ -631,7 +647,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                 Consumer(
                   builder: (context, ref, _) {
                     final etiquetasAsync = ref.watch(
-                      etiquetasByIdsProvider(_etiquetaIds),
+                      etiquetasByIdsProvider(
+                        ([..._etiquetaIds]..sort()).join(','),
+                      ),
                     );
                     final etiquetas = etiquetasAsync.value ?? [];
                     return Wrap(
@@ -779,6 +797,16 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Validar módulo explícitamente (el dropdown puede estar vacío si los módulos aún no cargaron)
+    if (_selectedModuleId == null || _selectedModuleId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecciona un módulo antes de continuar'),
+        ),
+      );
+      return;
+    }
 
     // Validar descripción del editor enriquecido
     final descripcionState = _richEditorKey.currentState;

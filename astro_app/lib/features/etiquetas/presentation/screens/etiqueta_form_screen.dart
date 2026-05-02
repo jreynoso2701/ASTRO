@@ -73,7 +73,6 @@ class _EtiquetaFormScreenState extends ConsumerState<EtiquetaFormScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isGlobal = widget.projectId == null;
 
     return Scaffold(
       appBar: AppBar(
@@ -272,16 +271,14 @@ class _EtiquetaFormScreenState extends ConsumerState<EtiquetaFormScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        isGlobal ? Icons.public : Icons.folder_outlined,
+                        Icons.folder_outlined,
                         size: 18,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          isGlobal
-                              ? 'Etiqueta GLOBAL — visible en todos los proyectos'
-                              : 'Etiqueta de PROYECTO — solo visible en ${widget.projectName ?? "este proyecto"}',
+                          'Etiqueta de PROYECTO — solo visible en ${widget.projectName ?? "este proyecto"}',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -305,7 +302,7 @@ class _EtiquetaFormScreenState extends ConsumerState<EtiquetaFormScreen> {
           : _nombreController.text.trim(),
       colorHex: _colorHex,
       icono: _icono,
-      esGlobal: widget.projectId == null,
+      esGlobal: false,
       createdByUid: '',
       createdByName: '',
     );
@@ -386,7 +383,7 @@ class _EtiquetaFormScreenState extends ConsumerState<EtiquetaFormScreen> {
           nombre: _nombreController.text.trim(),
           colorHex: _colorHex,
           icono: _icono,
-          esGlobal: widget.projectId == null,
+          esGlobal: false,
           projectId: widget.projectId,
           projectName: widget.projectName,
           createdByUid: byUid,

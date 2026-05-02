@@ -732,6 +732,25 @@ class _CitaInfoSection extends ConsumerWidget {
           const SizedBox(height: 16),
           _CitaEtiquetasCard(etiquetaIds: cita.etiquetaIds),
         ],
+        Builder(
+          builder: (context) {
+            final canManageEtiquetas = ref.watch(
+              canManageProjectEtiquetasProvider(projectId),
+            );
+            if (!canManageEtiquetas) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/projects/$projectId/etiquetas'),
+                icon: const Icon(Icons.label_outline, size: 18),
+                label: const Text('Gestionar etiquetas'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            );
+          },
+        ),
 
         // ── Referencias ─────────────────────────────────────
         if (cita.refMinutas.isNotEmpty ||
@@ -847,7 +866,9 @@ class _CitaEtiquetasCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final etiquetasAsync = ref.watch(etiquetasByIdsProvider(etiquetaIds));
+    final etiquetasAsync = ref.watch(
+      etiquetasByIdsProvider(([...etiquetaIds]..sort()).join(',')),
+    );
     final etiquetas = etiquetasAsync.value ?? [];
     if (etiquetas.isEmpty) return const SizedBox.shrink();
     return Card(

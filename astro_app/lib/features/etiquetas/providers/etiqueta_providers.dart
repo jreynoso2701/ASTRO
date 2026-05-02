@@ -36,11 +36,15 @@ final availableEtiquetasProvider =
     });
 
 /// Stream de etiquetas resueltas a partir de sus IDs.
-/// Recibe un `_EtiquetaIdsParam` con la lista de IDs y (opcionalmente) el projectId.
-final etiquetasByIdsProvider =
-    StreamProvider.family<List<Etiqueta>, List<String>>((ref, ids) {
-      return ref.watch(etiquetaRepositoryProvider).watchByIds(ids);
-    });
+/// Recibe los IDs como String separados por coma (ej. 'id1,id2'), ordenados,
+/// para garantizar igualdad por valor en Riverpod family.
+final etiquetasByIdsProvider = StreamProvider.family<List<Etiqueta>, String>((
+  ref,
+  idsKey,
+) {
+  final ids = idsKey.isEmpty ? <String>[] : idsKey.split(',');
+  return ref.watch(etiquetaRepositoryProvider).watchByIds(ids);
+});
 
 // ── Permisos ─────────────────────────────────────────────
 
@@ -67,5 +71,6 @@ final canManageProjectEtiquetasProvider = Provider.family<bool, String>((
       .firstOrNull;
   if (assignment == null) return false;
   return assignment.role == UserRole.liderProyecto ||
-      assignment.role == UserRole.soporte;
+      assignment.role == UserRole.soporte ||
+      assignment.role == UserRole.supervisor;
 });

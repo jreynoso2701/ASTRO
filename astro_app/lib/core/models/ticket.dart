@@ -166,7 +166,7 @@ class Ticket {
       if (evidencias.isNotEmpty) 'evidenciasIncidente': evidencias,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
-      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
+      'etiquetaIds': etiquetaIds,
       if (solucionProgramada != null) 'fhCompromisoSol': solucionProgramada,
       'porcentajeAvance': porcentajeAvance,
       'isActive': isActive,

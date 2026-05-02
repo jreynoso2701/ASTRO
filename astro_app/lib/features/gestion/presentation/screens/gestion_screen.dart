@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
-import 'package:astro/core/router/app_router.dart';
 
 /// Pantalla hub de Gestión — agrupa Proyectos, Usuarios y Empresas.
 class GestionScreen extends ConsumerWidget {
@@ -53,14 +52,6 @@ class GestionScreen extends ConsumerWidget {
           subtitle: 'Administración de empresas',
           color: const Color(0xFFFF9800),
           path: '/empresas',
-        ),
-        _GestionItem(
-          icon: Icons.label_outlined,
-          selectedIcon: Icons.label,
-          title: 'Etiquetas',
-          subtitle: 'Etiquetas globales del sistema',
-          color: const Color(0xFF9C27B0),
-          path: AppRoutes.globalEtiquetas,
         ),
       ],
     ];

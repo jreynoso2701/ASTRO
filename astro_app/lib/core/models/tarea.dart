@@ -154,7 +154,7 @@ class Tarea {
       if (refRequerimientos.isNotEmpty) 'refRequerimientos': refRequerimientos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
-      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
+      'etiquetaIds': etiquetaIds,
       if (refCompromisoNumero != null)
         'refCompromisoNumero': refCompromisoNumero,
       if (subtareas.isNotEmpty)

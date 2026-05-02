@@ -688,7 +688,7 @@ class _RequerimientoFormScreenState
           Consumer(
             builder: (context, ref, _) {
               final etiquetasAsync = ref.watch(
-                etiquetasByIdsProvider(_etiquetaIds),
+                etiquetasByIdsProvider(([..._etiquetaIds]..sort()).join(',')),
               );
               final etiquetas = etiquetasAsync.value ?? [];
               return Wrap(

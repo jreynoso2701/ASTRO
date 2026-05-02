@@ -42,24 +42,18 @@ class EtiquetaRepository {
         });
   }
 
-  /// Stream de todas las etiquetas disponibles en el contexto de un proyecto:
-  /// globales + específicas del proyecto.
+  /// Stream de etiquetas disponibles para un proyecto (solo del proyecto).
+  /// Ya no existen etiquetas globales — todas son por proyecto.
   Stream<List<Etiqueta>> watchAvailableForProject(String projectId) {
-    // Combinamos dos streams: global y project-specific.
-    // Se usa un join manual en el provider.
-    return _ref.where('isActive', isEqualTo: true).snapshots().map((snap) {
-      final list = snap.docs
-          .map(Etiqueta.fromFirestore)
-          .where((e) => e.esGlobal || e.projectId == projectId)
-          .toList();
-      list.sort((a, b) {
-        // Globales primero, luego por nombre.
-        if (a.esGlobal && !b.esGlobal) return -1;
-        if (!a.esGlobal && b.esGlobal) return 1;
-        return a.nombre.compareTo(b.nombre);
-      });
-      return list;
-    });
+    return _ref
+        .where('projectId', isEqualTo: projectId)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(Etiqueta.fromFirestore).toList();
+          list.sort((a, b) => a.nombre.compareTo(b.nombre));
+          return list;
+        });
   }
 
   /// Stream de etiquetas por lista de IDs.

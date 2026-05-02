@@ -145,10 +145,7 @@ abstract final class AppRoutes {
   // Pantalla de carga inicial
   static const String loading = '/loading';
 
-  // Etiquetas
-  static const String globalEtiquetas = '/etiquetas';
-  static const String globalEtiquetaNew = '/etiquetas/new';
-  static const String globalEtiquetaEdit = '/etiquetas/:etiquetaId/edit';
+  // Etiquetas (por proyecto)
   static const String projectEtiquetas = '/projects/:id/etiquetas';
   static const String projectEtiquetaNew = '/projects/:id/etiquetas/new';
   static const String projectEtiquetaEdit =
@@ -701,26 +698,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ProjectDetailScreen(projectId: state.pathParameters['id']!),
       ),
 
-      // ── Etiquetas globales ────────────────────────────
-      GoRoute(
-        path: AppRoutes.globalEtiquetas,
-        builder: (context, state) => const EtiquetasScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.globalEtiquetaNew,
-        builder: (context, state) => const EtiquetaFormScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.globalEtiquetaEdit,
-        builder: (context, state) =>
-            EtiquetaFormScreen(etiquetaId: state.pathParameters['etiquetaId']),
-      ),
-
       // ── Etiquetas por proyecto ────────────────────────
       GoRoute(
         path: AppRoutes.projectEtiquetas,
         builder: (context, state) =>
-            EtiquetasScreen(projectId: state.pathParameters['id']),
+            EtiquetasScreen(projectId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutes.projectEtiquetaNew,

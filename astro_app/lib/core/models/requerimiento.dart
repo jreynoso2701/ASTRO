@@ -274,7 +274,7 @@ class Requerimiento {
       if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
       if (refMinutas.isNotEmpty) 'refMinutas': refMinutas,
       if (refCitas.isNotEmpty) 'refCitas': refCitas,
-      if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds,
+      'etiquetaIds': etiquetaIds,
       if (fechaCompromiso != null)
         'fechaCompromiso': Timestamp.fromDate(fechaCompromiso!),
       if (motivoRechazo != null) 'motivoRechazo': motivoRechazo,

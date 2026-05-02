@@ -350,6 +350,8 @@
 - [x] `index.html` actualizado: título, descripción, apple-mobile-web-app-title.
 - [x] Splash Android: fondo negro en `launch_background.xml` (values + drawable-v21).
 - [x] Versión bumped a `2.3.25+16`.
+- [x] Versión bumped a `2.5.1+20`.
+- [x] Versión bumped a `2.5.2+21`.
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
 - [x] Build de release para Android (`flutter build appbundle`) — AAB 54.6MB.
 - [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11), v11-v14 (intermedias), v15 (2.2.22+15).
@@ -644,16 +646,24 @@
 - [x] **Providers** (`lib/features/etiquetas/providers/etiqueta_providers.dart`) — `etiquetaRepositoryProvider`, `globalEtiquetasProvider`, `projectEtiquetasProvider`, `availableEtiquetasProvider`, `etiquetasByIdsProvider`, `canManageGlobalEtiquetasProvider`, `canManageProjectEtiquetasProvider`.
 - [x] **Widget `EtiquetaChip`** — chip individual con color de fondo, ícono opcional, nombre. Variante `compact`. Soporte `onDelete`. Método público estático `resolveIcon(String?)` para resolver nombre de ícono a `IconData`.
 - [x] **Widget `EtiquetasRow`** — fila de chips con overflow "+N". Parámetros: `etiquetas, compact, maxVisible`.
-- [x] **Widget `EtiquetaPicker`** — selector modal (`DraggableScrollableSheet`). Búsqueda, secciones (Globales / Del Proyecto), checkmarks. API: `EtiquetaPicker.show(context, ref, projectId:, selectedIds:)` → `List<String>?`.
+- [x] **Widget `EtiquetaPicker`** — selector modal (`DraggableScrollableSheet`). Búsqueda, checkmarks. API: `EtiquetaPicker.show(context, ref, projectId:, selectedIds:)` → `List<String>?`. Header con botón de configuración `⚙️` (redirige a gestión de etiquetas). Empty state con CTA "Gestionar etiquetas".
 - [x] **`EtiquetaFormScreen`** — CRUD de etiquetas. Soporta `etiqueta?` (objeto), `etiquetaId?` (carga por ID desde router), `projectId?`, `projectName?`. Grid de 20 colores preset, grid de 20 íconos + "ninguno", preview en vivo, validación de nombre.
-- [x] **`EtiquetasScreen`** — pantalla de gestión. Sin `projectId`: gestión global. Con `projectId`: TabBar (Global | Del Proyecto) + botón importar etiquetas globales.
-- [x] **Integración en modelos** — campo `etiquetaIds: List<String>` añadido a: `Ticket`, `Requerimiento`, `Tarea`, `Cita`. Incluye: constructor default, `fromFirestore`, `toFirestore`, `copyWith`.
+- [x] **`EtiquetasScreen`** — pantalla de gestión por proyecto. Muestra etiquetas activas del proyecto. Botón "Nueva etiqueta".
+- [x] **Integración en modelos** — campo `etiquetaIds: List<String>` añadido a: `Ticket`, `Requerimiento`, `Tarea`, `Cita`. Incluye: constructor default, `fromFirestore`, `toFirestore` (siempre incluye el campo, lista vacía incluida — corrige bug de persistencia), `copyWith`.
 - [x] **Integración en formularios** — sección "ETIQUETAS" con picker y chips de borrado individual en: `ticket_form_screen`, `requerimiento_form_screen`, `tarea_form_screen`, `cita_form_screen`.
-- [x] **Integración en detalle** — sección/card de etiquetas asignadas (no vacía) en: `ticket_detail_screen`, `requerimiento_detail_screen`, `tarea_detail_screen`, `cita_detail_screen`.
-- [x] **Rutas GoRouter** — 6 rutas añadidas: `globalEtiquetas`, `globalEtiquetaNew`, `globalEtiquetaEdit`, `projectEtiquetas`, `projectEtiquetaNew`, `projectEtiquetaEdit`.
-- [x] **GestionScreen** — tile "Etiquetas" (ícono `label`, color morado) visible solo para Root. Navega a `/etiquetas`.
-- [x] **ProjectDetailScreen** — botón "Etiquetas del proyecto" visible para Root, Lider Proyecto y Soporte (via `canManageProjectProvider`). Navega a `/projects/:id/etiquetas`.
-- [x] **Firestore Security Rules** — reglas para colección `Etiquetas`: lectura autenticada global; creación global solo Root; creación por proyecto Root/Lider/Soporte; actualización/eliminación por creador o Root.
+- [x] **Integración en detalle** — sección/card de etiquetas asignadas (no vacía) en: `ticket_detail_screen`, `requerimiento_detail_screen`, `tarea_detail_screen`, `cita_detail_screen`. Botón "Gestionar etiquetas" visible para roles con permiso (`canManageProjectEtiquetasProvider`).
+- [x] **Rutas GoRouter** — 3 rutas de proyecto: `projectEtiquetas`, `projectEtiquetaNew`, `projectEtiquetaEdit`. (Rutas globales eliminadas — concepto global removido).
+- [x] **GestionScreen** — tile "Etiquetas" eliminado (etiquetas son por proyecto, no globales).
+- [x] **ProjectDetailScreen** — botón "Etiquetas del proyecto" visible para Root, Lider Proyecto y Soporte. Navega a `/projects/:id/etiquetas`.
+- [x] **Firestore Security Rules** — reglas para colección `Etiquetas` simplificadas a `allow read, write: if request.auth != null` (autenticación suficiente para todas las operaciones de etiquetas). Desplegadas.
+- [x] **Bugfix — `etiquetasByIdsProvider` con parámetro por valor** — parámetro del provider cambiado de `List<String>` (igualdad por referencia) a `String` (IDs sorted+joined, igualdad por valor). Corrige bug donde agregar/quitar etiquetas en formularios no se reflejaba visualmente (Riverpod devolvía caché por ver la misma referencia de lista).
+- [x] **Bugfix — Etiquetas no se guardaban al editar** — `toFirestore()` en `Ticket`, `Tarea`, `Cita` y `Requerimiento` tenía `if (etiquetaIds.isNotEmpty) 'etiquetaIds': etiquetaIds` — con `merge: true` en Firestore, el campo se omitía cuando la lista era vacía o reducida, dejando el valor viejo. Corregido a `'etiquetaIds': etiquetaIds` (siempre incluido).
+- [x] **Bugfix — `watchAvailableForProject`** — query ahora filtra por `projectId + isActive` (antes hacía scan completo sin filtro de proyecto, causaba `permission-denied`).
+
+### 2.10.1 Correcciones y Estabilidad de Formularios
+
+- [x] **Bugfix — Descripción se borraba al hacer scroll** — `RichTextEditorState` ahora implementa `AutomaticKeepAliveClientMixin` con `wantKeepAlive: true`. Corrige que Flutter desmontara el editor Quill al salir del caché del `ListView`, borrando el contenido del usuario. Fix aplica a todos los formularios (tickets, tareas, requerimientos, citas) de una sola vez al estar en el widget compartido.
+- [x] **Bugfix — Crash al guardar ticket sin módulo seleccionado** — `_save()` en `ticket_form_screen.dart` tenía `moduleId: _selectedModuleId!` sin guard. Añadida validación explícita antes del operador `!`: si `_selectedModuleId == null` muestra snackbar y retorna. El dropdown de módulos ahora tiene 3 estados: cargando (spinner), vacío (mensaje de advertencia naranja), con módulos (dropdown normal con `value` en lugar del deprecado `initialValue`).
 
 ---
 
@@ -669,4 +679,4 @@
 
 ---
 
-*Última actualización: Texto enriquecido (Rich Text) — editor WYSIWYG con flutter_quill integrado en Tickets, Requerimientos y Tareas. Formato Delta JSON. Compatible web (sección 2.9).*
+*Última actualización: v2.5.2+21 — Sistema de Etiquetas (2.10) completado y estabilizado: concepto global eliminado, EtiquetaPicker simplificado, Firestore rules simplificadas, bugfix de persistencia en `toFirestore()` (etiquetaIds siempre en payload), bugfix de `etiquetasByIdsProvider` (parámetro por valor), bugfix de descripción borrada al hacer scroll (`AutomaticKeepAliveClientMixin` en RichTextEditor), bugfix de crash al guardar ticket sin módulo seleccionado.*
