@@ -178,7 +178,7 @@ Cuando trabajes en el proyecto ASTRO, consulta y aplica las siguientes skills se
 
 ## 7. Roadmap
 
-El avance del proyecto se documenta en el archivo **`roadmap.md`** en la raíz del repositorio. Este archivo se mantiene actualizado conforme se avanza en el desarrollo.
+El avance del proyecto se documenta en el archivo **`roadmap.md`** en la raíz del repositorio. Este archivo se mantiene actualizado conforme se avanza en el desarrollo. Cada que se te pida actualizar de versión primero debes actualizar el roadmap, y luego proceder a crear la nueva versión.
 
 ### Fase 1 — MVP (Actual)
 
@@ -202,8 +202,8 @@ Sistema base de gestión de proyectos con:
 
 ## 8. Reglas de Operación del Agente
 
-1. **No asumir.** Ante cualquier duda o ambigüedad, preguntar antes de avanzar.
-2. **Consultar el MCP de Firebase** antes de proponer cambios en la estructura de datos.
+1. **No asumir.** Ante cualquier duda o ambigüedad, preguntar antes de avanzar. Y es lo mismo para antes y despues de ejecutar cualquier acción. Siempre preguntar si no estás seguro, incluso si crees que es algo obvio o que ya lo sabes. No debes de asumir nada. Sobre todo por que en este proyecto se trabaja con Firebase y eso incluye contemplar indices para desplegar.
+2. **Consultar el MCP / CLI de Firebase** antes de proponer cambios en la estructura de datos.
 3. **Pedir aprobación** antes de crear nuevas colecciones o migraciones en Firestore.
 4. **Mantener actualizado el `roadmap.md`** conforme se completan tareas.
 5. **Respetar el identificador** `com.constelacionr.apps.astro`.

@@ -9,6 +9,8 @@ import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
 import 'package:astro/features/requirements/presentation/widgets/req_kanban_board.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
@@ -68,6 +70,9 @@ class _RequerimientoListScreenState
         final searchQuery = ref.watch(reqSearchProvider);
         final statusFilter = ref.watch(reqStatusFilterProvider);
         final tipoFilter = ref.watch(reqTipoFilterProvider);
+        final etiquetaFilter = ref.watch(reqEtiquetaFilterProvider);
+        final availableEtiquetas =
+            ref.watch(availableEtiquetasProvider(projectId)).value ?? [];
         final canArchive = ref.watch(canArchiveReqProvider(projectId));
         final width = MediaQuery.sizeOf(context).width;
         final kanban = _isKanban(width);
@@ -195,7 +200,7 @@ class _RequerimientoListScreenState
                       ),
                     ),
 
-                    // Contador
+                    // Contador + botón filtro de etiquetas
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -207,6 +212,18 @@ class _RequerimientoListScreenState
                             '${filteredReqs.length} requerimiento${filteredReqs.length == 1 ? '' : 's'}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
+                          const Spacer(),
+                          if (availableEtiquetas.isNotEmpty)
+                            EtiquetaFilterButton(
+                              etiquetas: availableEtiquetas,
+                              selectedIds: etiquetaFilter,
+                              onToggle: (id) => ref
+                                  .read(reqEtiquetaFilterProvider.notifier)
+                                  .toggle(id),
+                              onClear: () => ref
+                                  .read(reqEtiquetaFilterProvider.notifier)
+                                  .clear(),
+                            ),
                         ],
                       ),
                     ),

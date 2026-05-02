@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/ticket.dart';
 import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/utils/ticket_colors.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 // ── Criterios de ordenamiento ────────────────────────────
 
@@ -437,7 +440,7 @@ class _KanbanColumn extends StatelessWidget {
 
 // ── Tarjeta Kanban Compacta ──────────────────────────────
 
-class _KanbanCard extends StatelessWidget {
+class _KanbanCard extends ConsumerWidget {
   const _KanbanCard({
     required this.ticket,
     this.isDragging = false,
@@ -451,7 +454,7 @@ class _KanbanCard extends StatelessWidget {
   final VoidCallback? onMovePressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final pct = ticket.porcentajeAvance;
@@ -524,7 +527,26 @@ class _KanbanCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 6),
+
+            // ── Etiquetas ──
+            Builder(
+              builder: (_) {
+                final idsKey = ticket.etiquetaIds.join(',');
+                if (idsKey.isEmpty) return const SizedBox(height: 6);
+                final etiquetas =
+                    ref.watch(etiquetasByIdsProvider(idsKey)).value ?? [];
+                if (etiquetas.isEmpty) return const SizedBox(height: 6);
+                return Padding(
+                  padding: const EdgeInsets.only(top: 5, bottom: 2),
+                  child: EtiquetasRow(
+                    etiquetas: etiquetas,
+                    compact: true,
+                    maxVisible: 3,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
 
             // ── Módulo ──
             _CardInfoRow(icon: Icons.widgets_outlined, text: ticket.moduleName),

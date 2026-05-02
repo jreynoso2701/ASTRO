@@ -88,6 +88,26 @@ final reqTipoFilterProvider =
       ReqTipoFilterNotifier.new,
     );
 
+class ReqEtiquetaFilterNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void toggle(String id) {
+    if (state.contains(id)) {
+      state = {...state}..remove(id);
+    } else {
+      state = {...state, id};
+    }
+  }
+
+  void clear() => state = {};
+}
+
+final reqEtiquetaFilterProvider =
+    NotifierProvider<ReqEtiquetaFilterNotifier, Set<String>>(
+      ReqEtiquetaFilterNotifier.new,
+    );
+
 /// Requerimientos filtrados para un proyecto dado.
 ///
 /// Visibilidad por rol:
@@ -133,10 +153,18 @@ final filteredRequerimientosProvider =
       final query = ref.watch(reqSearchProvider).toUpperCase();
       final statusFilter = ref.watch(reqStatusFilterProvider);
       final tipoFilter = ref.watch(reqTipoFilterProvider);
+      final etiquetaFilter = ref.watch(reqEtiquetaFilterProvider);
 
       return allReqs.where((r) {
         if (statusFilter != null && r.status != statusFilter) return false;
         if (tipoFilter != null && r.tipo != tipoFilter) return false;
+        // Etiquetas: OR logic — el requerimiento debe tener al menos una de las seleccionadas.
+        if (etiquetaFilter.isNotEmpty) {
+          final hasMatch = r.etiquetaIds.any(
+            (id) => etiquetaFilter.contains(id),
+          );
+          if (!hasMatch) return false;
+        }
         if (query.isNotEmpty) {
           final matchesQuery =
               r.titulo.toUpperCase().contains(query) ||

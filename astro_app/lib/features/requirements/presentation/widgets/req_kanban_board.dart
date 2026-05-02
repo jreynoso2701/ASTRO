@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/requerimiento.dart';
 import 'package:astro/core/models/requerimiento_status.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/utils/ticket_colors.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 
 // ── Criterios de ordenamiento ────────────────────────────
 
@@ -332,14 +335,14 @@ class _KanbanColumn extends StatelessWidget {
 
 // ── Tarjeta Kanban Compacta ──────────────────────────────
 
-class _KanbanCard extends StatelessWidget {
+class _KanbanCard extends ConsumerWidget {
   const _KanbanCard({required this.req, this.isDragging = false});
 
   final Requerimiento req;
   final bool isDragging;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final muted = theme.colorScheme.onSurfaceVariant;
     final pct = req.porcentajeCalculado;
@@ -399,7 +402,26 @@ class _KanbanCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 6),
+
+            // ── Etiquetas ──
+            Builder(
+              builder: (_) {
+                final idsKey = req.etiquetaIds.join(',');
+                if (idsKey.isEmpty) return const SizedBox(height: 6);
+                final etiquetas =
+                    ref.watch(etiquetasByIdsProvider(idsKey)).value ?? [];
+                if (etiquetas.isEmpty) return const SizedBox(height: 6);
+                return Padding(
+                  padding: const EdgeInsets.only(top: 5, bottom: 2),
+                  child: EtiquetasRow(
+                    etiquetas: etiquetas,
+                    compact: true,
+                    maxVisible: 3,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
 
             // ── Tipo ──
             _CardInfoRow(icon: Icons.category_outlined, text: req.tipo.label),

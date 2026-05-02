@@ -13,6 +13,8 @@ import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart';
+import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
 
 /// Pantalla de listado de tickets de un proyecto.
 /// En móvil muestra lista; en pantallas anchas, tablero Kanban.
@@ -71,6 +73,9 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
         final statusFilter = ref.watch(ticketStatusFilterProvider);
         final priorityFilter = ref.watch(ticketPriorityFilterNotifier);
         final impactFilter = ref.watch(ticketImpactFilterProvider);
+        final etiquetaFilter = ref.watch(ticketEtiquetaFilterProvider);
+        final availableEtiquetas =
+            ref.watch(availableEtiquetasProvider(projectId)).value ?? [];
         final canManage = ref.watch(canManageProjectProvider(projectId));
 
         return Scaffold(
@@ -233,7 +238,7 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                       ),
                     ),
 
-                    // Contador
+                    // Contador + botón filtro de etiquetas
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -245,6 +250,18 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                             '${filteredTickets.length} ticket${filteredTickets.length == 1 ? '' : 's'}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
+                          const Spacer(),
+                          if (availableEtiquetas.isNotEmpty)
+                            EtiquetaFilterButton(
+                              etiquetas: availableEtiquetas,
+                              selectedIds: etiquetaFilter,
+                              onToggle: (id) => ref
+                                  .read(ticketEtiquetaFilterProvider.notifier)
+                                  .toggle(id),
+                              onClear: () => ref
+                                  .read(ticketEtiquetaFilterProvider.notifier)
+                                  .clear(),
+                            ),
                         ],
                       ),
                     ),

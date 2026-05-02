@@ -160,6 +160,7 @@
   - [x] Migración Cloud Function: 78 tickets Resuelto actualizados de 0% a 100%.
   - [x] Auto-progreso: Resuelto → 100%, Pendiente → 0% (aplica en cambio de status y drag & drop Kanban).
 - [x] **Estadísticas de tickets** — botón en AppBar (solo Root/Soporte) que abre bottom sheet con rankings: módulos con más incidentes y usuarios que más reportan. Incluye **todos** los tickets (activos + archivados + desactivados). Barras visuales proporcionales con conteo. Provider `allTicketsByProjectProvider` sin filtro `isActive`.
+- [x] **Filtrado por etiquetas en listado y Kanban de tickets** — `TicketEtiquetaFilterNotifier` (Set<String>) con lógica OR. Botón `EtiquetaFilterButton` en la fila del contador (visible solo si el proyecto tiene etiquetas). Abre Bottom Sheet con chips de selección múltiple (`Wrap`) y aplicación instantánea. Kanban recibe la lista ya filtrada. Etiquetas visibles en tarjetas Kanban (`EtiquetasRow` compacto, máx 3 + "+N").
 - [x] **Adjuntos en comentarios de tickets** — botón de adjuntar (bottom sheet: cámara, galería, archivos) en la barra de comentarios. Máximo 10 archivos por comentario. Imágenes como thumbnails clickeables, archivos como chips con ícono por tipo y nombre legible. Permite comentarios sin texto (solo adjuntos). Upload a Storage (`comentarios_tickets/{ticketId}/`).
 - [x] **Eliminación suave de comentarios de tickets** — soft-delete: marca `deleted: true`, reemplaza texto con "Comentario eliminado", limpia adjuntos. Solo el autor puede eliminar. Etiqueta visual en el hilo de comentarios.
 - [x] Notificaciones push al asignar/cambiar estado (implementado en Fase 1.8).
@@ -196,6 +197,8 @@
 - [x] Gemini AI: status descriptions y `pendingStatuses` actualizados a nuevos 6 estados, filtro `isActive == false` para excluir archivados.
 - [x] AI Agent Sheet: colores de status actualizados a nuevos 6 estados.
 - [x] **Auto-completar criterios de aceptación** — al cambiar status a "Completado" (desde detalle o drag & drop en Kanban), todos los criterios se marcan automáticamente como completados (`completado: true`) vía `repo.updateCriterios()`.
+- [x] **Filtrado por etiquetas en listado y Kanban de requerimientos** — `ReqEtiquetaFilterNotifier` (Set<String>) con lógica OR. Mismo patrón que tickets: `EtiquetaFilterButton` compartido, Bottom Sheet instantáneo. Etiquetas visibles en tarjetas Kanban.
+- [x] **`EtiquetaFilterButton`** — widget reutilizable (`etiqueta_filter_button.dart`) con botón compacto + `_EtiquetaFilterSheet` (Bottom Sheet, Wrap de chips, toggle instantáneo, botón Limpiar). Sin conflicto con scroll horizontal del Kanban. Escala a cualquier cantidad de etiquetas.
 
 ### 1.8 Notificaciones Push
 
@@ -352,6 +355,7 @@
 - [x] Versión bumped a `2.3.25+16`.
 - [x] Versión bumped a `2.5.1+20`.
 - [x] Versión bumped a `2.5.2+21`.
+- [x] Versión bumped a `2.5.3+22`.
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
 - [x] Build de release para Android (`flutter build appbundle`) — AAB 54.6MB.
 - [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11), v11-v14 (intermedias), v15 (2.2.22+15).

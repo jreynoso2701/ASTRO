@@ -118,6 +118,26 @@ final ticketImpactFilterProvider =
       TicketImpactFilterNotifier.new,
     );
 
+class TicketEtiquetaFilterNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => {};
+
+  void toggle(String id) {
+    if (state.contains(id)) {
+      state = {...state}..remove(id);
+    } else {
+      state = {...state, id};
+    }
+  }
+
+  void clear() => state = {};
+}
+
+final ticketEtiquetaFilterProvider =
+    NotifierProvider<TicketEtiquetaFilterNotifier, Set<String>>(
+      TicketEtiquetaFilterNotifier.new,
+    );
+
 /// Tickets filtrados para un proyecto dado.
 ///
 /// [skipStatusFilter]: `true` en modo kanban — las columnas YA actúan
@@ -176,6 +196,7 @@ final filteredTicketsProvider =
           : ref.watch(ticketStatusFilterProvider);
       final priorityFilter = ref.watch(ticketPriorityFilterNotifier);
       final impactFilter = ref.watch(ticketImpactFilterProvider);
+      final etiquetaFilter = ref.watch(ticketEtiquetaFilterProvider);
 
       return allTickets.where((t) {
         if (statusFilter != null && t.status != statusFilter) return false;
@@ -184,6 +205,13 @@ final filteredTicketsProvider =
         }
         if (impactFilter != null && !impactFilter.matches(t.impacto)) {
           return false;
+        }
+        // Etiquetas: OR logic — el ticket debe tener al menos una de las seleccionadas.
+        if (etiquetaFilter.isNotEmpty) {
+          final hasMatch = t.etiquetaIds.any(
+            (id) => etiquetaFilter.contains(id),
+          );
+          if (!hasMatch) return false;
         }
         if (query.isNotEmpty) {
           final matchesQuery =
