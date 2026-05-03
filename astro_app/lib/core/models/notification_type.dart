@@ -66,7 +66,13 @@ enum NotificationType {
   avisoUrgente('aviso_urgente', 'Aviso urgente'),
 
   // Resumen diario
-  resumenDiario('resumen_diario', 'Resumen del día');
+  resumenDiario('resumen_diario', 'Resumen del día'),
+
+  // Recordatorio de seguimiento semanal
+  seguimientoSemanal(
+    'seguimiento_semanal',
+    'Recordatorio de seguimiento semanal',
+  );
 
   const NotificationType(this.value, this.label);
   final String value;

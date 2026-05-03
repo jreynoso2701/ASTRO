@@ -244,6 +244,8 @@ class _InAppToastWidgetState extends State<InAppToastWidget>
       NotificationType.avisoCreado => Icons.campaign_outlined,
       NotificationType.avisoUrgente => Icons.campaign,
       NotificationType.resumenDiario => Icons.bar_chart_outlined,
+      NotificationType.seguimientoSemanal =>
+        Icons.assignment_turned_in_outlined,
     };
   }
 }

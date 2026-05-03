@@ -2602,3 +2602,177 @@ export const ticketsWithoutDeadlineReminder = onSchedule(
     await Promise.all(promises);
   }
 );
+
+// ── Scheduled: SEGUIMIENTO SEMANAL ────────────────────────
+
+/**
+ * Todos los viernes a las 16:00 CDMX.
+ * Recuerda a Root, Lider Proyecto y Soporte de cada proyecto
+ * dar seguimiento a tickets, requerimientos, tareas y citas;
+ * especialmente a los que aún no tienen fecha definida.
+ */
+export const weeklyFollowUpReminder = onSchedule(
+  {
+    schedule: "0 16 * * 5",
+    timeZone: "America/Mexico_City",
+  },
+  async () => {
+    const assignSnap = await db
+      .collection("projectAssignments")
+      .where("isActive", "==", true)
+      .get();
+
+    if (assignSnap.empty) return;
+
+    const projectMap = new Map<string, Array<{userId: string; role: UserRole}>>();
+    for (const doc of assignSnap.docs) {
+      const d = doc.data();
+      const pid = d.projectId as string;
+      const uid = d.userId as string;
+      const role = d.role as UserRole;
+      if (!pid || !uid) continue;
+      if (!projectMap.has(pid)) projectMap.set(pid, []);
+      projectMap.get(pid)!.push({userId: uid, role});
+    }
+
+    const closedTicketStatuses = ["RESUELTO", "CERRADO", "ARCHIVADO"];
+    const closedReqStatuses = ["completado", "descartado"];
+    const closedTareaStatuses = ["completada", "cancelada"];
+    const promises: Promise<void>[] = [];
+
+    for (const [projectId, members] of projectMap) {
+      // Solo destinatarios con rol relevante
+      const targetMembers = members.filter(
+        (m) =>
+          m.role === "Root" ||
+          m.role === "Lider Proyecto" ||
+          m.role === "Soporte",
+      );
+      if (targetMembers.length === 0) continue;
+
+      // --- Tickets activos ---
+      const ticketsSnap = await db
+        .collection("Incidentes")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .get();
+
+      let ticketsOpen = 0;
+      let ticketsNoDate = 0;
+      for (const t of ticketsSnap.docs) {
+        const d = t.data();
+        const status = (
+          (d.status as string) ?? (d.estatusIncidente as string) ?? ""
+        )
+          .toUpperCase()
+          .trim();
+        if (closedTicketStatuses.includes(status)) continue;
+        ticketsOpen++;
+        if (!d.fhCompromisoSol) ticketsNoDate++;
+      }
+
+      // --- Requerimientos activos ---
+      const reqsSnap = await db
+        .collection("Requerimientos")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .get();
+
+      let reqsOpen = 0;
+      let reqsNoDate = 0;
+      for (const r of reqsSnap.docs) {
+        const d = r.data();
+        const status = (d.status as string ?? "").toLowerCase();
+        if (closedReqStatuses.includes(status)) continue;
+        reqsOpen++;
+        if (!d.fechaCompromiso) reqsNoDate++;
+      }
+
+      // --- Tareas activas ---
+      const tareasSnap = await db
+        .collection("Tareas")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .get();
+
+      let tareasOpen = 0;
+      let tareasNoDate = 0;
+      for (const t of tareasSnap.docs) {
+        const d = t.data();
+        const st = (d.status as string ?? "").toLowerCase();
+        if (closedTareaStatuses.includes(st)) continue;
+        tareasOpen++;
+        if (!d.fechaEntrega) tareasNoDate++;
+      }
+
+      // --- Citas programadas ---
+      const citasSnap = await db
+        .collection("Citas")
+        .where("projectId", "==", projectId)
+        .where("isActive", "==", true)
+        .where("status", "==", "programada")
+        .get();
+      const citasPending = citasSnap.size;
+
+      // Si no hay nada pendiente, omitir este proyecto
+      if (
+        ticketsOpen === 0 &&
+        reqsOpen === 0 &&
+        tareasOpen === 0 &&
+        citasPending === 0
+      )
+        continue;
+
+      // Nombre del proyecto
+      const projDoc = await db.collection("Proyectos").doc(projectId).get();
+      const projectName = projDoc.exists
+        ? ((projDoc.data()!.nombreProyecto as string) ?? projectId)
+        : projectId;
+
+      // Construir mensaje
+      const lines: string[] = [];
+      if (ticketsOpen > 0) {
+        let line = `\u2022 ${ticketsOpen} ticket(s) activo(s)`;
+        if (ticketsNoDate > 0)
+          line += ` (${ticketsNoDate} sin fecha \ud83d\udcc5)`;
+        lines.push(line);
+      }
+      if (reqsOpen > 0) {
+        let line = `\u2022 ${reqsOpen} requerimiento(s) activo(s)`;
+        if (reqsNoDate > 0)
+          line += ` (${reqsNoDate} sin fecha \ud83d\udcc5)`;
+        lines.push(line);
+      }
+      if (tareasOpen > 0) {
+        let line = `\u2022 ${tareasOpen} tarea(s) pendiente(s)`;
+        if (tareasNoDate > 0)
+          line += ` (${tareasNoDate} sin fecha \ud83d\udcc5)`;
+        lines.push(line);
+      }
+      if (citasPending > 0) {
+        lines.push(`\u2022 ${citasPending} cita(s) por realizarse`);
+      }
+
+      const cuerpo = lines.join("\n");
+
+      // Enviar a cada destinatario con push habilitado
+      for (const m of targetMembers) {
+        const config = await getNotifConfig(projectId, m.userId, m.role);
+        if (!config.pushEnabled) continue;
+        promises.push(
+          sendNotifications([m.userId], {
+            titulo: `${pfx(projectName)}\ud83d\udccb Seguimiento semanal`,
+            cuerpo,
+            tipo: "seguimiento_semanal",
+            refType: "proyecto",
+            refId: projectId,
+            projectId,
+            projectName,
+          }),
+        );
+      }
+    }
+
+    await Promise.all(promises);
+  },
+);

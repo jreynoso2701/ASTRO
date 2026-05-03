@@ -690,4 +690,4 @@
 
 ---
 
-*Última actualización: v2.5.5+24 — Notificaciones con nombre de proyecto: todas las Cloud Functions (25) actualizadas con helper `pfx()` para anteponer `[NOMBRE_PROYECTO]` al título de push e in-app. Fix de tap en notificaciones "Resumen del día": `resumenDiario` añadido a `NotificationType`, `proyecto` añadido a `NotificationRefType`, navegación a `/projects/{refId}` en inbox, listener y toast widget.*
+*Última actualización: v2.5.6+25 — Bump de versión. Nueva Cloud Function `weeklyFollowUpReminder` (viernes 16:00 CDMX): recuerda a Root, Lider Proyecto y Soporte dar seguimiento a tickets, requerimientos, tareas y citas activos, destacando los que no tienen fecha definida; `seguimientoSemanal` añadido a `NotificationType` con icono `assignment_turned_in_outlined` en inbox y toast. (Acumulado desde v2.5.5+24: Notificaciones con nombre de proyecto en las 25 Cloud Functions con helper `pfx()`, fix de tap en notificaciones "Resumen del día".)*

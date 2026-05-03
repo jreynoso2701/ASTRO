@@ -23,7 +23,7 @@ import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/models/minuta_modalidad.dart';
 import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart'
-    show deadlineInfo;
+    show deadlineInfo, parseDeadlineDate;
 import 'package:astro/features/ai_agent/presentation/screens/ai_agent_sheet.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/core/models/project_assignment.dart';
@@ -35,7 +35,11 @@ enum ProjectSortOption {
   nameAsc('A → Z'),
   nameDesc('Z → A'),
   progressAsc('Progreso ↑'),
-  progressDesc('Progreso ↓');
+  progressDesc('Progreso ↓'),
+  ticketCountDesc('Tickets abiertos ↓'),
+  ticketCountAsc('Tickets abiertos ↑'),
+  reqCountDesc('Reqs. abiertos ↓'),
+  reqCountAsc('Reqs. abiertos ↑');
 
   const ProjectSortOption(this.label);
   final String label;
@@ -50,6 +54,39 @@ class _ProjectSortNotifier extends Notifier<ProjectSortOption> {
 final projectSortProvider =
     NotifierProvider<_ProjectSortNotifier, ProjectSortOption>(
       _ProjectSortNotifier.new,
+    );
+
+// ── Dashboard Tab Project Filters ────────────────────────
+
+/// Filtra los proyectos visibles en las pestañas del dashboard.
+/// Estado vacío = todos seleccionados (comportamiento por defecto).
+class _DashboardTabFilterNotifier extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void toggle(String id, List<Proyecto> allProjects) {
+    final allIds = allProjects.map((p) => p.id).toSet();
+    final effective = state.isEmpty ? Set.of(allIds) : Set.of(state);
+    if (effective.contains(id)) {
+      if (effective.length <= 1) return;
+      effective.remove(id);
+    } else {
+      effective.add(id);
+    }
+    state = effective.containsAll(allIds) ? const {} : effective;
+  }
+
+  void selectAll() => state = const {};
+}
+
+final dashboardTicketProjectFilterProvider =
+    NotifierProvider<_DashboardTabFilterNotifier, Set<String>>(
+      _DashboardTabFilterNotifier.new,
+    );
+
+final dashboardReqProjectFilterProvider =
+    NotifierProvider<_DashboardTabFilterNotifier, Set<String>>(
+      _DashboardTabFilterNotifier.new,
     );
 
 /// Pantalla de Dashboard — vista principal tras login.
@@ -171,15 +208,20 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Stats summary ──────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: _StatsSummary(projects: projects),
+            // ── Stats summary (solo Root) ──────────────
+            if (isRoot) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _StatsSummary(
+                    activeCount: projects
+                        .where((p) => p.estatusProyecto)
+                        .length,
+                  ),
+                ),
               ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            ],
 
             // ── Pestañas: Tickets / Requerimientos ─────
             SliverToBoxAdapter(
@@ -190,9 +232,6 @@ class DashboardScreen extends ConsumerWidget {
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
-            // ── Próximas citas ────────────────────────
-            SliverToBoxAdapter(child: _UpcomingCitasSection()),
 
             // ── Mis proyectos ──────────────────────────
             SliverToBoxAdapter(
@@ -282,72 +321,21 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-// ── Stats Summary ────────────────────────────────────────
+// ── Stats Summary (solo Root) ────────────────────────────
 
-class _StatsSummary extends ConsumerWidget {
-  const _StatsSummary({required this.projects});
+/// Sección de estadística de alto nivel. Solo visible para Root.
+class _StatsSummary extends StatelessWidget {
+  const _StatsSummary({required this.activeCount});
 
-  final List<Proyecto> projects;
+  final int activeCount;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Calcular stats rápidos
-    final activeProjects = projects.where((p) => p.estatusProyecto).length;
-
-    // Progreso general (promedio de todos los proyectos) — ajustado por tickets
-    double avgProgress = 0;
-    double avgBaseProgress = 0;
-    if (projects.isNotEmpty) {
-      double total = 0;
-      double totalBase = 0;
-      for (final p in projects) {
-        total += ref.watch(projectProgressProvider(p.nombreProyecto));
-        totalBase += ref.watch(projectBaseProgressProvider(p.nombreProyecto));
-      }
-      avgProgress = total / projects.length;
-      avgBaseProgress = totalBase / projects.length;
-    }
-
-    final width = MediaQuery.sizeOf(context).width;
-    final isWide = width >= AppBreakpoints.medium;
-    final upcomingCount = ref.watch(upcomingCitasCountProvider);
-    final hasPenalty = avgBaseProgress > avgProgress;
-
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        SizedBox(
-          width: isWide ? null : double.infinity,
-          child: _StatCard(
-            icon: Icons.folder_outlined,
-            label: 'Proyectos activos',
-            value: '$activeProjects',
-            color: const Color(0xFF2196F3),
-          ),
-        ),
-        SizedBox(
-          width: isWide ? null : double.infinity,
-          child: _StatCard(
-            icon: Icons.trending_up,
-            label: 'Progreso general',
-            value: '${avgProgress.round()}%',
-            color: progressColor(avgProgress),
-            subtitle: hasPenalty
-                ? 'Base: ${avgBaseProgress.round()}%  (-${(avgBaseProgress - avgProgress).toStringAsFixed(1)}%)'
-                : null,
-          ),
-        ),
-        SizedBox(
-          width: isWide ? null : double.infinity,
-          child: _StatCard(
-            icon: Icons.calendar_today_outlined,
-            label: 'Próximas citas',
-            value: '$upcomingCount',
-            color: const Color(0xFF2196F3),
-          ),
-        ),
-      ],
+  Widget build(BuildContext context) {
+    return _StatCard(
+      icon: Icons.folder_outlined,
+      label: 'Proyectos activos',
+      value: '$activeCount',
+      color: const Color(0xFF2196F3),
     );
   }
 }
@@ -359,6 +347,7 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.color,
     this.subtitle,
+    this.onTap,
   });
 
   final IconData icon;
@@ -366,103 +355,60 @@ class _StatCard extends StatelessWidget {
   final String value;
   final Color color;
   final String? subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color),
               ),
-              child: Icon(icon, color: color),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (subtitle != null)
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   Text(
-                    subtitle!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFFFF9800),
-                      fontWeight: FontWeight.w500,
-                      fontSize: 11,
+                    value,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Upcoming Citas Section ───────────────────────────────
-
-class _UpcomingCitasSection extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final upcoming = ref.watch(upcomingCitasProvider);
-
-    if (upcoming.isEmpty) return const SizedBox.shrink();
-
-    // Mostrar máximo 3 citas
-    final citas = upcoming.take(3).toList();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'PRÓXIMAS CITAS',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  letterSpacing: 1,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => GoRouter.of(context).go('/calendar'),
-                child: Text(
-                  'Ver todas',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.primary,
+                  Text(
+                    label,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFFFF9800),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          ...citas.map((cita) => _DashboardCitaTile(cita: cita)),
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }
@@ -683,33 +629,117 @@ class _IncidentsTabbedSectionState
   }
 }
 
-/// Contenido de la pestaña "Tickets": cards por estado + dona + semáforo.
+/// Contenido de la pestaña "Tickets": filtro de proyectos, stats, cards y semáforo.
 class _TicketsTabContent extends ConsumerWidget {
   const _TicketsTabContent({required this.isRoot});
   final bool isRoot;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final allProjects = ref.watch(myProjectsProvider);
+    final selectedIds = ref.watch(dashboardTicketProjectFilterProvider);
+    final effectiveProjects = selectedIds.isEmpty
+        ? allProjects
+        : allProjects.where((p) => selectedIds.contains(p.id)).toList();
+
+    // Avg progress para los proyectos seleccionados
+    double avgProgress = 0;
+    double avgBaseProgress = 0;
+    if (effectiveProjects.isNotEmpty) {
+      double total = 0, totalBase = 0;
+      for (final p in effectiveProjects) {
+        total += ref.watch(projectProgressProvider(p.nombreProyecto));
+        totalBase += ref.watch(projectBaseProgressProvider(p.nombreProyecto));
+      }
+      avgProgress = total / effectiveProjects.length;
+      avgBaseProgress = totalBase / effectiveProjects.length;
+    }
+
+    // Citas próximas filtradas por proyectos seleccionados
+    final allUpcoming = ref.watch(upcomingCitasProvider);
+    final effectiveIds = effectiveProjects.map((p) => p.id).toSet();
+    final filteredCitas = allUpcoming
+        .where((c) => effectiveIds.contains(c.projectId))
+        .toList();
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _TicketStatusOverview(),
-        if (isRoot) ...[const SizedBox(height: 24), _TicketDeadlineOverview()],
+        if (allProjects.length > 1)
+          _ProjectFilterSelector(
+            allProjects: allProjects,
+            filterProvider: dashboardTicketProjectFilterProvider,
+          ),
+        if (allProjects.length > 1) const SizedBox(height: 12),
+        _TabStatCards(
+          avgProgress: avgProgress,
+          avgBaseProgress: avgBaseProgress,
+          upcomingCitas: filteredCitas,
+        ),
+        const SizedBox(height: 16),
+        _TicketStatusOverview(projects: effectiveProjects),
+        if (isRoot) ...[
+          const SizedBox(height: 24),
+          _TicketDeadlineOverview(projects: effectiveProjects),
+        ],
       ],
     );
   }
 }
 
-/// Contenido de la pestaña "Requerimientos": cards por estado + dona + semáforo.
+/// Contenido de la pestaña "Requerimientos": filtro de proyectos, stats, cards y semáforo.
 class _ReqsTabContent extends ConsumerWidget {
   const _ReqsTabContent({required this.isRoot});
   final bool isRoot;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final allProjects = ref.watch(myProjectsProvider);
+    final selectedIds = ref.watch(dashboardReqProjectFilterProvider);
+    final effectiveProjects = selectedIds.isEmpty
+        ? allProjects
+        : allProjects.where((p) => selectedIds.contains(p.id)).toList();
+
+    // Avg progress para los proyectos seleccionados
+    double avgProgress = 0;
+    double avgBaseProgress = 0;
+    if (effectiveProjects.isNotEmpty) {
+      double total = 0, totalBase = 0;
+      for (final p in effectiveProjects) {
+        total += ref.watch(projectProgressProvider(p.nombreProyecto));
+        totalBase += ref.watch(projectBaseProgressProvider(p.nombreProyecto));
+      }
+      avgProgress = total / effectiveProjects.length;
+      avgBaseProgress = totalBase / effectiveProjects.length;
+    }
+
+    // Citas próximas filtradas por proyectos seleccionados
+    final allUpcoming = ref.watch(upcomingCitasProvider);
+    final effectiveIds = effectiveProjects.map((p) => p.id).toSet();
+    final filteredCitas = allUpcoming
+        .where((c) => effectiveIds.contains(c.projectId))
+        .toList();
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ReqStatusOverview(),
-        if (isRoot) ...[const SizedBox(height: 24), _ReqDeadlineOverview()],
+        if (allProjects.length > 1)
+          _ProjectFilterSelector(
+            allProjects: allProjects,
+            filterProvider: dashboardReqProjectFilterProvider,
+          ),
+        if (allProjects.length > 1) const SizedBox(height: 12),
+        _TabStatCards(
+          avgProgress: avgProgress,
+          avgBaseProgress: avgBaseProgress,
+          upcomingCitas: filteredCitas,
+        ),
+        const SizedBox(height: 16),
+        _ReqStatusOverview(projects: effectiveProjects),
+        if (isRoot) ...[
+          const SizedBox(height: 24),
+          _ReqDeadlineOverview(projects: effectiveProjects),
+        ],
       ],
     );
   }
@@ -729,11 +759,30 @@ IconData _ticketStatusIcon(TicketStatus status) => switch (status) {
 };
 
 class _TicketStatusOverview extends ConsumerWidget {
+  const _TicketStatusOverview({required this.projects});
+  final List<Proyecto> projects;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final counts = ref.watch(globalTicketCountsByStatusProvider);
-    final ticketsByStatus = ref.watch(globalTicketsByStatusProvider);
+    // Calcular conteos y agrupación inline desde los proyectos seleccionados
+    final counts = <TicketStatus, int>{
+      for (final s in TicketStatus.kanbanValues) s: 0,
+    };
+    final ticketsByStatus =
+        <TicketStatus, List<({Proyecto project, Ticket ticket})>>{
+          for (final s in TicketStatus.kanbanValues) s: [],
+        };
+    for (final p in projects) {
+      final tickets =
+          ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
+      for (final t in tickets) {
+        if (t.status.isKanbanVisible) {
+          counts[t.status] = (counts[t.status] ?? 0) + 1;
+          ticketsByStatus[t.status]!.add((project: p, ticket: t));
+        }
+      }
+    }
     final width = MediaQuery.sizeOf(context).width;
 
     // Statuses to display (Kanban-visible: no Archivado)
@@ -1337,6 +1386,30 @@ List<Proyecto> _sortProjects(
         final pb = ref.read(projectProgressProvider(b.nombreProyecto));
         return pb.compareTo(pa);
       });
+    case ProjectSortOption.ticketCountDesc:
+      sorted.sort((a, b) {
+        final ca = ref.read(openTicketCountProvider(a.id));
+        final cb = ref.read(openTicketCountProvider(b.id));
+        return cb.compareTo(ca);
+      });
+    case ProjectSortOption.ticketCountAsc:
+      sorted.sort((a, b) {
+        final ca = ref.read(openTicketCountProvider(a.id));
+        final cb = ref.read(openTicketCountProvider(b.id));
+        return ca.compareTo(cb);
+      });
+    case ProjectSortOption.reqCountDesc:
+      sorted.sort((a, b) {
+        final ca = ref.read(pendingReqCountProvider(a.id));
+        final cb = ref.read(pendingReqCountProvider(b.id));
+        return cb.compareTo(ca);
+      });
+    case ProjectSortOption.reqCountAsc:
+      sorted.sort((a, b) {
+        final ca = ref.read(pendingReqCountProvider(a.id));
+        final cb = ref.read(pendingReqCountProvider(b.id));
+        return ca.compareTo(cb);
+      });
   }
   return sorted;
 }
@@ -1364,6 +1437,7 @@ class _ProjectCard extends StatelessWidget {
       projectBaseProgressProvider(proyecto.nombreProyecto),
     );
     final openTickets = ref.watch(openTicketCountProvider(proyecto.id));
+    final pendingReqs = ref.watch(pendingReqCountProvider(proyecto.id));
     final members = ref.watch(projectMembersProvider(proyecto.id));
     final penalty = baseProgress - progress;
     final hasPenalty = penalty > 0.5;
@@ -1477,7 +1551,7 @@ class _ProjectCard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              // Footer: tickets + members
+              // Footer: tickets + reqs + miembros
               Row(
                 children: [
                   Icon(
@@ -1487,12 +1561,25 @@ class _ProjectCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '$openTickets abierto${openTickets != 1 ? 's' : ''}',
+                    '$openTickets',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 10),
+                  Icon(
+                    Icons.task_alt_outlined,
+                    size: 14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$pendingReqs',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const Spacer(),
                   Icon(
                     Icons.people_outline,
                     size: 14,
@@ -1518,11 +1605,59 @@ class _ProjectCard extends StatelessWidget {
 // ── Semáforo de Deadlines ────────────────────────────────
 
 class _TicketDeadlineOverview extends ConsumerWidget {
+  const _TicketDeadlineOverview({required this.projects});
+  final List<Proyecto> projects;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final byDeadline = ref.watch(globalTicketsByDeadlineProvider);
-    final withoutDeadline = ref.watch(globalTicketsWithoutDeadlineProvider);
+    // Calcular semáforo inline desde los proyectos seleccionados
+    final byDeadline =
+        <DeadlineZone, List<({Proyecto project, Ticket ticket, int days})>>{
+          for (final z in DeadlineZone.values) z: [],
+        };
+    final withoutDeadline = <({Proyecto project, Ticket ticket})>[];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    for (final p in projects) {
+      final tickets =
+          ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
+      for (final t in tickets) {
+        if (t.status == TicketStatus.resuelto ||
+            t.status == TicketStatus.archivado) {
+          continue;
+        }
+        final target = parseDeadlineDate(t.solucionProgramada);
+        if (target == null) {
+          final d = t.solucionProgramada;
+          if (d == null || d.trim().isEmpty) {
+            withoutDeadline.add((project: p, ticket: t));
+          }
+          continue;
+        }
+        final deadline = DateTime(target.year, target.month, target.day);
+        final days = deadline.difference(today).inDays;
+        if (days < 0) {
+          byDeadline[DeadlineZone.red]!.add((
+            project: p,
+            ticket: t,
+            days: days,
+          ));
+        } else if (days <= 1) {
+          byDeadline[DeadlineZone.orange]!.add((
+            project: p,
+            ticket: t,
+            days: days,
+          ));
+        } else if (days <= 5) {
+          byDeadline[DeadlineZone.amber]!.add((
+            project: p,
+            ticket: t,
+            days: days,
+          ));
+        }
+      }
+    }
     final width = MediaQuery.sizeOf(context).width;
 
     final total =
@@ -2117,10 +2252,30 @@ void _showTicketsByDeadlineSheet(
 // ══════════════════════════════════════════════════════════
 
 class _ReqStatusOverview extends ConsumerWidget {
+  const _ReqStatusOverview({required this.projects});
+  final List<Proyecto> projects;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final counts = ref.watch(globalReqCountsByStatusProvider);
-    final reqsByStatus = ref.watch(globalReqsByStatusProvider);
+    // Calcular conteos y agrupación inline desde los proyectos seleccionados
+    final counts = <RequerimientoStatus, int>{
+      for (final s in RequerimientoStatus.kanbanValues) s: 0,
+    };
+    final reqsByStatus =
+        <RequerimientoStatus, List<({Proyecto project, Requerimiento req})>>{
+          for (final s in RequerimientoStatus.kanbanValues) s: [],
+        };
+    for (final p in projects) {
+      final reqs =
+          ref.watch(requerimientosByProjectProvider(p.nombreProyecto)).value ??
+          [];
+      for (final r in reqs) {
+        if (counts.containsKey(r.status)) {
+          counts[r.status] = (counts[r.status] ?? 0) + 1;
+          reqsByStatus[r.status]!.add((project: p, req: r));
+        }
+      }
+    }
     final width = MediaQuery.sizeOf(context).width;
 
     final statuses = RequerimientoStatus.kanbanValues;
@@ -2610,11 +2765,53 @@ void _showReqsByStatusSheet(
 // ── Semáforo de fechas compromiso — Requerimientos ───────
 
 class _ReqDeadlineOverview extends ConsumerWidget {
+  const _ReqDeadlineOverview({required this.projects});
+  final List<Proyecto> projects;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final byDeadline = ref.watch(globalReqsByDeadlineProvider);
-    final withoutDeadline = ref.watch(globalReqsWithoutDeadlineProvider);
+    // Calcular semáforo inline desde los proyectos seleccionados
+    final byDeadline =
+        <String, List<({Proyecto project, Requerimiento req, int days})>>{
+          'red': [],
+          'orange': [],
+          'amber': [],
+        };
+    final withoutDeadline = <({Proyecto project, Requerimiento req})>[];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    for (final p in projects) {
+      final reqs =
+          ref.watch(requerimientosByProjectProvider(p.nombreProyecto)).value ??
+          [];
+      for (final r in reqs) {
+        if (r.fechaCompromiso == null) {
+          if (r.status != RequerimientoStatus.completado &&
+              r.status != RequerimientoStatus.descartado) {
+            withoutDeadline.add((project: p, req: r));
+          }
+          continue;
+        }
+        if (r.status == RequerimientoStatus.completado ||
+            r.status == RequerimientoStatus.descartado) {
+          continue;
+        }
+        final deadline = DateTime(
+          r.fechaCompromiso!.year,
+          r.fechaCompromiso!.month,
+          r.fechaCompromiso!.day,
+        );
+        final diff = deadline.difference(today).inDays;
+        if (diff < 0) {
+          byDeadline['red']!.add((project: p, req: r, days: diff));
+        } else if (diff <= 1) {
+          byDeadline['orange']!.add((project: p, req: r, days: diff));
+        } else if (diff <= 5) {
+          byDeadline['amber']!.add((project: p, req: r, days: diff));
+        }
+      }
+    }
     final width = MediaQuery.sizeOf(context).width;
 
     final total =
@@ -3122,6 +3319,369 @@ void _showReqsWithoutDeadlineSheet(
                   ],
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Filtro de proyectos por pestaña ──────────────────────
+// ══════════════════════════════════════════════════════════
+
+/// Chip selector que muestra el estado del filtro de proyectos y abre
+/// un bottom sheet para modificarlo.
+class _ProjectFilterSelector extends ConsumerWidget {
+  const _ProjectFilterSelector({
+    required this.allProjects,
+    required this.filterProvider,
+  });
+
+  final List<Proyecto> allProjects;
+  final NotifierProvider<_DashboardTabFilterNotifier, Set<String>>
+  filterProvider;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final selectedIds = ref.watch(filterProvider);
+    final isAll = selectedIds.isEmpty;
+    final count = isAll ? allProjects.length : selectedIds.length;
+
+    return InkWell(
+      onTap: () => _showProjectFilterSheet(
+        context,
+        allProjects: allProjects,
+        filterProvider: filterProvider,
+      ),
+      borderRadius: BorderRadius.circular(20),
+      child: Chip(
+        avatar: Icon(
+          Icons.folder_outlined,
+          size: 16,
+          color: isAll
+              ? theme.colorScheme.onSurfaceVariant
+              : theme.colorScheme.primary,
+        ),
+        label: Text(
+          isAll
+              ? 'Todos los proyectos'
+              : '$count proyecto${count == 1 ? '' : 's'}',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: isAll
+                ? theme.colorScheme.onSurfaceVariant
+                : theme.colorScheme.primary,
+          ),
+        ),
+        side: BorderSide(
+          color: isAll
+              ? theme.colorScheme.outline.withValues(alpha: 0.3)
+              : theme.colorScheme.primary.withValues(alpha: 0.5),
+        ),
+        backgroundColor: isAll
+            ? null
+            : theme.colorScheme.primary.withValues(alpha: 0.08),
+        deleteIcon: isAll
+            ? null
+            : Icon(Icons.clear, size: 14, color: theme.colorScheme.primary),
+        onDeleted: isAll
+            ? null
+            : () => ref.read(filterProvider.notifier).selectAll(),
+      ),
+    );
+  }
+}
+
+void _showProjectFilterSheet(
+  BuildContext context, {
+  required List<Proyecto> allProjects,
+  required NotifierProvider<_DashboardTabFilterNotifier, Set<String>>
+  filterProvider,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _ProjectFilterSheet(
+      allProjects: allProjects,
+      filterProvider: filterProvider,
+    ),
+  );
+}
+
+class _ProjectFilterSheet extends ConsumerWidget {
+  const _ProjectFilterSheet({
+    required this.allProjects,
+    required this.filterProvider,
+  });
+
+  final List<Proyecto> allProjects;
+  final NotifierProvider<_DashboardTabFilterNotifier, Set<String>>
+  filterProvider;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final selectedIds = ref.watch(filterProvider);
+    final isAll = selectedIds.isEmpty;
+
+    // Proyectos ordenados alfabéticamente
+    final sorted = [...allProjects]
+      ..sort(
+        (a, b) => a.nombreProyecto.toLowerCase().compareTo(
+          b.nombreProyecto.toLowerCase(),
+        ),
+      );
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      minChildSize: 0.3,
+      maxChildSize: 0.85,
+      expand: false,
+      builder: (ctx, scrollController) => Column(
+        children: [
+          // ─ Handle ─
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // ─ Header ─
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.folder_outlined, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Filtrar proyectos',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      ref.read(filterProvider.notifier).selectAll(),
+                  child: Text(
+                    'Todos',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // ─ Lista con checkboxes ─
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              itemCount: sorted.length,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemBuilder: (ctx, i) {
+                final p = sorted[i];
+                final isSelected = isAll || selectedIds.contains(p.id);
+                return CheckboxListTile(
+                  value: isSelected,
+                  onChanged: (checked) {
+                    if (checked == false && !isAll && selectedIds.length <= 1) {
+                      return; // No se puede deseleccionar el último
+                    }
+                    ref.read(filterProvider.notifier).toggle(p.id, allProjects);
+                  },
+                  title: Text(
+                    p.nombreProyecto,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  subtitle: Text(
+                    p.fkEmpresa,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  secondary: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.08,
+                    ),
+                    child: Text(
+                      p.folioProyecto.isNotEmpty
+                          ? p.folioProyecto.substring(
+                              0,
+                              p.folioProyecto.length.clamp(0, 2),
+                            )
+                          : '?',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  controlAffinity: ListTileControlAffinity.trailing,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Tab Stat Cards: Progreso general + Próximas citas ────
+// ══════════════════════════════════════════════════════════
+
+/// Tarjetas de progreso y próximas citas dentro de cada pestaña del dashboard.
+/// Los datos reflejan únicamente los proyectos seleccionados en el filtro.
+class _TabStatCards extends StatelessWidget {
+  const _TabStatCards({
+    required this.avgProgress,
+    required this.avgBaseProgress,
+    required this.upcomingCitas,
+  });
+
+  final double avgProgress;
+  final double avgBaseProgress;
+  final List<Cita> upcomingCitas;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width >= AppBreakpoints.medium;
+    final hasPenalty = avgBaseProgress > avgProgress;
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        SizedBox(
+          width: isWide ? null : double.infinity,
+          child: _StatCard(
+            icon: Icons.trending_up,
+            label: 'Progreso general',
+            value: '${avgProgress.round()}%',
+            color: progressColor(avgProgress),
+            subtitle: hasPenalty
+                ? 'Base: ${avgBaseProgress.round()}%  (-${(avgBaseProgress - avgProgress).toStringAsFixed(1)}%)'
+                : null,
+          ),
+        ),
+        SizedBox(
+          width: isWide ? null : double.infinity,
+          child: _StatCard(
+            icon: Icons.calendar_today_outlined,
+            label: 'Próximas citas',
+            value: '${upcomingCitas.length}',
+            color: const Color(0xFF2196F3),
+            onTap: upcomingCitas.isNotEmpty
+                ? () => _showUpcomingCitasSheet(context, upcomingCitas)
+                : null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Bottom Sheet: próximas citas ─────────────────────────
+
+void _showUpcomingCitasSheet(BuildContext context, List<Cita> citas) {
+  final theme = Theme.of(context);
+  const color = Color(0xFF2196F3);
+
+  // Ordenar cronológicamente
+  final sorted = [...citas]
+    ..sort((a, b) {
+      final af = a.fecha ?? DateTime(9999);
+      final bf = b.fecha ?? DateTime(9999);
+      return af.compareTo(bf);
+    });
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scrollController) => Column(
+        children: [
+          // ─ Handle ─
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.4,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // ─ Header ─
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  color: color,
+                  size: 24,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Próximas citas',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${sorted.length}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // ─ Lista de citas ─
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: sorted.length,
+              itemBuilder: (ctx, i) => _DashboardCitaTile(cita: sorted[i]),
             ),
           ),
         ],
