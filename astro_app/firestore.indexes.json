@@ -432,6 +432,14 @@
       ]
     },
     {
+      "collectionGroup": "DocumentosProyecto",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sharedWithProjectNames", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "chatAI",
       "queryScope": "COLLECTION",
       "fields": [

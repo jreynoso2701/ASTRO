@@ -371,3 +371,131 @@ final canManageDocumentsProvider = Provider.family<bool, String>((
         (a.role == UserRole.soporte || a.role == UserRole.liderProyecto),
   );
 });
+
+// ════════════════════════════════════════════════════════
+// COMPARTICIÓN ENTRE PROYECTOS (Drive-style, solo lectura)
+// ════════════════════════════════════════════════════════
+
+/// Determina si el usuario actual puede compartir un documento.
+///
+/// Reglas:
+/// - Root → siempre puede.
+/// - Lider Proyecto del proyecto **dueño** del documento → puede.
+/// - Cualquier otro rol → no puede.
+///
+/// Importante: NO depende de la autoría del documento.
+final canShareDocumentProvider = Provider.family<bool, String>((
+  ref,
+  documentId,
+) {
+  final isRoot = ref.watch(isCurrentUserRootProvider);
+  if (isRoot) return true;
+
+  final doc = ref.watch(documentoByIdProvider(documentId)).value;
+  if (doc == null) return false;
+
+  final uid = ref.watch(authStateProvider).value?.uid;
+  if (uid == null) return false;
+
+  final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
+  return assignments.any(
+    (a) =>
+        a.projectId == doc.projectId &&
+        a.isActive &&
+        a.role == UserRole.liderProyecto,
+  );
+});
+
+/// Lista de proyectos a los que el usuario actual puede otorgar acceso al
+/// documento.
+///
+/// - Root puede compartir a cualquier proyecto activo (excepto el dueño).
+/// - Lider Proyecto solo puede compartir a proyectos donde él mismo esté
+///   asignado activamente.
+final shareableProjectsProvider =
+    Provider.family<List<({String id, String name})>, String>((
+      ref,
+      documentId,
+    ) {
+      final doc = ref.watch(documentoByIdProvider(documentId)).value;
+      if (doc == null) return const [];
+
+      final isRoot = ref.watch(isCurrentUserRootProvider);
+      final uid = ref.watch(authStateProvider).value?.uid;
+
+      final allProyectos = ref.watch(activeProyectosProvider).value ?? const [];
+
+      Iterable<({String id, String name})> base = allProyectos
+          .where((p) => p.id != doc.projectId)
+          .map((p) => (id: p.id, name: p.nombreProyecto));
+
+      if (isRoot) return base.toList();
+
+      if (uid == null) return const [];
+      final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
+      final allowedIds = assignments
+          .where((a) => a.isActive)
+          .map((a) => a.projectId)
+          .toSet();
+
+      return base.where((p) => allowedIds.contains(p.id)).toList();
+    });
+
+/// Stream de documentos compartidos a este proyecto desde otros proyectos.
+///
+/// Filtrado por la regla: el usuario debe estar asignado tanto al proyecto
+/// dueño como al proyecto receptor (Root bypassa).
+final sharedWithMeDocumentsProvider =
+    Provider.family<List<DocumentoProyecto>, String>((ref, projectId) {
+      final proyecto = ref.watch(proyectoByIdProvider(projectId)).value;
+      if (proyecto == null) return const [];
+      final projectName = proyecto.nombreProyecto;
+
+      final docs =
+          ref.watch(_sharedWithProjectStreamProvider(projectName)).value ??
+          const [];
+
+      final isRoot = ref.watch(isCurrentUserRootProvider);
+      if (isRoot) return docs;
+
+      final uid = ref.watch(authStateProvider).value?.uid;
+      if (uid == null) return const [];
+
+      final assignments = ref.watch(userAssignmentsProvider(uid)).value ?? [];
+      final myProjectIds = assignments
+          .where((a) => a.isActive)
+          .map((a) => a.projectId)
+          .toSet();
+
+      // El usuario debe estar asignado tanto al proyecto receptor como al
+      // proyecto dueño del documento.
+      if (!myProjectIds.contains(projectId)) return const [];
+
+      return docs.where((d) => myProjectIds.contains(d.projectId)).toList();
+    });
+
+/// Documentos compartidos filtrados con la búsqueda activa.
+final filteredSharedWithMeProvider =
+    Provider.family<List<DocumentoProyecto>, String>((ref, projectId) {
+      final docs = ref.watch(sharedWithMeDocumentsProvider(projectId));
+      final query = ref.watch(docSearchProvider).toUpperCase();
+      if (query.isEmpty) return docs;
+      return docs
+          .where(
+            (d) =>
+                d.titulo.toUpperCase().contains(query) ||
+                d.folio.toUpperCase().contains(query) ||
+                (d.descripcion?.toUpperCase().contains(query) ?? false) ||
+                d.categoria.toUpperCase().contains(query) ||
+                d.projectName.toUpperCase().contains(query),
+          )
+          .toList();
+    });
+
+/// Stream interno de docs por nombre de proyecto receptor.
+final _sharedWithProjectStreamProvider =
+    StreamProvider.family<List<DocumentoProyecto>, String>((ref, projectName) {
+      return ref
+          .watch(documentoRepositoryProvider)
+          .watchSharedWithProject(projectName);
+    });

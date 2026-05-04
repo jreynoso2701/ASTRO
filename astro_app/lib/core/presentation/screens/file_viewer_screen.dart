@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:astro/core/services/download_service.dart';
 import 'package:astro/core/services/storage_service.dart';
+import 'package:astro/core/presentation/screens/web_inline_viewer.dart';
 
 /// Visor universal de archivos.
 ///
@@ -191,6 +192,11 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
                 ? const Center(
                     child: CircularProgressIndicator(color: Colors.white),
                   )
+                : kIsWeb
+                ? WebInlineViewer(
+                    url: _resolvedUrl ?? widget.url,
+                    fileName: _displayName,
+                  )
                 : _ImageViewer(
                     url: _resolvedUrl ?? widget.url,
                     heroTag: widget.heroTag,
@@ -201,10 +207,17 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
                     child: CircularProgressIndicator(color: Colors.white),
                   )
                 : _VideoViewer(url: _resolvedUrl ?? widget.url),
-          FileCategory.pdf => _PdfViewer(
-            url: widget.url,
-            resolvedUrl: _resolvedUrl,
-          ),
+          FileCategory.pdf =>
+            kIsWeb
+                ? (_resolvingUrl
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      : WebInlineViewer(
+                          url: _resolvedUrl ?? widget.url,
+                          fileName: _displayName,
+                        ))
+                : _PdfViewer(url: widget.url, resolvedUrl: _resolvedUrl),
           FileCategory.other => _OtherFileViewer(
             url: widget.url,
             fileName: _displayName,
@@ -637,9 +650,10 @@ class _OtherFileViewer extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Text(
-              'Este tipo de archivo no tiene vista previa',
-              style: const TextStyle(color: Colors.white54, fontSize: 13),
+            const Text(
+              'Este tipo de archivo no se puede previsualizar aquí.\nDescárgalo o ábrelo con la app correspondiente.',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             Row(

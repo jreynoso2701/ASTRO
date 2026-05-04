@@ -8,6 +8,7 @@ import 'package:astro/features/documentation/providers/documento_providers.dart'
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
+import 'package:astro/features/documentation/presentation/widgets/share_documento_dialog.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 import 'package:intl/intl.dart';
@@ -49,6 +50,7 @@ class DocumentoDetailScreen extends ConsumerWidget {
 
         final canEdit = canManage;
         final canDelete = isRoot || documento.createdBy == uid;
+        final canShare = ref.watch(canShareDocumentProvider(documentId));
 
         return Scaffold(
           appBar: AppBar(
@@ -58,6 +60,13 @@ class DocumentoDetailScreen extends ConsumerWidget {
               onPressed: () => context.pop(),
             ),
             actions: [
+              if (canShare)
+                IconButton(
+                  icon: const Icon(Icons.share_outlined),
+                  tooltip: 'Compartir documento',
+                  onPressed: () =>
+                      ShareDocumentoDialog.show(context, documento: documento),
+                ),
               if (canEdit)
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
@@ -82,6 +91,17 @@ class DocumentoDetailScreen extends ConsumerWidget {
                 _DocumentHeader(documento: documento),
                 const SizedBox(height: 16),
                 _DocumentInfo(documento: documento),
+                if (documento.sharedWithProjectNames.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _SharedWithCard(
+                    documento: documento,
+                    canManage: ref.watch(canShareDocumentProvider(documentId)),
+                    onManage: () => ShareDocumentoDialog.show(
+                      context,
+                      documento: documento,
+                    ),
+                  ),
+                ],
                 if (documento.etiquetaIds.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _DocEtiquetasCard(etiquetaIds: documento.etiquetaIds),
@@ -568,6 +588,8 @@ class _DocumentBitacora extends ConsumerWidget {
       BitacoraAccion.nuevaVersion => Icons.upload_outlined,
       BitacoraAccion.eliminado => Icons.delete_outline,
       BitacoraAccion.restaurado => Icons.restore,
+      BitacoraAccion.compartido => Icons.share_outlined,
+      BitacoraAccion.descompartido => Icons.link_off_outlined,
     };
   }
 
@@ -578,6 +600,8 @@ class _DocumentBitacora extends ConsumerWidget {
       BitacoraAccion.nuevaVersion => Colors.orange,
       BitacoraAccion.eliminado => Colors.red,
       BitacoraAccion.restaurado => Colors.teal,
+      BitacoraAccion.compartido => Colors.indigo,
+      BitacoraAccion.descompartido => Colors.brown,
     };
   }
 }
@@ -651,6 +675,81 @@ class _DocEtiquetasCard extends ConsumerWidget {
                   .map((e) => EtiquetaChip(etiqueta: e))
                   .toList(),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Shared With Card ─────────────────────────────────────
+
+class _SharedWithCard extends StatelessWidget {
+  const _SharedWithCard({
+    required this.documento,
+    required this.canManage,
+    required this.onManage,
+  });
+
+  final DocumentoProyecto documento;
+  final bool canManage;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.share_outlined,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'COMPARTIDO CON',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    letterSpacing: 1,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const Spacer(),
+                if (canManage)
+                  TextButton.icon(
+                    onPressed: onManage,
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Gestionar'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final name in documento.sharedWithProjectNames)
+                  Chip(
+                    avatar: const Icon(Icons.folder_outlined, size: 16),
+                    label: Text(name),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            if (documento.sharedByName != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Última actualización por ${documento.sharedByName}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ),
       ),

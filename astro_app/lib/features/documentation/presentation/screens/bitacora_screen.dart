@@ -123,6 +123,8 @@ class BitacoraScreen extends ConsumerWidget {
       BitacoraAccion.nuevaVersion => Icons.upload_outlined,
       BitacoraAccion.eliminado => Icons.delete_outline,
       BitacoraAccion.restaurado => Icons.restore,
+      BitacoraAccion.compartido => Icons.share_outlined,
+      BitacoraAccion.descompartido => Icons.link_off_outlined,
     };
   }
 
@@ -133,6 +135,8 @@ class BitacoraScreen extends ConsumerWidget {
       BitacoraAccion.nuevaVersion => Colors.orange,
       BitacoraAccion.eliminado => Colors.red,
       BitacoraAccion.restaurado => Colors.teal,
+      BitacoraAccion.compartido => Colors.indigo,
+      BitacoraAccion.descompartido => Colors.brown,
     };
   }
 }

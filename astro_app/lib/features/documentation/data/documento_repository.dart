@@ -53,6 +53,49 @@ class DocumentoRepository {
     });
   }
 
+  /// Stream de documentos compartidos hacia un proyecto (por nombre).
+  ///
+  /// Estos documentos pertenecen a OTROS proyectos pero fueron
+  /// compartidos con `projectName` para acceso de solo lectura.
+  Stream<List<DocumentoProyecto>> watchSharedWithProject(String projectName) {
+    return _ref
+        .where('sharedWithProjectNames', arrayContains: projectName)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final list = snap.docs.map(DocumentoProyecto.fromFirestore).toList();
+          // Excluir docs cuyo proyecto dueño es el mismo que el receptor.
+          list.removeWhere((d) => d.projectName == projectName);
+          list.sort(
+            (a, b) => (b.sharedAt ?? b.updatedAt ?? DateTime(2000)).compareTo(
+              a.sharedAt ?? a.updatedAt ?? DateTime(2000),
+            ),
+          );
+          return list;
+        });
+  }
+
+  /// Reemplaza la lista de proyectos con los que se comparte un documento.
+  ///
+  /// Solo Root y Lider Proyecto del proyecto dueño deberían invocar este
+  /// método (validación a nivel UI/providers).
+  Future<void> updateSharedProjects(
+    String docId, {
+    required List<String> projectIds,
+    required List<String> projectNames,
+    required String sharedBy,
+    required String sharedByName,
+  }) async {
+    await _ref.doc(docId).update({
+      'sharedWithProjectIds': projectIds,
+      'sharedWithProjectNames': projectNames,
+      'sharedAt': Timestamp.fromDate(DateTime.now()),
+      'sharedBy': sharedBy,
+      'sharedByName': sharedByName,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
   /// Genera folio: EMPRESA-PROYECTO-DOC-NUM.
   Future<String> _nextFolio(String projectName, [String? empresaName]) async {
     final snap = await _ref.where('projectName', isEqualTo: projectName).get();

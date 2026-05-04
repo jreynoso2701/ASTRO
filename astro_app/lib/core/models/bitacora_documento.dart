@@ -6,7 +6,9 @@ enum BitacoraAccion {
   editado('Editado'),
   nuevaVersion('Nueva versión'),
   eliminado('Eliminado'),
-  restaurado('Restaurado');
+  restaurado('Restaurado'),
+  compartido('Compartido'),
+  descompartido('Acceso retirado');
 
   const BitacoraAccion(this.label);
 

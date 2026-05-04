@@ -26,6 +26,11 @@ class DocumentoProyecto {
     this.versionActual = 1,
     this.versiones = const [],
     this.etiquetaIds = const [],
+    this.sharedWithProjectIds = const [],
+    this.sharedWithProjectNames = const [],
+    this.sharedAt,
+    this.sharedBy,
+    this.sharedByName,
     this.isActive = true,
     this.createdAt,
     this.updatedAt,
@@ -55,6 +60,13 @@ class DocumentoProyecto {
 
   // Etiquetas
   final List<String> etiquetaIds;
+
+  // Compartido entre proyectos (Drive-style, solo lectura)
+  final List<String> sharedWithProjectIds;
+  final List<String> sharedWithProjectNames;
+  final DateTime? sharedAt;
+  final String? sharedBy;
+  final String? sharedByName;
 
   // Control
   final bool isActive;
@@ -107,6 +119,19 @@ class DocumentoProyecto {
               ?.whereType<String>()
               .toList() ??
           [],
+      sharedWithProjectIds:
+          (data['sharedWithProjectIds'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          const [],
+      sharedWithProjectNames:
+          (data['sharedWithProjectNames'] as List<dynamic>?)
+              ?.whereType<String>()
+              .toList() ??
+          const [],
+      sharedAt: parseDate(data['sharedAt']),
+      sharedBy: data['sharedBy'] as String?,
+      sharedByName: data['sharedByName'] as String?,
       isActive: data['isActive'] as bool? ?? true,
       createdAt: parseDate(data['createdAt']),
       updatedAt: parseDate(data['updatedAt']),
@@ -133,6 +158,11 @@ class DocumentoProyecto {
       'versionActual': versionActual,
       'versiones': versiones.map((v) => v.toMap()).toList(),
       'etiquetaIds': etiquetaIds,
+      'sharedWithProjectIds': sharedWithProjectIds,
+      'sharedWithProjectNames': sharedWithProjectNames,
+      if (sharedAt != null) 'sharedAt': Timestamp.fromDate(sharedAt!),
+      if (sharedBy != null) 'sharedBy': sharedBy,
+      if (sharedByName != null) 'sharedByName': sharedByName,
       'isActive': isActive,
       if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
       'updatedAt': Timestamp.fromDate(now),
@@ -157,6 +187,11 @@ class DocumentoProyecto {
     int? versionActual,
     List<DocumentoVersion>? versiones,
     List<String>? etiquetaIds,
+    List<String>? sharedWithProjectIds,
+    List<String>? sharedWithProjectNames,
+    DateTime? sharedAt,
+    String? sharedBy,
+    String? sharedByName,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -180,6 +215,12 @@ class DocumentoProyecto {
       versionActual: versionActual ?? this.versionActual,
       versiones: versiones ?? this.versiones,
       etiquetaIds: etiquetaIds ?? this.etiquetaIds,
+      sharedWithProjectIds: sharedWithProjectIds ?? this.sharedWithProjectIds,
+      sharedWithProjectNames:
+          sharedWithProjectNames ?? this.sharedWithProjectNames,
+      sharedAt: sharedAt ?? this.sharedAt,
+      sharedBy: sharedBy ?? this.sharedBy,
+      sharedByName: sharedByName ?? this.sharedByName,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

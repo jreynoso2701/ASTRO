@@ -671,6 +671,41 @@
 - [x] **Filtro de etiquetas en Citas** (`CitaEtiquetaFilterNotifier`, `citaEtiquetaFilterProvider`) — `EtiquetaFilterButton` en `cita_list_screen.dart`. Chips visibles en `_CitaCard`.
 - [x] **Filtro + gestión de etiquetas en Documentos** — campo `etiquetaIds: List<String>` añadido al modelo `DocumentoProyecto` (constructor, `fromFirestore`, `toFirestore`, `copyWith`). Sección ETIQUETAS con `EtiquetaPicker` en `documento_form_screen.dart`. Card de etiquetas en `documento_detail_screen.dart` con botón "Gestionar etiquetas". `DocEtiquetaFilterNotifier` + `docEtiquetaFilterProvider` + filtro OR en `filteredDocumentosProvider`. `EtiquetaFilterButton` en `documento_list_screen.dart` (`_FormalesTab`). Chips visibles en `_DocumentCard`.
 
+### 2.11 Compartir Documentos entre Proyectos
+
+- [x] **Modelo `DocumentoProyecto` extendido** — campos `sharedWithProjectIds: List<String>`, `sharedWithProjectNames: List<String>`, `sharedAt: DateTime?`, `sharedBy: String?`, `sharedByName: String?`. Constructor, `fromFirestore`, `toFirestore` y `copyWith` actualizados.
+- [x] **Bitácora extendida** — `BitacoraAccion` con dos nuevos valores: `compartido` ("Compartido") y `descompartido` ("Acceso retirado"). Iconos y colores en `BitacoraScreen` y en sección de bitácora del detalle de documento.
+- [x] **`DocumentoRepository`** — nuevos métodos:
+  - [x] `watchSharedWithProject(String projectName)` — stream de documentos compartidos hacia un proyecto, usando `where('sharedWithProjectNames', arrayContains: projectName) + where('isActive', isEqualTo: true)`. Excluye documentos del propio proyecto y ordena por `sharedAt` desc.
+  - [x] `updateSharedProjects(docId, {projectIds, projectNames, sharedBy, sharedByName})` — actualiza los 5 campos de compartición + `updatedAt`.
+- [x] **Providers Riverpod**:
+  - [x] `canShareDocumentProvider(documentId)` — permite compartir si el usuario es **Root** o **Lider Proyecto del proyecto dueño** del documento (no requiere ser autor).
+  - [x] `shareableProjectsProvider(documentId)` — devuelve `List<({String id, String name})>` de proyectos elegibles para compartir: Root → todos los proyectos activos excepto el dueño; Lider → solo proyectos donde está asignado.
+  - [x] `sharedWithMeDocumentsProvider(projectId)` — docs recibidos en un proyecto, **filtrados por la regla de visibilidad**: el usuario debe estar asignado tanto al proyecto dueño como al receptor (Root bypassa el filtro).
+  - [x] `filteredSharedWithMeProvider(projectId)` — aplica el query de búsqueda existente al stream de compartidos.
+- [x] **UI estilo Drive — Diálogo de compartir** (`ShareDocumentoDialog`):
+  - [x] Lista checkbox de proyectos elegibles (con badge "Sin acceso" para proyectos huérfanos donde el usuario perdió acceso).
+  - [x] Guarda con bitácora: registra entrada `compartido` por cada proyecto agregado y `descompartido` por cada proyecto removido (try/catch no crítico).
+  - [x] Helper estático `ShareDocumentoDialog.show(context, document)`.
+- [x] **Detalle de documento** — botón "Compartir" en AppBar (visible solo si `canShareDocumentProvider`). Tarjeta `_SharedWithCard` muestra los proyectos con los que está compartido (chips) + botón "Gestionar" cuando aplica.
+- [x] **Listado de documentación — tercera tab "COMPARTIDOS CONMIGO"** (`_SharedWithMeTab`):
+  - [x] `TabController` extendido a 3 tabs (`isScrollable: true`).
+  - [x] `_SharedDocumentCard` con folio, badge "COMPARTIDO", título, proyecto origen y nombre de quien compartió.
+  - [x] Tap abre directo el visor (acceso de solo lectura/descarga; no permite editar el documento).
+- [x] **Reglas de Firestore** — sin cambios. La visibilidad se controla por código en `sharedWithMeDocumentsProvider` (decisión: menos riesgo de romper queries existentes).
+- [x] **Índice Firestore compuesto** — `DocumentosProyecto`: `sharedWithProjectNames (CONTAINS) + isActive (ASCENDING)`. Desplegado.
+
+### 2.12 Visor de PDF en Web — Fix con iframe nativo
+
+- [x] **Problema** — `pdfx` en web fallaba silenciosamente (problema con worker de PDF.js): el visor mostraba pantalla en blanco, solo funcionaba la descarga.
+- [x] **Solución** — Patrón de `conditional imports` (`dart.library.html`) para usar `HtmlElementView` con `<iframe>` en web (los navegadores renderizan PDFs e imágenes nativamente).
+- [x] **Archivos nuevos**:
+  - [x] `web_inline_viewer_stub.dart` — stub para no-web.
+  - [x] `web_inline_viewer_web.dart` — implementación web con `dart:html` + `dart:ui_web platformViewRegistry`.
+  - [x] `web_inline_viewer.dart` — barrel con conditional export.
+- [x] **`FileViewerScreen`** — para `FileCategory.image` y `FileCategory.pdf` en web usa `WebInlineViewer`; en móvil/desktop sigue usando `pdfx` y `Image.network`.
+- [x] **Mensaje mejorado para archivos no previsualizables** — `_OtherFileViewer`: "Este tipo de archivo no se puede previsualizar aquí. Descárgalo o ábrelo con la app correspondiente." con botones de descarga y abrir externo.
+
 ### 2.10.1 Correcciones y Estabilidad de Formularios
 
 - [x] **Bugfix — Descripción se borraba al hacer scroll** — `RichTextEditorState` ahora implementa `AutomaticKeepAliveClientMixin` con `wantKeepAlive: true`. Corrige que Flutter desmontara el editor Quill al salir del caché del `ListView`, borrando el contenido del usuario. Fix aplica a todos los formularios (tickets, tareas, requerimientos, citas) de una sola vez al estar en el widget compartido.
@@ -690,4 +725,4 @@
 
 ---
 
-*Última actualización: v2.5.6+25 — Bump de versión. Nueva Cloud Function `weeklyFollowUpReminder` (viernes 16:00 CDMX): recuerda a Root, Lider Proyecto y Soporte dar seguimiento a tickets, requerimientos, tareas y citas activos, destacando los que no tienen fecha definida; `seguimientoSemanal` añadido a `NotificationType` con icono `assignment_turned_in_outlined` en inbox y toast. (Acumulado desde v2.5.5+24: Notificaciones con nombre de proyecto en las 25 Cloud Functions con helper `pfx()`, fix de tap en notificaciones "Resumen del día".)*
+*Última actualización: v2.5.7+26 — **Compartir documentos entre proyectos** (sección 2.11): documentación cross-proyecto estilo Drive con permisos por rol (Root + Lider Proyecto del proyecto dueño), regla de visibilidad por código (usuario debe estar asignado tanto al proyecto dueño como al receptor), tercera tab "COMPARTIDOS CONMIGO" en listado de documentación, diálogo de compartir/descompartir con bitácora automática, nuevo índice Firestore (`sharedWithProjectNames + isActive`). **Fix visor PDF en web** (sección 2.12): conditional imports (`dart.library.html`) con `HtmlElementView + iframe` para PDFs e imágenes (los navegadores renderizan nativamente); mensaje claro para tipos no previsualizables. (Acumulado desde v2.5.6+25: Cloud Function `weeklyFollowUpReminder` viernes 16:00 CDMX, `seguimientoSemanal` en inbox y toast.)*
