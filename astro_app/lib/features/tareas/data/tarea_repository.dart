@@ -63,8 +63,10 @@ class TareaRepository {
   // ── CRUD ───────────────────────────────────────────────
 
   /// Genera folio: TAR-PROYECTO_ABBR-NUM.
-  Future<String> _nextFolio(String projectName) async {
-    final snap = await _ref.get();
+  Future<String> _nextFolio(String projectId, String projectName) async {
+    final snap = await _ref
+        .where('projectId', isEqualTo: projectId)
+        .get();
     int maxNum = 0;
     for (final doc in snap.docs) {
       final folio = doc.data()['folio'] as String? ?? '';
@@ -86,7 +88,7 @@ class TareaRepository {
 
   /// Crea una nueva tarea.
   Future<String> create(Tarea tarea) async {
-    final folio = await _nextFolio(tarea.projectName);
+    final folio = await _nextFolio(tarea.projectId, tarea.projectName);
     final data = tarea.toFirestore();
     data['folio'] = folio;
     final doc = await _ref.add(data);

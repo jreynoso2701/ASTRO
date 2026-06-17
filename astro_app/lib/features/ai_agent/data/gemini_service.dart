@@ -581,19 +581,21 @@ class GeminiService {
   ) async {
     final projectName = args['projectName'] as String;
 
-    // Obtener módulos activos (estatusModulo = true)
-    final modSnap = await _db
-        .collection('Modulos')
-        .where('fkProyecto', isEqualTo: projectName)
-        .where('estatusModulo', isEqualTo: true)
-        .get();
-
-    // Obtener tickets abiertos del proyecto para calcular penalización
-    final ticketSnap = await _db
-        .collection('Incidentes')
-        .where('fkxProyecto', isEqualTo: projectName)
-        .where('isActive', isEqualTo: true)
-        .get();
+    // Queries en paralelo: módulos activos + tickets abiertos
+    final results = await Future.wait([
+      _db
+          .collection('Modulos')
+          .where('fkProyecto', isEqualTo: projectName)
+          .where('estatusModulo', isEqualTo: true)
+          .get(),
+      _db
+          .collection('Incidentes')
+          .where('fkxProyecto', isEqualTo: projectName)
+          .where('isActive', isEqualTo: true)
+          .get(),
+    ]);
+    final modSnap = results[0];
+    final ticketSnap = results[1];
 
     // Ticket data para penalización por módulo
     final openTickets = ticketSnap.docs.where((d) {
@@ -979,12 +981,30 @@ class GeminiService {
   ) async {
     final projectName = args['projectName'] as String;
 
-    // Tickets activos — query simple + filtro client-side
-    // (evita whereNotIn que requiere índices compuestos adicionales)
-    final ticketSnap = await _db
-        .collection('Incidentes')
-        .where('fkxProyecto', isEqualTo: projectName)
-        .get();
+    // Lanzar las 4 queries en paralelo para minimizar latencia
+    final summaryResults = await Future.wait([
+      _db
+          .collection('Incidentes')
+          .where('fkxProyecto', isEqualTo: projectName)
+          .get(),
+      _db
+          .collection('Requerimientos')
+          .where('projectName', isEqualTo: projectName)
+          .get(),
+      _db
+          .collection('Citas')
+          .where('projectName', isEqualTo: projectName)
+          .where('status', isEqualTo: 'programada')
+          .where('isActive', isEqualTo: true)
+          .orderBy('fecha')
+          .limit(3)
+          .get(),
+    ]);
+    final progressFuture = _execGetProgress({'projectName': projectName});
+
+    final ticketSnap = summaryResults[0];
+    final reqSnap = summaryResults[1];
+    final citaSnap = summaryResults[2];
 
     const closedStatuses = {'RESUELTO', 'ARCHIVADO'};
     final statusCount = <String, int>{};
@@ -997,29 +1017,12 @@ class GeminiService {
       }
     }
 
-    // Requerimientos pendientes — query simple + filtro client-side
-    // (evita whereIn que requiere índices compuestos adicionales)
-    final reqSnap = await _db
-        .collection('Requerimientos')
-        .where('projectName', isEqualTo: projectName)
-        .get();
-
     const pendingStatuses = {'Propuesto', 'En Revisión', 'En Desarrollo'};
     final pendingReqs = reqSnap.docs.where((d) {
       final data = d.data();
       if (data['isActive'] == false) return false;
       return pendingStatuses.contains(data['status'] ?? '');
     }).toList();
-
-    // Próximas citas
-    final citaSnap = await _db
-        .collection('Citas')
-        .where('projectName', isEqualTo: projectName)
-        .where('status', isEqualTo: 'programada')
-        .where('isActive', isEqualTo: true)
-        .orderBy('fecha')
-        .limit(3)
-        .get();
 
     final citas = citaSnap.docs.map((d) {
       final data = d.data();
@@ -1032,8 +1035,8 @@ class GeminiService {
       };
     }).toList();
 
-    // Progreso
-    final progress = await _execGetProgress({'projectName': projectName});
+    // Progreso (el future ya fue lanzado en paralelo con las queries anteriores)
+    final progress = await progressFuture;
 
     // IDs y datos de tickets activos para renderizar cards en la UI
     final activeTicketIds = <String>[];

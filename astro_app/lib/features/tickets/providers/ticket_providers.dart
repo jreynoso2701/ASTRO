@@ -540,3 +540,76 @@ final ticketStatsByCoverageProvider =
       list.sort((a, b) => b.count.compareTo(a.count));
       return list;
     });
+
+// ── Cross-project ticket search (Dashboard) ──────────────────────────────────
+
+class DashboardTicketSearchNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void setQuery(String q) => state = q;
+  void clear() => state = '';
+}
+
+final dashboardTicketSearchProvider =
+    NotifierProvider<DashboardTicketSearchNotifier, String>(
+      DashboardTicketSearchNotifier.new,
+    );
+
+/// Resultados de búsqueda cross-proyecto con visibilidad por rol.
+/// Sigue el patrón de [globalTicketsByStatusProvider] pero aplica texto y roles.
+final globalTicketSearchResultsProvider =
+    Provider<List<({Proyecto project, Ticket ticket})>>((ref) {
+      final query = ref.watch(dashboardTicketSearchProvider).trim();
+      if (query.isEmpty) return const [];
+
+      final upperQuery = query.toUpperCase();
+      final projects = ref.watch(myProjectsProvider);
+      final isRoot = ref.watch(isCurrentUserRootProvider);
+      final uid = ref.watch(authStateProvider).value?.uid;
+      final profile = ref.watch(currentUserProfileProvider).value;
+      final userName = profile?.displayName ?? '';
+      final allAssignments = uid != null
+          ? (ref.watch(userAssignmentsProvider(uid)).value ??
+              <ProjectAssignment>[])
+          : <ProjectAssignment>[];
+
+      final results = <({Proyecto project, Ticket ticket})>[];
+
+      for (final p in projects) {
+        final tickets =
+            ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
+
+        final projectAssignments =
+            allAssignments.where((a) => a.projectId == p.id && a.isActive);
+        final isUsuarioOnly = !isRoot &&
+            projectAssignments.isNotEmpty &&
+            projectAssignments.every((a) => a.role == UserRole.usuario);
+
+        for (final t in tickets) {
+          if (isUsuarioOnly && uid != null) {
+            final isOwn = t.createdBy == uid ||
+                t.createdByName.toUpperCase() == userName.toUpperCase();
+            if (!isOwn) continue;
+          }
+          final matches = t.titulo.toUpperCase().contains(upperQuery) ||
+              t.folio.toUpperCase().contains(upperQuery) ||
+              t.descripcion.toUpperCase().contains(upperQuery);
+          if (matches) results.add((project: p, ticket: t));
+        }
+      }
+
+      results.sort((a, b) {
+        final aF = a.ticket.folio.toUpperCase().contains(upperQuery);
+        final bF = b.ticket.folio.toUpperCase().contains(upperQuery);
+        if (aF && !bF) return -1;
+        if (!aF && bF) return 1;
+        final aD = a.ticket.updatedAt ?? a.ticket.createdAt;
+        final bD = b.ticket.updatedAt ?? b.ticket.createdAt;
+        if (aD == null) return 1;
+        if (bD == null) return -1;
+        return bD.compareTo(aD);
+      });
+
+      return results;
+    });

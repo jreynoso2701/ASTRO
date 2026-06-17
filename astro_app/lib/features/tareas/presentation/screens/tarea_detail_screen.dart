@@ -445,7 +445,8 @@ class _HeroSection extends StatelessWidget {
     final strokeWidth = isWide ? 9.0 : 7.0;
 
     // Anillo de progreso animado o icono de estado
-    final progressWidget = SizedBox(
+    final progressWidget = RepaintBoundary(
+      child: SizedBox(
       width: ringSize,
       height: ringSize,
       child: hasSubtareas
@@ -508,6 +509,7 @@ class _HeroSection extends StatelessWidget {
                 ),
               ),
             ),
+      ),
     );
 
     // Contenido de texto

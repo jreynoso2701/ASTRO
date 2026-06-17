@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:astro/core/models/ticket.dart';
@@ -65,6 +66,25 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          // Botón compartir (siempre visible cuando el ticket carga)
+          ticketAsync.whenOrNull(
+            data: (t) => t != null
+                ? IconButton(
+                    icon: const Icon(Icons.ios_share),
+                    tooltip: 'Compartir ticket',
+                    onPressed: () => SharePlus.instance.share(
+                      ShareParams(
+                        text: '${t.folio}: ${t.titulo}\n'
+                            'Proyecto: ${t.projectName}\n'
+                            'Estado: ${t.status.label}\n\n'
+                            'Abrir en ASTRO:\n'
+                            'astro://projects/${widget.projectId}/tickets/${widget.ticketId}',
+                        subject: t.folio,
+                      ),
+                    ),
+                  )
+                : null,
+          ) ?? const SizedBox.shrink(),
           if (canManage || isRoot)
             ticketAsync.whenOrNull(
                   data: (t) => t != null

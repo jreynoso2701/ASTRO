@@ -49,9 +49,15 @@ abstract final class AppTheme {
         indicatorColor: AppColors.white.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppTypography.labelMedium.copyWith(color: AppColors.white);
+            return AppTypography.labelMedium.copyWith(
+              color: AppColors.white,
+              overflow: TextOverflow.ellipsis,
+            );
           }
-          return AppTypography.labelMedium.copyWith(color: AppColors.grey600);
+          return AppTypography.labelMedium.copyWith(
+            color: AppColors.grey600,
+            overflow: TextOverflow.ellipsis,
+          );
         }),
       ),
       navigationRailTheme: NavigationRailThemeData(
@@ -193,9 +199,15 @@ abstract final class AppTheme {
         indicatorColor: AppColors.black.withValues(alpha: 0.08),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return AppTypography.labelMedium.copyWith(color: AppColors.black);
+            return AppTypography.labelMedium.copyWith(
+              color: AppColors.black,
+              overflow: TextOverflow.ellipsis,
+            );
           }
-          return AppTypography.labelMedium.copyWith(color: AppColors.grey400);
+          return AppTypography.labelMedium.copyWith(
+            color: AppColors.grey400,
+            overflow: TextOverflow.ellipsis,
+          );
         }),
       ),
       navigationRailTheme: NavigationRailThemeData(

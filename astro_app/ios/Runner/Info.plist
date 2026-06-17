@@ -86,6 +86,17 @@
 					<string>com.googleusercontent.apps.124307506572-45hkn1kkdgmfv633sfofd265h5969abk</string>
 				</array>
 			</dict>
+			<!-- Deep links astro:// para tickets y otros recursos -->
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>com.gluck.astro</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>astro</string>
+				</array>
+			</dict>
 		</array>
 	</dict>
 </plist>

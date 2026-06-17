@@ -34,6 +34,7 @@ class Ticket {
     this.commentCount = 0,
     this.archiveReason,
     this.archivedByName,
+    this.urlReferencia,
     this.createdAt,
     this.updatedAt,
     this.closedAt,
@@ -68,6 +69,7 @@ class Ticket {
   final int commentCount; // Contador desnormalizado de comentarios
   final String? archiveReason; // Justificación de archivado
   final String? archivedByName; // Quién archivó
+  final String? urlReferencia; // URL de referencia del ticket
   final DateTime? createdAt; // V1: fhRegistro (string)
   final DateTime? updatedAt; // V1: fhActualizacion (string)
   final DateTime? closedAt;
@@ -141,6 +143,7 @@ class Ticket {
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
       archiveReason: data['archiveReason'] as String?,
       archivedByName: data['archivedByName'] as String?,
+      urlReferencia: data['urlReferencia'] as String?,
       createdAt: parseDate(data['fhRegistro'] ?? data['createdAt']),
       updatedAt: parseDate(data['fhActualizacion'] ?? data['updatedAt']),
       closedAt: parseDate(data['closedAt']),
@@ -173,6 +176,7 @@ class Ticket {
       'commentCount': commentCount,
       if (archiveReason != null) 'archiveReason': archiveReason,
       if (archivedByName != null) 'archivedByName': archivedByName,
+      if (urlReferencia != null) 'urlReferencia': urlReferencia,
       'fhRegistro': createdAt != null
           ? _toV1DateString(createdAt!)
           : _toV1DateString(now),
@@ -221,6 +225,7 @@ class Ticket {
     int? commentCount,
     String? archiveReason,
     String? archivedByName,
+    String? urlReferencia,
     DateTime? updatedAt,
     DateTime? closedAt,
   }) {
@@ -252,6 +257,7 @@ class Ticket {
       commentCount: commentCount ?? this.commentCount,
       archiveReason: archiveReason ?? this.archiveReason,
       archivedByName: archivedByName ?? this.archivedByName,
+      urlReferencia: urlReferencia ?? this.urlReferencia,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       closedAt: closedAt ?? this.closedAt,

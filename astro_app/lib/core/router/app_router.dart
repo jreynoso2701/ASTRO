@@ -174,6 +174,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.loading,
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      // Deep link: astro://projects/:id/tickets/:tid → /projects/:id/tickets/:tid
+      if (state.uri.scheme == 'astro') {
+        final path = '/${state.uri.host}${state.uri.path}';
+        return path.isEmpty ? AppRoutes.dashboard : path;
+      }
+
       final authState = ref.read(authStateProvider);
       final userProfile = ref.read(currentUserProfileProvider);
 

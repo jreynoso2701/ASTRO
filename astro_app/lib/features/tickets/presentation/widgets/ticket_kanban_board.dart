@@ -159,20 +159,22 @@ class _TicketKanbanBoardState extends State<TicketKanbanBoard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (final status in columns)
-                    SizedBox(
-                      width: columnWidth,
-                      child: _KanbanColumn(
-                        status: status,
-                        tickets: _sortTickets(
-                          widget.tickets
-                              .where((t) => t.status == status)
-                              .toList(),
+                    RepaintBoundary(
+                      child: SizedBox(
+                        width: columnWidth,
+                        child: _KanbanColumn(
+                          status: status,
+                          tickets: _sortTickets(
+                            widget.tickets
+                                .where((t) => t.status == status)
+                                .toList(),
+                          ),
+                          onTicketTap: widget.onTicketTap,
+                          onStatusChange: widget.onStatusChange,
+                          showDeadline: widget.showDeadline,
+                          canManage: widget.canManage,
+                          onBulkArchive: widget.onBulkArchive,
                         ),
-                        onTicketTap: widget.onTicketTap,
-                        onStatusChange: widget.onStatusChange,
-                        showDeadline: widget.showDeadline,
-                        canManage: widget.canManage,
-                        onBulkArchive: widget.onBulkArchive,
                       ),
                     ),
                 ],
