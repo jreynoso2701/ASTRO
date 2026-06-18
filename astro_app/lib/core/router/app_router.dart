@@ -49,6 +49,7 @@ import 'package:astro/features/empresas/presentation/screens/empresa_list_screen
 import 'package:astro/features/empresas/presentation/screens/empresa_detail_screen.dart';
 import 'package:astro/features/empresas/presentation/screens/empresa_form_screen.dart';
 import 'package:astro/features/gestion/presentation/screens/gestion_screen.dart';
+import 'package:astro/features/tickets/presentation/screens/ticket_chat_screen.dart';
 import 'package:astro/features/tareas/presentation/screens/tareas_list_screen.dart';
 import 'package:astro/features/tareas/presentation/screens/tareas_global_screen.dart';
 import 'package:astro/features/tareas/presentation/screens/tarea_detail_screen.dart';
@@ -80,6 +81,7 @@ abstract final class AppRoutes {
   static const String projectTickets = '/projects/:id/tickets';
   static const String ticketNew = '/projects/:id/tickets/new';
   static const String ticketDetail = '/projects/:id/tickets/:ticketId';
+  static const String ticketChat = '/projects/:id/tickets/:ticketId/chat';
   static const String ticketEdit = '/projects/:id/tickets/:ticketId/edit';
   static const String projectRequirements = '/projects/:id/requirements';
   static const String reqNew = '/projects/:id/requirements/new';
@@ -493,6 +495,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             refCitaId: extra?['refCitaId'] as String?,
           );
         },
+      ),
+      GoRoute(
+        path: AppRoutes.ticketChat,
+        builder: (context, state) => TicketChatScreen(
+          projectId: state.pathParameters['id']!,
+          ticketId: state.pathParameters['ticketId']!,
+        ),
       ),
       GoRoute(
         path: AppRoutes.ticketEdit,

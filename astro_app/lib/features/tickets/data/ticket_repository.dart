@@ -272,12 +272,77 @@ class TicketRepository {
   }
 
   /// Agrega un comentario al ticket e incrementa el contador desnormalizado.
+  /// Si es un comentario de usuario (no de sistema), actualiza el preview del chat.
   Future<void> addComment(String ticketId, TicketComment comment) async {
     final data = comment.toFirestore();
     data['refIncidente'] = ticketId;
     await _commentsRef.add(data);
-    // Incrementar commentCount en el documento del ticket
-    await _ref.doc(ticketId).update({'commentCount': FieldValue.increment(1)});
+
+    final updates = <String, dynamic>{'commentCount': FieldValue.increment(1)};
+    if (comment.type == CommentType.comment && !comment.deleted) {
+      updates['lastCommentAt'] = FieldValue.serverTimestamp();
+      updates['lastCommentPreview'] = _chatPreview(comment.text);
+      updates['lastCommentAuthorId'] = comment.authorId;
+      updates['lastCommentAuthorName'] = comment.authorName;
+    }
+    await _ref.doc(ticketId).update(updates);
+  }
+
+  static String _chatPreview(String text) {
+    // Strip basic markdown/quill JSON to plain text preview
+    String plain = text.trim();
+    if (plain.startsWith('{') || plain.startsWith('[')) {
+      plain = plain.replaceAll(RegExp(r'\{[^}]*\}'), '').replaceAll('[', '').replaceAll(']', '');
+    }
+    plain = plain.replaceAll(RegExp(r'[*_~`#>]'), '').replaceAll('\n', ' ').trim();
+    if (plain.length > 60) return '${plain.substring(0, 60)}…';
+    return plain;
+  }
+
+  /// Stream de tickets con al menos un comentario de usuario, para la lista de chats.
+  /// Usa el campo V1 `fkxProyecto` (nombre del proyecto) para compatibilidad con datos históricos.
+  Stream<List<Ticket>> watchTicketsWithComments(List<String> projectNames) {
+    if (projectNames.isEmpty) return Stream.value([]);
+    return _ref
+        .where('fkxProyecto', whereIn: projectNames.take(30).toList())
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+          final tickets = snap.docs
+              .map(Ticket.fromFirestore)
+              .where((t) => t.lastCommentAt != null)
+              .toList()
+            ..sort((a, b) =>
+                (b.lastCommentAt ?? DateTime(2000)).compareTo(a.lastCommentAt ?? DateTime(2000)));
+          return tickets;
+        });
+  }
+
+  /// Guarda la fecha de última lectura del chat de un ticket por el usuario.
+  Future<void> markChatAsRead(String uid, String ticketId) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chatReads')
+        .doc(ticketId)
+        .set({'lastReadAt': FieldValue.serverTimestamp()});
+  }
+
+  /// Stream de la última fecha de lectura del chat de un ticket para un usuario.
+  Stream<DateTime?> watchChatRead(String uid, String ticketId) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('chatReads')
+        .doc(ticketId)
+        .snapshots()
+        .map((doc) {
+          if (!doc.exists) return null;
+          final ts = doc.data()?['lastReadAt'];
+          if (ts is Timestamp) return ts.toDate();
+          return null;
+        })
+        .handleError((_) => null);
   }
 
   /// Marca un comentario como eliminado (soft-delete) y limpia sus adjuntos.

@@ -541,6 +541,22 @@ final ticketStatsByCoverageProvider =
       return list;
     });
 
+// ── Chat providers ───────────────────────────────────────────────────────────
+
+/// Stream de tickets con comentarios de usuario (para la lista de chats).
+/// Observa myProjectsProvider internamente para evitar clave inestable con List.
+final ticketsWithCommentsProvider = StreamProvider<List<Ticket>>((ref) {
+  final projects = ref.watch(myProjectsProvider);
+  final projectNames = projects.map((p) => p.nombreProyecto).toList();
+  return ref.watch(ticketRepositoryProvider).watchTicketsWithComments(projectNames);
+});
+
+/// Stream de la última fecha de lectura del chat de un ticket por el usuario actual.
+final chatReadProvider =
+    StreamProvider.family<DateTime?, ({String uid, String ticketId})>((ref, params) {
+      return ref.watch(ticketRepositoryProvider).watchChatRead(params.uid, params.ticketId);
+    });
+
 // ── Cross-project ticket search (Dashboard) ──────────────────────────────────
 
 class DashboardTicketSearchNotifier extends Notifier<String> {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/features/tickets/presentation/screens/chats_list_screen.dart';
 import 'package:astro/features/dashboard/presentation/widgets/dashboard_ticket_search_sheet.dart';
 import 'package:astro/features/dashboard/presentation/widgets/quick_ticket_sheet.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
@@ -34,7 +35,7 @@ class _DashboardIncidentsTabbedSectionState
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -66,6 +67,7 @@ class _DashboardIncidentsTabbedSectionState
           tabs: const [
             Tab(text: 'TICKETS'),
             Tab(text: 'REQUERIMIENTOS'),
+            Tab(text: 'CHATS'),
           ],
         ),
 
@@ -74,11 +76,14 @@ class _DashboardIncidentsTabbedSectionState
           animation: _tabController,
           builder: (context, _) {
             if (_tabController.index != 0) return const SizedBox(height: 12);
+            // En tab CHATS no se muestran botones de acción
+            if (_tabController.index == 2) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(top: 10, bottom: 2),
               child: Row(
                 children: [
-                  Expanded(
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.search, size: 16),
                       label: const Text('Buscar tickets'),
@@ -116,8 +121,10 @@ class _DashboardIncidentsTabbedSectionState
           builder: (context, _) {
             if (_tabController.index == 0) {
               return _TicketsTabContent(isRoot: widget.isRoot);
-            } else {
+            } else if (_tabController.index == 1) {
               return _ReqsTabContent(isRoot: widget.isRoot);
+            } else {
+              return const ChatsListScreen();
             }
           },
         ),

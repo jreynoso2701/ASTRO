@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:astro/core/models/ticket.dart';
 import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/models/ticket_priority.dart';
@@ -11,7 +9,6 @@ import 'package:astro/core/models/ticket_comment.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/utils/ticket_colors.dart';
-import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/core/presentation/widgets/storage_image.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
@@ -39,9 +36,6 @@ class TicketDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
-  final _commentEditorKey = GlobalKey<RichTextEditorState>();
-  bool _sending = false;
-  List<XFile> _pendingFiles = [];
 
   @override
   void dispose() {
@@ -66,6 +60,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          // Botón de chat
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Chat del ticket',
+            onPressed: () => context.push(
+              '/projects/${widget.projectId}/tickets/${widget.ticketId}/chat',
+            ),
+          ),
           // Botón compartir (siempre visible cuando el ticket carga)
           ticketAsync.whenOrNull(
             data: (t) => t != null
@@ -131,16 +133,11 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
           final currentUserId =
               ref.watch(currentUserProfileProvider).value?.uid ?? '';
 
-          final commentsSection = _CommentsSection(
-            comments: comments,
-            editorKey: _commentEditorKey,
-            sending: _sending,
-            pendingFiles: _pendingFiles,
-            currentUserId: currentUserId,
-            onSend: () => _sendComment(ticket.id),
-            onPickFiles: _pickFiles,
-            onRemoveFile: (i) => setState(() => _pendingFiles.removeAt(i)),
-            onDeleteComment: (c) => _deleteComment(ticket.id, c),
+          final chatButton = _OpenChatButton(
+            onTap: () => context.push(
+              '/projects/${widget.projectId}/tickets/${widget.ticketId}/chat',
+            ),
+            commentCount: comments.where((c) => c.type == CommentType.comment).length,
           );
 
           if (isWide) {
@@ -155,7 +152,20 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                   ),
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(child: commentsSection),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _CommentsReadOnly(
+                          comments: comments,
+                          currentUserId: currentUserId,
+                          onDelete: (c) => _deleteComment(ticket.id, c),
+                        ),
+                      ),
+                      chatButton,
+                    ],
+                  ),
+                ),
               ],
             );
           }
@@ -180,18 +190,20 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                       const Divider(),
                       ...commentsAsync
                               .whenOrNull(
-                                data: (list) => list.map(
-                                  (c) => _CommentTile(
-                                    comment: c,
-                                    currentUserId: currentUserId,
-                                    onDelete: () =>
-                                        _deleteComment(ticket.id, c),
-                                  ),
-                                ),
+                                data: (list) => list
+                                    .where((c) => c.type == CommentType.comment)
+                                    .map(
+                                      (c) => _CommentTile(
+                                        comment: c,
+                                        currentUserId: currentUserId,
+                                        onDelete: () =>
+                                            _deleteComment(ticket.id, c),
+                                      ),
+                                    ),
                               )
                               ?.toList() ??
                           [],
-                      if (comments.isEmpty)
+                      if (comments.where((c) => c.type == CommentType.comment).isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
@@ -210,15 +222,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                   ),
                 ),
               ),
-              // Input de comentario
-              _CommentInput(
-                editorKey: _commentEditorKey,
-                sending: _sending,
-                pendingFiles: _pendingFiles,
-                onSend: () => _sendComment(ticket.id),
-                onPickFiles: _pickFiles,
-                onRemoveFile: (i) => setState(() => _pendingFiles.removeAt(i)),
-              ),
+              chatButton,
             ],
           );
         },
@@ -349,49 +353,6 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     }
   }
 
-  Future<void> _sendComment(String ticketId) async {
-    final editorState = _commentEditorKey.currentState;
-    final text = editorState?.markdown ?? '';
-    if ((editorState?.isEmpty ?? true) && _pendingFiles.isEmpty) return;
-
-    final profile = ref.read(currentUserProfileProvider).value;
-    if (profile == null) return;
-
-    setState(() => _sending = true);
-
-    try {
-      // Subir archivos pendientes
-      List<String> adjuntosUrls = [];
-      if (_pendingFiles.isNotEmpty) {
-        final storage = StorageService();
-        for (final file in _pendingFiles) {
-          final url = await storage.uploadToPath(
-            'comentarios_tickets/$ticketId',
-            file,
-          );
-          adjuntosUrls.add(url);
-        }
-      }
-
-      await ref
-          .read(ticketRepositoryProvider)
-          .addComment(
-            ticketId,
-            TicketComment(
-              id: '',
-              text: text,
-              authorId: profile.uid,
-              authorName: profile.displayName,
-              adjuntos: adjuntosUrls,
-            ),
-          );
-      _commentEditorKey.currentState?.clear();
-      setState(() => _pendingFiles = []);
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
-
   Future<void> _deleteComment(String ticketId, TicketComment comment) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -415,86 +376,6 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
     );
     if (confirmed != true || !mounted) return;
     await ref.read(ticketRepositoryProvider).deleteComment(comment.id);
-  }
-
-  Future<void> _pickFiles() async {
-    final totalAllowed = 10 - _pendingFiles.length;
-    if (totalAllowed <= 0) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Máximo 10 archivos por comentario')),
-        );
-      }
-      return;
-    }
-
-    final option = await showModalBottomSheet<String>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Tomar foto'),
-              onTap: () => Navigator.pop(ctx, 'camera'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Galería de fotos'),
-              onTap: () => Navigator.pop(ctx, 'gallery'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.attach_file),
-              title: const Text('Seleccionar archivos'),
-              onTap: () => Navigator.pop(ctx, 'files'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (option == null || !mounted) return;
-
-    List<XFile> picked = [];
-    switch (option) {
-      case 'camera':
-        final img = await ImagePicker().pickImage(source: ImageSource.camera);
-        if (img != null) picked = [img];
-        break;
-      case 'gallery':
-        picked = await ImagePicker().pickMultiImage();
-        break;
-      case 'files':
-        final result = await FilePicker.platform.pickFiles(
-          allowMultiple: true,
-          type: FileType.any,
-        );
-        if (result != null) {
-          picked = result.files
-              .where((f) => f.path != null)
-              .map((f) => XFile(f.path!))
-              .toList();
-        }
-        break;
-    }
-
-    if (picked.isEmpty || !mounted) return;
-
-    // Respetar el límite de 10
-    final canAdd = 10 - _pendingFiles.length;
-    final toAdd = picked.take(canAdd).toList();
-    setState(() => _pendingFiles = [..._pendingFiles, ...toAdd]);
-
-    if (picked.length > canAdd) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Solo se agregaron $canAdd de ${picked.length} archivos (máximo 10)',
-          ),
-        ),
-      );
-    }
   }
 
   Future<void> _showAssignDialog(Ticket ticket) async {
@@ -2127,6 +2008,143 @@ class _EtiquetasSection extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Chat redirect button ─────────────────────────────────
+
+class _OpenChatButton extends StatelessWidget {
+  const _OpenChatButton({required this.onTap, required this.commentCount});
+  final VoidCallback onTap;
+  final int commentCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primary = theme.colorScheme.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.white.withValues(alpha: 0.75),
+          border: Border(
+            top: BorderSide(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.07),
+            ),
+          ),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          12 + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.chat_bubble_outline, size: 20, color: primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Abrir chat del ticket',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: primary,
+                    ),
+                  ),
+                  Text(
+                    commentCount == 0
+                        ? 'Sin mensajes aún — sé el primero'
+                        : '$commentCount mensaje${commentCount == 1 ? '' : 's'}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 14, color: primary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Comments read-only list (wide layout) ────────────────
+
+class _CommentsReadOnly extends StatelessWidget {
+  const _CommentsReadOnly({
+    required this.comments,
+    required this.currentUserId,
+    required this.onDelete,
+  });
+
+  final List<TicketComment> comments;
+  final String currentUserId;
+  final void Function(TicketComment) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final userComments =
+        comments.where((c) => c.type == CommentType.comment).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          child: Text(
+            'COMENTARIOS',
+            style: theme.textTheme.labelLarge?.copyWith(
+              letterSpacing: 1,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: userComments.isEmpty
+              ? Center(
+                  child: Text(
+                    'Sin comentarios aún',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: userComments
+                      .map(
+                        (c) => _CommentTile(
+                          comment: c,
+                          currentUserId: currentUserId,
+                          onDelete: () => onDelete(c),
+                        ),
+                      )
+                      .toList(),
+                ),
+        ),
+      ],
     );
   }
 }

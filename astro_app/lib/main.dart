@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -22,8 +23,10 @@ Future<void> main() async {
   // Inicializar SharedPreferences antes de runApp.
   final prefs = await SharedPreferences.getInstance();
 
-  // Registrar handler de mensajes en background/terminated.
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  // Registrar handler de mensajes en background/terminated (no soportado en web).
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  }
 
   runApp(
     ProviderScope(

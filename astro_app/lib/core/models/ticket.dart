@@ -38,6 +38,10 @@ class Ticket {
     this.createdAt,
     this.updatedAt,
     this.closedAt,
+    this.lastCommentAt,
+    this.lastCommentPreview,
+    this.lastCommentAuthorId,
+    this.lastCommentAuthorName,
   });
 
   final String id;
@@ -73,6 +77,10 @@ class Ticket {
   final DateTime? createdAt; // V1: fhRegistro (string)
   final DateTime? updatedAt; // V1: fhActualizacion (string)
   final DateTime? closedAt;
+  final DateTime? lastCommentAt;
+  final String? lastCommentPreview;
+  final String? lastCommentAuthorId;
+  final String? lastCommentAuthorName;
 
   factory Ticket.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
@@ -147,6 +155,10 @@ class Ticket {
       createdAt: parseDate(data['fhRegistro'] ?? data['createdAt']),
       updatedAt: parseDate(data['fhActualizacion'] ?? data['updatedAt']),
       closedAt: parseDate(data['closedAt']),
+      lastCommentAt: parseDate(data['lastCommentAt']),
+      lastCommentPreview: data['lastCommentPreview'] as String?,
+      lastCommentAuthorId: data['lastCommentAuthorId'] as String?,
+      lastCommentAuthorName: data['lastCommentAuthorName'] as String?,
     );
   }
 
@@ -261,6 +273,10 @@ class Ticket {
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       closedAt: closedAt ?? this.closedAt,
+      lastCommentAt: lastCommentAt,
+      lastCommentPreview: lastCommentPreview,
+      lastCommentAuthorId: lastCommentAuthorId,
+      lastCommentAuthorName: lastCommentAuthorName,
     );
   }
 
