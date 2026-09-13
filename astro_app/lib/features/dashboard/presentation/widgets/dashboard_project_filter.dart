@@ -15,7 +15,8 @@ class DashboardProjectFilterSelector extends ConsumerWidget {
   });
 
   final List<Proyecto> allProjects;
-  final NotifierProvider<DashboardTabFilterNotifier, Set<String>> filterProvider;
+  final NotifierProvider<DashboardTabFilterNotifier, Set<String>>
+  filterProvider;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -92,7 +93,8 @@ class _DashboardProjectFilterSheet extends ConsumerWidget {
   });
 
   final List<Proyecto> allProjects;
-  final NotifierProvider<DashboardTabFilterNotifier, Set<String>> filterProvider;
+  final NotifierProvider<DashboardTabFilterNotifier, Set<String>>
+  filterProvider;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

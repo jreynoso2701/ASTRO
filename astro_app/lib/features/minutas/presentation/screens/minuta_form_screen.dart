@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/models/minuta_modalidad.dart';
 import 'package:astro/core/models/ticket.dart';
@@ -406,12 +407,26 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
               _SectionHeader(label: 'ASUNTOS TRATADOS'),
               const SizedBox(height: 8),
 
-              ..._asuntos.asMap().entries.map(
-                (e) => _AsuntoRow(
-                  asunto: e.value,
-                  onRemove: () => setState(() => _asuntos.removeAt(e.key)),
+              if (_asuntos.isNotEmpty)
+                ReorderableListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _asuntos.length,
+                  buildDefaultDragHandles: false,
+                  onReorderItem: _reorderAsuntos,
+                  itemBuilder: (ctx, i) => _AsuntoRow(
+                    // La clave va sobre la posición original del asunto: el
+                    // texto puede repetirse y el número cambia al reordenar.
+                    key: ValueKey('asunto-${_asuntos[i].numero}-$i'),
+                    index: i,
+                    asunto: _asuntos[i],
+                    onEdit: () => _editAsunto(i),
+                    onRemove: () => setState(() {
+                      _asuntos.removeAt(i);
+                      _renumberAsuntos();
+                    }),
+                  ),
                 ),
-              ),
 
               TextButton.icon(
                 onPressed: _addAsunto,
@@ -771,14 +786,15 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
   // ─── Tickets search / quick-create ────────────────────
 
   Future<void> _searchTickets(String projectName) async {
-    final tickets = ref.read(ticketsByProjectProvider(projectName)).value ?? [];
-    if (!mounted) return;
-
+    // El diálogo observa el provider él mismo: leerlo aquí con `ref.read`
+    // devolvía `loading` (nadie estaba suscrito al stream) y la lista salía
+    // siempre vacía.
     final selected = await showDialog<String>(
       context: context,
-      builder: (ctx) => _SearchRefDialog<Ticket>(
+      builder: (ctx) => _AsyncSearchRefDialog<Ticket>(
         title: 'Buscar ticket',
-        items: tickets.where((t) => !_refTickets.contains(t.id)).toList(),
+        provider: ticketsByProjectProvider(projectName),
+        filter: (t) => !_refTickets.contains(t.id),
         labelBuilder: (t) => '${t.folio} — ${t.titulo}',
         idBuilder: (t) => t.id,
       ),
@@ -799,15 +815,12 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
   // ─── Requerimientos search / quick-create ─────────────
 
   Future<void> _searchRequerimientos(String projectName) async {
-    final reqs =
-        ref.read(requerimientosByProjectProvider(projectName)).value ?? [];
-    if (!mounted) return;
-
     final selected = await showDialog<String>(
       context: context,
-      builder: (ctx) => _SearchRefDialog<Requerimiento>(
+      builder: (ctx) => _AsyncSearchRefDialog<Requerimiento>(
         title: 'Buscar requerimiento',
-        items: reqs.where((r) => !_refRequerimientos.contains(r.id)).toList(),
+        provider: requerimientosByProjectProvider(projectName),
+        filter: (r) => !_refRequerimientos.contains(r.id),
         labelBuilder: (r) => '${r.folio} — ${r.titulo}',
         idBuilder: (r) => r.id,
       ),
@@ -825,17 +838,21 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
     }
   }
 
-  void _addAsunto() async {
-    final textoCtrl = TextEditingController();
+  /// Diálogo común de alta y edición de un asunto. Devuelve el texto ya
+  /// recortado, o `null` si se cancela.
+  Future<String?> _asuntoDialog({String? initial}) async {
+    final textoCtrl = TextEditingController(text: initial ?? '');
+    final isEdit = initial != null;
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nuevo asunto'),
+        title: Text(isEdit ? 'Editar asunto' : 'Nuevo asunto'),
         content: TextField(
           controller: textoCtrl,
           decoration: const InputDecoration(labelText: 'Descripción *'),
           textCapitalization: TextCapitalization.sentences,
           maxLines: 3,
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -847,15 +864,44 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
               if (textoCtrl.text.trim().isEmpty) return;
               Navigator.pop(ctx, textoCtrl.text.trim());
             },
-            child: const Text('Agregar'),
+            child: Text(isEdit ? 'Guardar' : 'Agregar'),
           ),
         ],
       ),
     );
+    textoCtrl.dispose();
+    return result;
+  }
+
+  void _addAsunto() async {
+    final result = await _asuntoDialog();
     if (result != null) {
       setState(() {
         _asuntos.add(AsuntoTratado(numero: _asuntos.length + 1, texto: result));
       });
+    }
+  }
+
+  void _editAsunto(int index) async {
+    final result = await _asuntoDialog(initial: _asuntos[index].texto);
+    if (result != null && mounted) {
+      setState(() => _asuntos[index] = _asuntos[index].copyWith(texto: result));
+    }
+  }
+
+  void _reorderAsuntos(int oldIndex, int newIndex) {
+    setState(() {
+      final item = _asuntos.removeAt(oldIndex);
+      _asuntos.insert(newIndex, item);
+      _renumberAsuntos();
+    });
+  }
+
+  /// `numero` es la posición visible del asunto en la minuta, así que tras
+  /// mover o borrar hay que reasignarlo a todos para que no queden huecos.
+  void _renumberAsuntos() {
+    for (var i = 0; i < _asuntos.length; i++) {
+      _asuntos[i] = _asuntos[i].copyWith(numero: i + 1);
     }
   }
 
@@ -1314,9 +1360,17 @@ class _AsistenteRow extends StatelessWidget {
 // ── Asunto Row ───────────────────────────────────────────
 
 class _AsuntoRow extends StatelessWidget {
-  const _AsuntoRow({required this.asunto, required this.onRemove});
+  const _AsuntoRow({
+    required this.index,
+    required this.asunto,
+    required this.onEdit,
+    required this.onRemove,
+    super.key,
+  });
 
+  final int index;
   final AsuntoTratado asunto;
+  final VoidCallback onEdit;
   final VoidCallback onRemove;
 
   @override
@@ -1329,9 +1383,30 @@ class _AsuntoRow extends StatelessWidget {
           child: Text('${asunto.numero}', style: const TextStyle(fontSize: 12)),
         ),
         title: Text(asunto.texto),
-        trailing: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: onRemove,
+        // Tocar la fila edita; el asa de arrastre queda explícita para que en
+        // móvil el scroll del formulario no se confunda con un reordenamiento.
+        onTap: onEdit,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Editar',
+              onPressed: onEdit,
+            ),
+            IconButton(
+              icon: const Icon(Icons.close),
+              tooltip: 'Quitar',
+              onPressed: onRemove,
+            ),
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(Icons.drag_handle),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1557,6 +1632,7 @@ class _PlacesSearchDialogState extends State<_PlacesSearchDialog> {
   final _searchCtrl = TextEditingController();
   List<PlacePrediction> _predictions = [];
   bool _isLoading = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -1566,11 +1642,17 @@ class _PlacesSearchDialogState extends State<_PlacesSearchDialog> {
 
   Future<void> _search(String query) async {
     if (query.length < 3) {
-      setState(() => _predictions = []);
+      setState(() {
+        _predictions = [];
+        _error = null;
+      });
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final results = await widget.placesService.autocomplete(
         query,
@@ -1582,8 +1664,24 @@ class _PlacesSearchDialogState extends State<_PlacesSearchDialog> {
           _isLoading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    } on PlacesException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _predictions = [];
+          _error = e.message;
+        });
+      }
+    } catch (e) {
+      // Red caída, o CORS al ejecutar en web: sin este aviso la búsqueda
+      // parecía simplemente no encontrar nada.
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _predictions = [];
+          _error = 'No se pudo consultar Google Places.\n$e';
+        });
+      }
     }
   }
 
@@ -1619,12 +1717,22 @@ class _PlacesSearchDialogState extends State<_PlacesSearchDialog> {
             Expanded(
               child: _predictions.isEmpty
                   ? Center(
-                      child: Text(
-                        _searchCtrl.text.length < 3
-                            ? 'Escribe al menos 3 caracteres'
-                            : 'Sin resultados',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          _error ??
+                              (_searchCtrl.text.length < 3
+                                  ? 'Escribe al menos 3 caracteres'
+                                  : 'Sin resultados'),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: _error != null
+                                    ? AppColors.error
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ),
                     )
@@ -1664,6 +1772,58 @@ class _PlacesSearchDialogState extends State<_PlacesSearchDialog> {
 }
 
 // ── Search Reference Dialog (generic) ────────────────────
+
+/// Envoltura que observa el provider de la lista y sólo entonces construye el
+/// diálogo de búsqueda.
+///
+/// Suscribirse desde el propio diálogo es lo que hace que la lista llegue: un
+/// `ref.read` sobre un `StreamProvider` que nadie observa devuelve `loading`.
+class _AsyncSearchRefDialog<T> extends ConsumerWidget {
+  const _AsyncSearchRefDialog({
+    required this.title,
+    required this.provider,
+    required this.filter,
+    required this.labelBuilder,
+    required this.idBuilder,
+  });
+
+  final String title;
+  final StreamProvider<List<T>> provider;
+  final bool Function(T) filter;
+  final String Function(T) labelBuilder;
+  final String Function(T) idBuilder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(provider);
+
+    return async.when(
+      data: (items) => _SearchRefDialog<T>(
+        title: title,
+        items: items.where(filter).toList(),
+        labelBuilder: labelBuilder,
+        idBuilder: idBuilder,
+      ),
+      loading: () => AlertDialog(
+        title: Text(title),
+        content: const SizedBox(
+          height: 120,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (e, _) => AlertDialog(
+        title: Text(title),
+        content: Text('No se pudo cargar la lista.\n$e'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _SearchRefDialog<T> extends StatefulWidget {
   const _SearchRefDialog({

@@ -136,8 +136,7 @@ class _DashboardTicketSearchSheetState
                       onTap: () {
                         Navigator.pop(ctx);
                         final t = results[i].ticket;
-                        final pid =
-                            t.projectId ?? results[i].project.id;
+                        final pid = t.projectId ?? results[i].project.id;
                         ctx.push('/projects/$pid/tickets/${t.id}');
                       },
                     ),
@@ -214,10 +213,7 @@ class _NoResultsView extends StatelessWidget {
 }
 
 class _TicketSearchResultTile extends StatelessWidget {
-  const _TicketSearchResultTile({
-    required this.entry,
-    required this.onTap,
-  });
+  const _TicketSearchResultTile({required this.entry, required this.onTap});
 
   final ({Proyecto project, Ticket ticket}) entry;
   final VoidCallback onTap;
@@ -234,10 +230,7 @@ class _TicketSearchResultTile extends StatelessWidget {
         width: 12,
         height: 12,
         margin: const EdgeInsets.only(top: 2),
-        decoration: BoxDecoration(
-          color: prioColor,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: prioColor, shape: BoxShape.circle),
       ),
       title: Text(
         t.titulo,
@@ -261,5 +254,4 @@ class _TicketSearchResultTile extends StatelessWidget {
       onTap: onTap,
     );
   }
-
 }

@@ -15,6 +15,7 @@ import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/minutas/data/minuta_repository.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
+import 'package:astro/core/widgets/copy_button.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_viewer.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
@@ -537,15 +538,23 @@ class _HeroSection extends StatelessWidget {
         const SizedBox(height: 8),
 
         // Título
-        Text(
-          tarea.titulo,
-          style:
-              (isWide
-                      ? theme.textTheme.headlineSmall
-                      : theme.textTheme.titleLarge)
-                  ?.copyWith(fontWeight: FontWeight.bold),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                tarea.titulo,
+                style:
+                    (isWide
+                            ? theme.textTheme.headlineSmall
+                            : theme.textTheme.titleLarge)
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            CopyButton(text: tarea.titulo, label: 'Título'),
+          ],
         ),
         const SizedBox(height: 10),
 
@@ -1057,8 +1066,9 @@ class _DescriptionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'DESCRIPCIÓN',
+            CopyableSectionLabel(
+              label: 'DESCRIPCIÓN',
+              text: descripcion,
               style: theme.textTheme.labelLarge?.copyWith(
                 letterSpacing: 1,
                 color: theme.colorScheme.onSurfaceVariant,

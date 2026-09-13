@@ -49,3 +49,6 @@ app.*.map.json
 dart_defines*.env
 .env.*
 secrets/
+
+# Claves inyectadas con --dart-define-from-file (ver docs/BUILD.md)
+secrets.json

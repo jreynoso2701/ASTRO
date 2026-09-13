@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/user_role.dart';
 import 'package:astro/core/models/app_user.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/widgets/copy_button.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
@@ -246,7 +247,20 @@ class _ProjectInfoSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(nombre, style: theme.textTheme.titleLarge),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    child: Text(
+                      nombre,
+                      style: theme.textTheme.titleLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  CopyButton(text: nombre, label: 'Nombre'),
+                ],
+              ),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -292,8 +306,13 @@ class _ProjectInfoSection extends StatelessWidget {
                   label: 'Estatus',
                   value: estatus ? 'Activo' : 'Inactivo',
                 ),
-                if (descripcion != null && descripcion!.isNotEmpty)
-                  _InfoRow(label: 'Descripción', value: descripcion!),
+                if (descripcion != null && descripcion!.isNotEmpty) ...[
+                  CopyableSectionLabel(
+                    label: 'Descripción',
+                    text: descripcion!,
+                  ),
+                  Text(descripcion!, style: theme.textTheme.bodyMedium),
+                ],
               ],
             ),
           ),
@@ -688,7 +707,28 @@ class _MembersSection extends ConsumerWidget {
                     ),
                   ),
                 ),
-                title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                title: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (assignment.isLead as bool) ...[
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: 'Responsable principal',
+                        child: Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 subtitle: Text(
                   '$email · ${role.label}',
                   maxLines: 1,
@@ -714,6 +754,8 @@ class _MembersSection extends ConsumerWidget {
                                   assignment,
                                   name,
                                 );
+                              } else if (value == 'lead') {
+                                _toggleLead(context, ref, assignment, name);
                               } else if (value == 'remove') {
                                 _showRemoveMemberDialog(
                                   context,
@@ -729,6 +771,24 @@ class _MembersSection extends ConsumerWidget {
                                 child: ListTile(
                                   leading: Icon(Icons.edit_outlined, size: 20),
                                   title: Text('Cambiar rol'),
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'lead',
+                                child: ListTile(
+                                  leading: Icon(
+                                    assignment.isLead as bool
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    size: 20,
+                                  ),
+                                  title: Text(
+                                    assignment.isLead as bool
+                                        ? 'Quitar como responsable'
+                                        : 'Marcar como responsable',
+                                  ),
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                 ),
@@ -759,6 +819,37 @@ class _MembersSection extends ConsumerWidget {
           }),
       ],
     );
+  }
+
+  /// Marca o desmarca al miembro como responsable principal.
+  ///
+  /// Un proyecto admite varios responsables, así que no desmarca a los demás.
+  Future<void> _toggleLead(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic assignment,
+    String name,
+  ) async {
+    final wasLead = assignment.isLead as bool;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(projectAssignmentRepositoryProvider)
+          .setLead(assignment.id as String, !wasLead);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            wasLead
+                ? '$name ya no es responsable principal'
+                : '$name es responsable principal',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('No se pudo actualizar: $e')),
+      );
+    }
   }
 
   Future<void> _showAddMemberDialog(BuildContext context, WidgetRef ref) async {

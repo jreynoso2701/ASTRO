@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/animated_progress_bar.dart';
+import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
@@ -70,6 +73,8 @@ class ProjectListScreen extends ConsumerWidget {
                     onChanged: (v) =>
                         ref.read(projectSearchProvider.notifier).setQuery(v),
                   ),
+                  const SizedBox(height: 12),
+                  const _ProjectFilterBar(),
                 ],
               ),
             ),
@@ -105,6 +110,63 @@ class ProjectListScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Ordenamiento y filtro por empresa, en una sola fila desplazable para que
+/// quepan ambos también en móvil.
+class _ProjectFilterBar extends ConsumerWidget {
+  const _ProjectFilterBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sort = ref.watch(projectListSortProvider);
+    final empresa = ref.watch(projectEmpresaFilterProvider);
+    final empresas = ref.watch(projectEmpresasProvider);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          PopupMenuButton<ProjectListSort>(
+            initialValue: sort,
+            onSelected: ref.read(projectListSortProvider.notifier).set,
+            itemBuilder: (_) => [
+              for (final s in ProjectListSort.values)
+                PopupMenuItem(value: s, child: Text(s.label)),
+            ],
+            child: Chip(
+              avatar: const Icon(Icons.swap_vert, size: 18),
+              label: Text(sort.label),
+            ),
+          ),
+          if (empresas.length > 1) ...[
+            const SizedBox(width: 8),
+            PopupMenuButton<String?>(
+              initialValue: empresa,
+              onSelected: ref.read(projectEmpresaFilterProvider.notifier).set,
+              itemBuilder: (_) => [
+                const PopupMenuItem<String?>(
+                  value: null,
+                  child: Text('Todas las empresas'),
+                ),
+                for (final e in empresas)
+                  PopupMenuItem<String?>(value: e, child: Text(e)),
+              ],
+              child: Chip(
+                avatar: const Icon(Icons.business_outlined, size: 18),
+                label: Text(empresa ?? 'Todas las empresas'),
+                onDeleted: empresa == null
+                    ? null
+                    : () => ref
+                          .read(projectEmpresaFilterProvider.notifier)
+                          .set(null),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -149,7 +211,7 @@ class _ProjectListContent extends StatelessWidget {
           crossAxisCount: crossAxisCount,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          mainAxisExtent: 130,
+          mainAxisExtent: 190,
         ),
         itemCount: projects.length,
         itemBuilder: (context, index) => _ProjectCard(project: projects[index]),
@@ -165,14 +227,19 @@ class _ProjectListContent extends StatelessWidget {
   }
 }
 
-class _ProjectCard extends StatelessWidget {
+class _ProjectCard extends ConsumerWidget {
   const _ProjectCard({required this.project});
 
   final Proyecto project;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final progress = ref.watch(projectProgressProvider(project.nombreProyecto));
+    final leads = ref.watch(projectLeadNamesProvider(project.id));
+    final activeColor = project.estatusProyecto
+        ? AppColors.success
+        : theme.colorScheme.onSurfaceVariant;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -217,17 +284,13 @@ class _ProjectCard extends StatelessWidget {
                         ? Icons.circle
                         : Icons.circle_outlined,
                     size: 10,
-                    color: project.estatusProyecto
-                        ? const Color(0xFF4CAF50)
-                        : theme.colorScheme.onSurfaceVariant,
+                    color: activeColor,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     project.estatusProyecto ? 'Activo' : 'Inactivo',
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: project.estatusProyecto
-                          ? const Color(0xFF4CAF50)
-                          : theme.colorScheme.onSurfaceVariant,
+                      color: activeColor,
                     ),
                   ),
                 ],
@@ -270,19 +333,33 @@ class _ProjectCard extends StatelessWidget {
                 ],
               ),
 
-              // Descripción si hay
-              if (project.descripcion != null &&
-                  project.descripcion!.isNotEmpty) ...[
+              // Responsables principales
+              if (leads.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text(
-                  project.descripcion!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.star_rounded,
+                      size: 14,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        leads.join(' · '),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
+
+              const SizedBox(height: 10),
+              ProgressSummary(percent: progress),
             ],
           ),
         ),

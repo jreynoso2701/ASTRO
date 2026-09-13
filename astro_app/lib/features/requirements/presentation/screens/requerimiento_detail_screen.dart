@@ -17,6 +17,7 @@ import 'package:astro/features/requirements/providers/requerimiento_providers.da
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
+import 'package:astro/core/widgets/copy_button.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_editor.dart';
 import 'package:astro/core/widgets/rich_text_viewer.dart';
@@ -644,15 +645,28 @@ class _InfoSection extends StatelessWidget {
         const SizedBox(height: 8),
 
         // Título
-        Text(
-          req.titulo,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                req.titulo,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            CopyButton(text: req.titulo, label: 'Título'),
+          ],
         ),
         const SizedBox(height: 12),
 
         // Descripción
+        if (req.descripcion.isNotEmpty)
+          CopyableSectionLabel(
+            label: 'Descripción',
+            text: req.descripcion,
+          ),
         RichTextViewer(markdown: req.descripcion),
         const SizedBox(height: 16),
 
@@ -882,8 +896,9 @@ class _InfoSection extends StatelessWidget {
         if (isManager &&
             req.observacionesRoot != null &&
             req.observacionesRoot!.isNotEmpty) ...[
-          Text(
-            'OBSERVACIONES (INTERNO)',
+          CopyableSectionLabel(
+            label: 'OBSERVACIONES (INTERNO)',
+            text: req.observacionesRoot!,
             style: theme.textTheme.labelLarge?.copyWith(
               letterSpacing: 1,
               color: theme.colorScheme.error,

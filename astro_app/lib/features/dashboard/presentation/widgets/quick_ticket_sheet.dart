@@ -77,8 +77,18 @@ class _QuickTicketSheetState extends ConsumerState<_QuickTicketSheet> {
       allowMultiple: true,
       type: FileType.custom,
       allowedExtensions: [
-        'pdf', 'doc', 'docx', 'xls', 'xlsx',
-        'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov',
+        'pdf',
+        'doc',
+        'docx',
+        'xls',
+        'xlsx',
+        'jpg',
+        'jpeg',
+        'png',
+        'gif',
+        'webp',
+        'mp4',
+        'mov',
       ],
     );
     if (result != null && result.files.isNotEmpty) {
@@ -142,9 +152,9 @@ class _QuickTicketSheetState extends ConsumerState<_QuickTicketSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al crear ticket: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al crear ticket: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -288,10 +298,9 @@ class _QuickTicketSheetState extends ConsumerState<_QuickTicketSheet> {
                         labelText: 'Título *',
                         prefixIcon: Icon(Icons.title_outlined),
                       ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty)
-                              ? 'El título es obligatorio'
-                              : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'El título es obligatorio'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 

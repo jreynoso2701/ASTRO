@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/models/project_assignment.dart';
 import 'package:astro/core/models/app_user.dart';
+import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
 // ── Proyectos del usuario actual ─────────────────────────
@@ -59,27 +60,104 @@ final projectSearchProvider = NotifierProvider<ProjectSearchNotifier, String>(
   ProjectSearchNotifier.new,
 );
 
-/// Proyectos filtrados por búsqueda y ordenados A-Z.
+// ── Ordenamiento ────────────────────────────────────────
+
+/// Criterios de ordenamiento de la lista de proyectos.
+enum ProjectListSort {
+  nombreAsc('Nombre (A-Z)'),
+  nombreDesc('Nombre (Z-A)'),
+  avanceDesc('Mayor avance'),
+  avanceAsc('Menor avance'),
+  empresa('Empresa'),
+  folio('Folio');
+
+  const ProjectListSort(this.label);
+
+  final String label;
+}
+
+class ProjectListSortNotifier extends Notifier<ProjectListSort> {
+  @override
+  ProjectListSort build() => ProjectListSort.nombreAsc;
+
+  void set(ProjectListSort sort) => state = sort;
+}
+
+final projectListSortProvider =
+    NotifierProvider<ProjectListSortNotifier, ProjectListSort>(
+      ProjectListSortNotifier.new,
+    );
+
+// ── Filtro por empresa ──────────────────────────────────
+
+/// Empresa seleccionada en el filtro, o `null` para "todas".
+class ProjectEmpresaFilterNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? empresa) => state = empresa;
+}
+
+final projectEmpresaFilterProvider =
+    NotifierProvider<ProjectEmpresaFilterNotifier, String?>(
+      ProjectEmpresaFilterNotifier.new,
+    );
+
+/// Empresas presentes en los proyectos visibles, para poblar el filtro.
+final projectEmpresasProvider = Provider<List<String>>((ref) {
+  final empresas = ref
+      .watch(myProjectsProvider)
+      .map((p) => p.fkEmpresa)
+      .where((e) => e.isNotEmpty)
+      .toSet()
+      .toList();
+  empresas.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return empresas;
+});
+
+/// Proyectos filtrados por búsqueda y empresa, ordenados según
+/// [projectListSortProvider].
 final filteredProjectsProvider = Provider<List<Proyecto>>((ref) {
   final projects = ref.watch(myProjectsProvider);
   final query = ref.watch(projectSearchProvider).toUpperCase();
+  final empresa = ref.watch(projectEmpresaFilterProvider);
+  final sort = ref.watch(projectListSortProvider);
 
-  final filtered = query.isEmpty
-      ? [...projects]
-      : projects
-            .where(
-              (p) =>
-                  p.nombreProyecto.toUpperCase().contains(query) ||
-                  p.folioProyecto.toUpperCase().contains(query) ||
-                  p.fkEmpresa.toUpperCase().contains(query),
-            )
-            .toList();
+  final filtered = projects.where((p) {
+    if (empresa != null && p.fkEmpresa != empresa) return false;
+    if (query.isEmpty) return true;
+    return p.nombreProyecto.toUpperCase().contains(query) ||
+        p.folioProyecto.toUpperCase().contains(query) ||
+        p.fkEmpresa.toUpperCase().contains(query);
+  }).toList();
 
-  filtered.sort(
-    (a, b) => a.nombreProyecto.toLowerCase().compareTo(
-      b.nombreProyecto.toLowerCase(),
+  int byNombre(Proyecto a, Proyecto b) =>
+      a.nombreProyecto.toLowerCase().compareTo(b.nombreProyecto.toLowerCase());
+
+  // El avance vive en los módulos, no en el proyecto, así que ordenar por él
+  // obliga a observar el progreso de cada proyecto listado.
+  double avance(Proyecto p) =>
+      ref.watch(projectProgressProvider(p.nombreProyecto));
+
+  filtered.sort(switch (sort) {
+    ProjectListSort.nombreAsc => byNombre,
+    ProjectListSort.nombreDesc => (a, b) => byNombre(b, a),
+    ProjectListSort.avanceDesc => (a, b) {
+      final c = avance(b).compareTo(avance(a));
+      return c != 0 ? c : byNombre(a, b);
+    },
+    ProjectListSort.avanceAsc => (a, b) {
+      final c = avance(a).compareTo(avance(b));
+      return c != 0 ? c : byNombre(a, b);
+    },
+    ProjectListSort.empresa => (a, b) {
+      final c = a.fkEmpresa.toLowerCase().compareTo(b.fkEmpresa.toLowerCase());
+      return c != 0 ? c : byNombre(a, b);
+    },
+    ProjectListSort.folio => (a, b) => a.folioProyecto.toLowerCase().compareTo(
+      b.folioProyecto.toLowerCase(),
     ),
-  );
+  });
   return filtered;
 });
 
@@ -103,3 +181,35 @@ final projectMembersProvider =
           .map((a) => (assignment: a, user: userMap[a.userId]))
           .toList();
     });
+
+// ── Responsables principales ─────────────────────────────
+
+/// Miembros marcados como responsables principales del proyecto.
+///
+/// Se deriva de [projectMembersProvider], así que un responsable deja de serlo
+/// automáticamente si se le retira del proyecto.
+final projectLeadsProvider =
+    Provider.family<
+      List<({ProjectAssignment assignment, AppUser? user})>,
+      String
+    >((ref, projectId) {
+      final members = ref.watch(projectMembersProvider(projectId));
+      final leads = members.where((m) => m.assignment.isLead).toList();
+      leads.sort((a, b) {
+        final an = a.user?.displayName ?? '';
+        final bn = b.user?.displayName ?? '';
+        return an.toLowerCase().compareTo(bn.toLowerCase());
+      });
+      return leads;
+    });
+
+/// Nombres de los responsables principales, listos para mostrar en una tarjeta.
+final projectLeadNamesProvider = Provider.family<List<String>, String>((
+  ref,
+  projectId,
+) {
+  return ref
+      .watch(projectLeadsProvider(projectId))
+      .map((m) => m.user?.displayName ?? 'Usuario')
+      .toList();
+});

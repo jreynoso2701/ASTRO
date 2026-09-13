@@ -16,6 +16,20 @@ class PlacePrediction {
   final String? secondaryText;
 }
 
+/// Fallo de la API de Places con un motivo que se puede mostrar al usuario.
+///
+/// Existe porque Places responde 200 incluso cuando rechaza la petición (la
+/// llave falta, está restringida o sin facturación): devolver una lista vacía
+/// en ese caso hacía que la búsqueda pareciera "sin resultados".
+class PlacesException implements Exception {
+  const PlacesException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Servicio de autocompletado de direcciones usando Google Places API.
 class PlacesService {
   PlacesService({required this.apiKey, http.Client? client})
@@ -51,9 +65,28 @@ class PlacesService {
     final uri = Uri.parse(_baseUrl).replace(queryParameters: params);
     final response = await _client.get(uri);
 
-    if (response.statusCode != 200) return [];
+    if (response.statusCode != 200) {
+      throw PlacesException('Google Places respondió ${response.statusCode}.');
+    }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
+
+    final status = json['status'] as String? ?? '';
+    if (status != 'OK' && status != 'ZERO_RESULTS') {
+      final detail = json['error_message'] as String?;
+      throw PlacesException(
+        switch (status) {
+              'REQUEST_DENIED' =>
+                'Google rechazó la petición: revisa la llave de API, sus '
+                    'restricciones y que la Places API esté habilitada.',
+              'OVER_QUERY_LIMIT' => 'Se agotó la cuota de Google Places.',
+              'INVALID_REQUEST' => 'Petición inválida a Google Places.',
+              _ => 'Google Places devolvió el estado $status.',
+            } +
+            (detail != null ? '\n$detail' : ''),
+      );
+    }
+
     final predictions = json['predictions'] as List<dynamic>? ?? [];
 
     return predictions.map((p) {

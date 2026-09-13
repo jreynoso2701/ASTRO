@@ -16,6 +16,7 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
+import 'package:astro/core/widgets/copy_button.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/core/widgets/rich_text_editor.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
@@ -482,10 +483,19 @@ class _TicketInfoSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                ticket.titulo,
-                style: theme.textTheme.titleLarge,
-                textAlign: TextAlign.center,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    child: Text(
+                      ticket.titulo,
+                      style: theme.textTheme.titleLarge,
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  CopyButton(text: ticket.titulo, label: 'Título'),
+                ],
               ),
               const SizedBox(height: 4),
               Container(
@@ -546,11 +556,9 @@ class _TicketInfoSection extends StatelessWidget {
                   ),
                 if (ticket.descripcion.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    'Descripción',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  CopyableSectionLabel(
+                    label: 'Descripción',
+                    text: ticket.descripcion,
                   ),
                   const SizedBox(height: 4),
                   RichTextViewer(markdown: ticket.descripcion),

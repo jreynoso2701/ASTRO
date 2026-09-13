@@ -80,6 +80,11 @@ class ProjectAssignmentRepository {
     await _ref.doc(assignmentId).update({'role': newRole.label});
   }
 
+  /// Marca o desmarca a un miembro como responsable principal del proyecto.
+  Future<void> setLead(String assignmentId, bool isLead) async {
+    await _ref.doc(assignmentId).update({'isLead': isLead});
+  }
+
   /// Desactiva una asignación (no la borra).
   Future<void> deactivateAssignment(String assignmentId) async {
     await _ref.doc(assignmentId).update({'isActive': false});

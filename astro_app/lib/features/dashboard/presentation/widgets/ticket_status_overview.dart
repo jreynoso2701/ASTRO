@@ -40,7 +40,8 @@ class TicketStatusOverview extends ConsumerWidget {
     final profile = ref.watch(currentUserProfileProvider).value;
     final userName = profile?.displayName ?? '';
     final allAssignments = uid != null
-        ? (ref.watch(userAssignmentsProvider(uid)).value ?? <ProjectAssignment>[])
+        ? (ref.watch(userAssignmentsProvider(uid)).value ??
+              <ProjectAssignment>[])
         : <ProjectAssignment>[];
 
     final counts = <TicketStatus, int>{
@@ -54,9 +55,11 @@ class TicketStatusOverview extends ConsumerWidget {
       var tickets =
           ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
 
-      final projectAssignments =
-          allAssignments.where((a) => a.projectId == p.id && a.isActive);
-      final isUsuarioOnly = !isRoot &&
+      final projectAssignments = allAssignments.where(
+        (a) => a.projectId == p.id && a.isActive,
+      );
+      final isUsuarioOnly =
+          !isRoot &&
           projectAssignments.isNotEmpty &&
           projectAssignments.every((a) => a.role == UserRole.usuario);
 
@@ -453,7 +456,11 @@ void showTicketsByStatusSheet(
 
 /// Donut chart que muestra la distribución de tickets por estado.
 class TicketDonutChart extends StatelessWidget {
-  const TicketDonutChart({super.key, required this.counts, required this.total});
+  const TicketDonutChart({
+    super.key,
+    required this.counts,
+    required this.total,
+  });
 
   final Map<TicketStatus, int> counts;
   final int total;

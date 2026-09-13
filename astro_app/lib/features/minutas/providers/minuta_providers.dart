@@ -16,10 +16,18 @@ final minutaRepositoryProvider = Provider<MinutaRepository>((ref) {
 
 // ── Places Service ───────────────────────────────────────
 
+/// Llave de Google Places, inyectada en tiempo de **compilación**.
+///
+/// `String.fromEnvironment` no lee variables de entorno del sistema: si el
+/// build no pasa `--dart-define`, la constante es cadena vacía y la búsqueda
+/// de direcciones queda deshabilitada. Ver `docs/BUILD.md`.
+///
+///   flutter build apk --dart-define=GOOGLE_MAPS_API_KEY=AIza...
+const googleMapsApiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
+
 final placesServiceProvider = Provider<PlacesService?>((ref) {
-  const apiKey = String.fromEnvironment('GOOGLE_MAPS_API_KEY');
-  if (apiKey.isEmpty) return null;
-  return PlacesService(apiKey: apiKey);
+  if (googleMapsApiKey.isEmpty) return null;
+  return PlacesService(apiKey: googleMapsApiKey);
 });
 
 // ── Minutas por proyecto — con visibilidad por rol ───────

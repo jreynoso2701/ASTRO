@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/widgets/animated_progress_bar.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
@@ -34,6 +35,7 @@ class DashboardProjectCard extends StatelessWidget {
     final openTickets = ref.watch(openTicketCountProvider(proyecto.id));
     final pendingReqs = ref.watch(pendingReqCountProvider(proyecto.id));
     final members = ref.watch(projectMembersProvider(proyecto.id));
+    final leads = ref.watch(projectLeadNamesProvider(proyecto.id));
     final penalty = baseProgress - progress;
     final hasPenalty = penalty > 0.5;
 
@@ -94,26 +96,41 @@ class DashboardProjectCard extends StatelessWidget {
                 ],
               ),
 
+              // Responsables principales
+              if (leads.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.star_rounded,
+                      size: 13,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        leads.join(' · '),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
               const Spacer(),
 
               // Progress bar
               Row(
                 children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progress.clamp(0, 100) / 100,
-                        minHeight: 6,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                        color: progressColor(progress),
-                      ),
-                    ),
-                  ),
+                  Expanded(child: AnimatedProgressBar(percent: progress)),
                   const SizedBox(width: 8),
-                  Text(
-                    '${progress.round()}%',
+                  AnimatedCounter(
+                    value: progress,
+                    suffix: '%',
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: progressColor(progress),

@@ -14,6 +14,7 @@ class ProjectAssignment {
     required this.assignedAt,
     required this.assignedBy,
     required this.isActive,
+    this.isLead = false,
   });
 
   final String id;
@@ -24,6 +25,13 @@ class ProjectAssignment {
   final DateTime assignedAt;
   final String assignedBy;
   final bool isActive;
+
+  /// Marca a este miembro como responsable principal del proyecto.
+  ///
+  /// Se apoya en la asignación en vez de en un campo del proyecto para que un
+  /// responsable sea siempre alguien que ya pertenece al proyecto: al
+  /// desactivar la asignación se pierde también la responsabilidad.
+  final bool isLead;
 
   factory ProjectAssignment.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -45,6 +53,7 @@ class ProjectAssignment {
       assignedAt: parseDate(data['assignedAt']),
       assignedBy: data['assignedBy'] as String? ?? '',
       isActive: data['isActive'] as bool? ?? true,
+      isLead: data['isLead'] as bool? ?? false,
     );
   }
 
@@ -57,10 +66,11 @@ class ProjectAssignment {
       'assignedAt': Timestamp.fromDate(assignedAt),
       'assignedBy': assignedBy,
       'isActive': isActive,
+      'isLead': isLead,
     };
   }
 
-  ProjectAssignment copyWith({UserRole? role, bool? isActive}) {
+  ProjectAssignment copyWith({UserRole? role, bool? isActive, bool? isLead}) {
     return ProjectAssignment(
       id: id,
       userId: userId,
@@ -70,6 +80,7 @@ class ProjectAssignment {
       assignedAt: assignedAt,
       assignedBy: assignedBy,
       isActive: isActive ?? this.isActive,
+      isLead: isLead ?? this.isLead,
     );
   }
 }

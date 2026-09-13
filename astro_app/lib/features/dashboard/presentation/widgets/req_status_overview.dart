@@ -38,7 +38,8 @@ class ReqStatusOverview extends ConsumerWidget {
     final profile = ref.watch(currentUserProfileProvider).value;
     final userName = profile?.displayName ?? '';
     final allAssignments = uid != null
-        ? (ref.watch(userAssignmentsProvider(uid)).value ?? <ProjectAssignment>[])
+        ? (ref.watch(userAssignmentsProvider(uid)).value ??
+              <ProjectAssignment>[])
         : <ProjectAssignment>[];
 
     final counts = <RequerimientoStatus, int>{
@@ -53,9 +54,11 @@ class ReqStatusOverview extends ConsumerWidget {
           ref.watch(requerimientosByProjectProvider(p.nombreProyecto)).value ??
           [];
 
-      final projectAssignments =
-          allAssignments.where((a) => a.projectId == p.id && a.isActive);
-      final isUsuarioOnly = !isRoot &&
+      final projectAssignments = allAssignments.where(
+        (a) => a.projectId == p.id && a.isActive,
+      );
+      final isUsuarioOnly =
+          !isRoot &&
           projectAssignments.isNotEmpty &&
           projectAssignments.every((a) => a.role == UserRole.usuario);
 
