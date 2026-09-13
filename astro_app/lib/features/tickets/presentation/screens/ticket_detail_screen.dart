@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/core/widgets/asignados_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:astro/core/models/ticket.dart';
@@ -392,32 +394,14 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
 
     if (!mounted) return;
 
-    final selected = await showDialog<({String uid, String name})>(
+    final selected = await showAsignadosDialog(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Asignar a Soporte'),
-        children: [
-          if (soporteMembers.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'No hay usuarios Soporte o Líder Proyecto en este proyecto',
-              ),
-            ),
-          for (final m in soporteMembers)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, (
-                uid: m.assignment.userId,
-                name: m.user?.displayName ?? m.assignment.userId,
-              )),
-              child: ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.support_agent)),
-                title: Text(m.user?.displayName ?? m.assignment.userId),
-                subtitle: Text(m.user?.email ?? ''),
-              ),
-            ),
-        ],
-      ),
+      members: soporteMembers,
+      initialUids: ticket.assignedToUids,
+      title: 'Asignar a Soporte',
+      emptyMessage:
+          'No hay usuarios Soporte o Líder Proyecto en este proyecto',
+      avatarIcon: Icons.support_agent,
     );
 
     if (selected != null) {
@@ -425,18 +409,21 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       final profile = ref.read(currentUserProfileProvider).value;
       await repo.assign(
         ticket.id,
-        selected.uid,
-        selected.name,
+        selected.uids,
+        selected.names,
         updatedBy: profile?.uid ?? '',
       );
 
       // Entrada de historial
       if (profile != null) {
+        final texto = selected.names.isEmpty
+            ? 'Quitó la asignación del ticket'
+            : 'Asignó ticket a "${selected.names.join(', ')}"';
         await repo.addComment(
           ticket.id,
           TicketComment(
             id: '',
-            text: 'Asignó ticket a "${selected.name}"',
+            text: texto,
             authorId: profile.uid,
             authorName: profile.displayName,
             type: CommentType.assignment,
@@ -547,8 +534,10 @@ class _TicketInfoSection extends StatelessWidget {
                   _InfoRow(label: 'Empresa', value: ticket.empresaName!),
                 _InfoRow(label: 'Creado por', value: ticket.createdByName),
                 _InfoRow(
-                  label: 'Asignado a',
-                  value: ticket.assignedToName ?? 'Sin asignar',
+                  label: ticket.assignedToUids.length > 1
+                      ? 'Asignado a (${ticket.assignedToUids.length})'
+                      : 'Asignado a',
+                  value: ticket.assignedToLabel ?? 'Sin asignar',
                 ),
                 if (ticket.createdAt != null)
                   _InfoRow(
@@ -1072,13 +1061,13 @@ class _ImpactIndicator extends StatelessWidget {
     // Color según nivel de impacto
     final Color impactColor;
     if (impacto <= 3) {
-      impactColor = const Color(0xFF4CAF50); // Verde
+      impactColor = AppColors.success; // Verde
     } else if (impacto <= 6) {
-      impactColor = const Color(0xFFFFC107); // Amarillo
+      impactColor = AppColors.caution; // Amarillo
     } else if (impacto <= 9) {
-      impactColor = const Color(0xFFFF9800); // Naranja
+      impactColor = AppColors.warning; // Naranja
     } else {
-      impactColor = const Color(0xFFF44336); // Rojo
+      impactColor = AppColors.error; // Rojo
     }
 
     final isOpen =
@@ -1130,7 +1119,7 @@ class _ImpactIndicator extends StatelessWidget {
           Text(
             'Penalización al módulo: -${penalty.toStringAsFixed(1)}%',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: const Color(0xFFFF5252),
+              color: AppColors.error,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1415,9 +1404,9 @@ class _BitacoraEntry extends StatelessWidget {
 
   Color _typeColor(CommentType type, ThemeData theme) {
     return switch (type) {
-      CommentType.statusChange => const Color(0xFF2196F3),
-      CommentType.assignment => const Color(0xFF4CAF50),
-      CommentType.priorityChange => const Color(0xFFFFC107),
+      CommentType.statusChange => AppColors.info,
+      CommentType.assignment => AppColors.success,
+      CommentType.priorityChange => AppColors.caution,
       CommentType.comment => theme.colorScheme.onSurfaceVariant,
     };
   }

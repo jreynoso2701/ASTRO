@@ -36,9 +36,12 @@ class TareaRepository {
   }
 
   /// Stream de tareas asignadas a un usuario (cross-project).
+  ///
+  /// Consulta la lista `assignedToUids`, por lo que incluye las tareas en las
+  /// que el usuario es uno de varios responsables.
   Stream<List<Tarea>> watchByAssignee(String uid) {
     return _ref
-        .where('assignedToUid', isEqualTo: uid)
+        .where('assignedToUids', arrayContains: uid)
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snap) {

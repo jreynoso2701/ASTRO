@@ -9,6 +9,7 @@ import 'package:astro/core/models/requerimiento_tipo.dart';
 import 'package:astro/core/models/requerimiento_fase.dart';
 import 'package:astro/core/models/ticket_priority.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/asignados_field.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
@@ -81,6 +82,10 @@ class _RequerimientoFormScreenState
 
   // Etiquetas asignadas
   final List<String> _etiquetaIds = [];
+
+  // Responsables (uno o varios). El primero es el responsable principal.
+  final List<String> _assignedToUids = [];
+  final List<String> _assignedToNames = [];
 
   // Fecha compromiso
   DateTime? _fechaCompromiso;
@@ -318,6 +323,57 @@ class _RequerimientoFormScreenState
                     letterSpacing: 1,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
+                ),
+                const SizedBox(height: 12),
+
+                // Responsables (uno o varios miembros del proyecto)
+                Builder(
+                  builder: (context) {
+                    final members = ref.watch(
+                      projectMembersProvider(widget.projectId),
+                    );
+                    // Deduplicate by userId — protege contra asignaciones
+                    // duplicadas en Firestore.
+                    final seen = <String>{};
+                    final available =
+                        members
+                            .where(
+                              (m) =>
+                                  !_assignedToUids.contains(
+                                    m.assignment.userId,
+                                  ) &&
+                                  seen.add(m.assignment.userId),
+                            )
+                            .toList()
+                          ..sort(
+                            (a, b) =>
+                                (a.user?.displayName ?? a.assignment.userId)
+                                    .compareTo(
+                                      b.user?.displayName ??
+                                          b.assignment.userId,
+                                    ),
+                          );
+                    return AsignadosField(
+                      assignedUids: _assignedToUids,
+                      assignedNames: _assignedToNames,
+                      available: available,
+                      labelText: 'Responsables',
+                      onAdd: (userId, name) {
+                        setState(() {
+                          _assignedToUids.add(userId);
+                          _assignedToNames.add(name);
+                        });
+                      },
+                      onRemove: (index) {
+                        setState(() {
+                          _assignedToUids.removeAt(index);
+                          if (index < _assignedToNames.length) {
+                            _assignedToNames.removeAt(index);
+                          }
+                        });
+                      },
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
 
@@ -838,6 +894,8 @@ class _RequerimientoFormScreenState
     _refCitas.addAll(req.refCitas);
     // load etiquetaIds if editing
     _etiquetaIds.addAll(req.etiquetaIds);
+    _assignedToUids.addAll(req.assignedToUids);
+    _assignedToNames.addAll(req.assignedToNames);
 
     for (final c in req.criteriosAceptacion) {
       _criterios.add(
@@ -942,6 +1000,8 @@ class _RequerimientoFormScreenState
             refMinutas: _refMinutas,
             refCitas: _refCitas,
             etiquetaIds: _etiquetaIds,
+            assignedToUids: List<String>.from(_assignedToUids),
+            assignedToNames: List<String>.from(_assignedToNames),
             porcentajeAvance: pct,
             porcentajeManual: _porcentajeManual,
             observacionesRoot: observacionesMd.isNotEmpty
@@ -985,6 +1045,8 @@ class _RequerimientoFormScreenState
           adjuntos: allAdjuntos,
           refMinutas: _refMinutas,
           refCitas: _refCitas,
+          assignedToUids: List<String>.from(_assignedToUids),
+          assignedToNames: List<String>.from(_assignedToNames),
           porcentajeAvance: pct,
           porcentajeManual: _porcentajeManual,
           observacionesRoot: observacionesMd.isNotEmpty

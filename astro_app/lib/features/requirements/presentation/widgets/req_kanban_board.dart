@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/requerimiento.dart';
 import 'package:astro/core/models/requerimiento_status.dart';
@@ -436,7 +437,7 @@ class _KanbanCard extends ConsumerWidget {
             // ── Responsable ──
             _CardInfoRow(
               icon: Icons.engineering_outlined,
-              text: req.assignedToName ?? 'Sin asignar',
+              text: req.assignedToLabel ?? 'Sin asignar',
             ),
 
             // ── Fecha creación ──
@@ -564,9 +565,9 @@ class _CardInfoRow extends StatelessWidget {
 
 Color _statusColor(RequerimientoStatus status) => switch (status) {
   RequerimientoStatus.propuesto => const Color(0xFF90A4AE),
-  RequerimientoStatus.enRevision => const Color(0xFF42A5F5),
-  RequerimientoStatus.enDesarrollo => const Color(0xFFFFC107),
-  RequerimientoStatus.implementado => const Color(0xFF4CAF50),
+  RequerimientoStatus.enRevision => AppColors.info,
+  RequerimientoStatus.enDesarrollo => AppColors.caution,
+  RequerimientoStatus.implementado => AppColors.success,
   RequerimientoStatus.completado => const Color(0xFF388E3C),
-  RequerimientoStatus.descartado => const Color(0xFFEF5350),
+  RequerimientoStatus.descartado => AppColors.error,
 };

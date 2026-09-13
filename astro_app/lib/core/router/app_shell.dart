@@ -1,5 +1,3 @@
-import 'dart:math' show max;
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -128,56 +126,48 @@ class AppShell extends ConsumerWidget {
     if (width >= AppBreakpoints.compact && destinations.length >= 2) {
       final bool extended = width >= AppBreakpoints.medium;
       final theme = Theme.of(context);
-      final isDark = theme.brightness == Brightness.dark;
 
       return Scaffold(
         body: Row(
           children: [
-            // Liquid Glass NavigationRail
-            ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.white.withValues(alpha: 0.55),
-                    border: Border(
-                      right: BorderSide(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.07),
-                      ),
-                    ),
-                  ),
-                  child: NavigationRail(
-                    backgroundColor: Colors.transparent,
-                    extended: extended,
-                    selectedIndex: selectedIndex,
-                    onDestinationSelected: (i) =>
-                        _onDestinationSelected(context, i, destinations),
-                    destinations: destinations.map((d) {
-                      final isBell = d.path == '/notifications';
-                      final isCal = d.path == '/calendar';
-                      final isTar = d.path == '/tareas';
-                      return NavigationRailDestination(
-                        icon: badgeIcon(
-                          d.icon,
-                          isBell,
-                          isCalendar: isCal,
-                          isTareas: isTar,
-                        ),
-                        selectedIcon: badgeIcon(
-                          d.selectedIcon,
-                          isBell,
-                          isCalendar: isCal,
-                          isTareas: isTar,
-                        ),
-                        label: Text(d.label),
-                      );
-                    }).toList(),
-                  ),
+            // Rail plano: fondo sólido y una línea fina de separación.
+            Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                border: Border(
+                  right: BorderSide(color: theme.colorScheme.outlineVariant),
                 ),
+              ),
+              child: NavigationRail(
+                backgroundColor: Colors.transparent,
+                extended: extended,
+                selectedIndex: selectedIndex,
+                onDestinationSelected: (i) =>
+                    _onDestinationSelected(context, i, destinations),
+                // Trazo vertical sobre el destino activo, en lugar de píldora.
+                indicatorShape: const Border(
+                  left: BorderSide(width: 3),
+                ),
+                destinations: destinations.map((d) {
+                  final isBell = d.path == '/notifications';
+                  final isCal = d.path == '/calendar';
+                  final isTar = d.path == '/tareas';
+                  return NavigationRailDestination(
+                    icon: badgeIcon(
+                      d.icon,
+                      isBell,
+                      isCalendar: isCal,
+                      isTareas: isTar,
+                    ),
+                    selectedIcon: badgeIcon(
+                      d.selectedIcon,
+                      isBell,
+                      isCalendar: isCal,
+                      isTareas: isTar,
+                    ),
+                    label: Text(d.label.toUpperCase()),
+                  );
+                }).toList(),
               ),
             ),
             Expanded(child: child),
@@ -186,12 +176,11 @@ class AppShell extends ConsumerWidget {
       );
     }
 
-    // ── Compact → Liquid Glass NavigationBar flotante (móvil)
+    // ── Compact → barra de navegación inferior (móvil)
     return Scaffold(
-      extendBody: true,
       body: child,
       bottomNavigationBar: destinations.length >= 2
-          ? _LiquidGlassNavBar(
+          ? _NikeNavBar(
               destinations: destinations,
               selectedIndex: selectedIndex,
               onDestinationSelected: (i) =>
@@ -206,7 +195,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-// ── Liquid Glass NavigationBar flotante ──────────────────────────────────────
+// ── Barra de navegación inferior ────────────────────────────────────────────
 
 typedef _BadgeIconBuilder = Widget Function(
   IconData icon,
@@ -215,8 +204,13 @@ typedef _BadgeIconBuilder = Widget Function(
   bool isTareas,
 });
 
-class _LiquidGlassNavBar extends StatelessWidget {
-  const _LiquidGlassNavBar({
+/// Barra de navegación plana, al estilo de las apps de Nike.
+///
+/// Sin cristal, sin sombra y sin píldora de selección: fondo sólido, una
+/// línea fina de separación arriba y un trazo grueso sobre el destino activo.
+/// La jerarquía la marcan el peso del icono y el contraste del texto.
+class _NikeNavBar extends StatelessWidget {
+  const _NikeNavBar({
     required this.destinations,
     required this.selectedIndex,
     required this.onDestinationSelected,
@@ -237,111 +231,75 @@ class _LiquidGlassNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final scheme = theme.colorScheme;
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
-    final primaryColor = theme.colorScheme.primary;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, max(bottomPadding + 8, 16)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.white.withValues(alpha: 0.60),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.13)
-                    : Colors.white.withValues(alpha: 0.80),
-                width: 1,
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(destinations.length, (i) {
-                final dest = destinations[i];
-                final isSelected = i == selectedIndex;
-                final isBell = dest.path == '/notifications';
-                final isCal = dest.path == '/calendar';
-                final isTar = dest.path == '/tareas';
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      ),
+      // El padding inferior respeta la barra de gestos (edge-to-edge).
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: SizedBox(
+        height: 64,
+        child: Row(
+          children: List.generate(destinations.length, (i) {
+            final dest = destinations[i];
+            final isSelected = i == selectedIndex;
+            final color = isSelected
+                ? scheme.onSurface
+                : scheme.onSurfaceVariant;
 
-                final iconWidget = badgeIcon(
-                  isSelected ? dest.selectedIcon : dest.icon,
-                  isBell,
-                  isCalendar: isCal,
-                  isTareas: isTar,
-                );
+            final iconWidget = badgeIcon(
+              isSelected ? dest.selectedIcon : dest.icon,
+              dest.path == '/notifications',
+              isCalendar: dest.path == '/calendar',
+              isTareas: dest.path == '/tareas',
+            );
 
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onDestinationSelected(i),
-                    behavior: HitTestBehavior.opaque,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 8,
-                      ),
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onDestinationSelected(i),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Trazo superior del destino activo.
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      height: 3,
+                      width: isSelected ? 28 : 0,
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? primaryColor.withValues(alpha: isDark ? 0.18 : 0.12)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedScale(
-                            scale: isSelected ? 1.10 : 1.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: IconTheme(
-                              data: IconThemeData(
-                                color: isSelected
-                                    ? primaryColor
-                                    : (isDark
-                                        ? Colors.white60
-                                        : Colors.black54),
-                                size: 24,
-                              ),
-                              child: iconWidget,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 200),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w400,
-                              color: isSelected
-                                  ? primaryColor
-                                  : (isDark
-                                      ? Colors.white60
-                                      : Colors.black54),
-                              letterSpacing: 0.2,
-                            ),
-                            child: Text(
-                              dest.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ],
+                        color: scheme.onSurface,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ),
-          ),
+                    const Spacer(),
+                    IconTheme(
+                      data: IconThemeData(color: color, size: 24),
+                      child: iconWidget,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dest.label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );

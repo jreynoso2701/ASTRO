@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_typography.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
@@ -95,23 +96,21 @@ class DashboardScreen extends ConsumerWidget {
                         if (isRoot)
                           Padding(
                             padding: const EdgeInsets.only(right: 12),
+                            // Distintivo invertido: negro sobre blanco (o a la
+                            // inversa), sin color de marca.
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFD71921,
-                                ).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                color: theme.colorScheme.onSurface,
+                                borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 'ROOT',
                                 style: theme.textTheme.labelSmall?.copyWith(
-                                  color: const Color(0xFFD71921),
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
+                                  color: theme.colorScheme.surface,
                                 ),
                               ),
                             ),
@@ -174,8 +173,7 @@ class DashboardScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'MIS PROYECTOS',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        letterSpacing: 1,
+                      style: AppTypography.overline.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),

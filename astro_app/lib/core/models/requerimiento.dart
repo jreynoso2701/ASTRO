@@ -88,8 +88,8 @@ class Requerimiento {
     this.moduleId,
     this.createdBy,
     this.empresaName,
-    this.assignedTo,
-    this.assignedToName,
+    this.assignedToUids = const [],
+    this.assignedToNames = const [],
     this.porcentajeAvance = 0,
     this.porcentajeManual = false,
     this.criteriosAceptacion = const [],
@@ -127,9 +127,10 @@ class Requerimiento {
   final String? createdBy; // UID
   final String? empresaName;
 
-  // Responsable de implementación
-  final String? assignedTo; // UID
-  final String? assignedToName;
+  // Responsables de implementación (uno o varios).
+  // El primero es el principal y se espeja en `assignedTo` al guardar.
+  final List<String> assignedToUids; // UIDs
+  final List<String> assignedToNames; // Nombres, en el mismo orden
 
   // Progreso
   final double porcentajeAvance; // 0–100, auto-cálculo o manual
@@ -171,6 +172,24 @@ class Requerimiento {
     return (completados / criteriosAceptacion.length) * 100;
   }
 
+  // ── Helpers de responsables ──────────────────────────────
+
+  /// Responsable principal (primero de la lista). `null` si no hay ninguno.
+  String? get assignedTo =>
+      assignedToUids.isNotEmpty ? assignedToUids.first : null;
+
+  /// Nombre del responsable principal.
+  String? get assignedToName =>
+      assignedToNames.isNotEmpty ? assignedToNames.first : null;
+
+  /// Nombres de responsables separados por coma, o `null` si no hay ninguno.
+  String? get assignedToLabel =>
+      assignedToNames.isEmpty ? null : assignedToNames.join(', ');
+
+  /// True si [uid] es uno de los responsables del requerimiento.
+  bool isAssignedTo(String? uid) =>
+      uid != null && assignedToUids.contains(uid);
+
   factory Requerimiento.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -184,6 +203,14 @@ class Requerimiento {
 
     List<String> parseStrList(dynamic value) {
       if (value is List) return value.whereType<String>().toList();
+      return [];
+    }
+
+    /// Prefiere la lista nueva; si está vacía, hereda el campo único legado.
+    List<String> parseRefList(dynamic listVal, dynamic singleVal) {
+      final list = parseStrList(listVal);
+      if (list.isNotEmpty) return list;
+      if (singleVal is String && singleVal.isNotEmpty) return [singleVal];
       return [];
     }
 
@@ -228,8 +255,12 @@ class Requerimiento {
       moduleId: data['moduleId'] as String?,
       createdBy: data['createdBy'] as String?,
       empresaName: data['empresaName'] as String?,
-      assignedTo: data['assignedTo'] as String?,
-      assignedToName: data['assignedToName'] as String?,
+      // Migración: usa las listas nuevas; si no existen, hereda el campo único.
+      assignedToUids: parseRefList(data['assignedToUids'], data['assignedTo']),
+      assignedToNames: parseRefList(
+        data['assignedToNames'],
+        data['assignedToName'],
+      ),
       porcentajeAvance: _parseDouble(data['porcentajeAvance']) ?? 0,
       porcentajeManual: data['porcentajeManual'] as bool? ?? false,
       criteriosAceptacion: parseCriterios(data['criteriosAceptacion']),
@@ -265,6 +296,11 @@ class Requerimiento {
       if (moduleId != null) 'moduleId': moduleId,
       if (createdBy != null) 'createdBy': createdBy,
       if (empresaName != null) 'empresaName': empresaName,
+      // Listas de responsables (fuente de verdad).
+      'assignedToUids': assignedToUids,
+      'assignedToNames': assignedToNames,
+      // Espejo del principal para compatibilidad con consultas, Cloud
+      // Functions y documentos históricos.
       if (assignedTo != null) 'assignedTo': assignedTo,
       if (assignedToName != null) 'assignedToName': assignedToName,
       'porcentajeAvance': porcentajeAvance,
@@ -301,8 +337,8 @@ class Requerimiento {
     String? moduleId,
     String? createdBy,
     String? empresaName,
-    String? assignedTo,
-    String? assignedToName,
+    List<String>? assignedToUids,
+    List<String>? assignedToNames,
     double? porcentajeAvance,
     bool? porcentajeManual,
     List<CriterioAceptacion>? criteriosAceptacion,
@@ -335,8 +371,8 @@ class Requerimiento {
       moduleId: moduleId ?? this.moduleId,
       createdBy: createdBy ?? this.createdBy,
       empresaName: empresaName ?? this.empresaName,
-      assignedTo: assignedTo ?? this.assignedTo,
-      assignedToName: assignedToName ?? this.assignedToName,
+      assignedToUids: assignedToUids ?? this.assignedToUids,
+      assignedToNames: assignedToNames ?? this.assignedToNames,
       porcentajeAvance: porcentajeAvance ?? this.porcentajeAvance,
       porcentajeManual: porcentajeManual ?? this.porcentajeManual,
       criteriosAceptacion: criteriosAceptacion ?? this.criteriosAceptacion,

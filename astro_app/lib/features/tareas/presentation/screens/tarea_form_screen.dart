@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,6 +17,7 @@ import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/services/storage_service.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/asignados_field.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
@@ -73,9 +75,9 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   TareaStatus _status = TareaStatus.pendiente;
   DateTime? _fechaEntrega;
 
-  // Asignado a
-  String? _assignedToUid;
-  String? _assignedToName;
+  // Asignado a (uno o varios responsables, en orden; el primero es el principal)
+  final List<String> _assignedToUids = [];
+  final List<String> _assignedToNames = [];
 
   // Adjuntos
   final List<String> _existingAdjuntos = [];
@@ -111,8 +113,10 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
       if (widget.initialDescripcion != null) {
         _initialDescripcionMd = widget.initialDescripcion!;
       }
-      _assignedToUid = widget.initialAssignedToUid;
-      _assignedToName = widget.initialAssignedToName;
+      if (widget.initialAssignedToUid != null) {
+        _assignedToUids.add(widget.initialAssignedToUid!);
+        _assignedToNames.add(widget.initialAssignedToName ?? '');
+      }
       _fechaEntrega = widget.initialFechaEntrega;
       if (widget.initialRefMinutaId != null) {
         _refMinutas.add(widget.initialRefMinutaId!);
@@ -165,8 +169,12 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
           _prioridad = tarea.prioridad;
           _status = tarea.status;
           _fechaEntrega = tarea.fechaEntrega;
-          _assignedToUid = tarea.assignedToUid;
-          _assignedToName = tarea.assignedToName;
+          _assignedToUids
+            ..clear()
+            ..addAll(tarea.assignedToUids);
+          _assignedToNames
+            ..clear()
+            ..addAll(tarea.assignedToNames);
           _existingAdjuntos.addAll(tarea.adjuntos);
           _refTickets.addAll(tarea.refTickets);
           _refRequerimientos.addAll(tarea.refRequerimientos);
@@ -290,7 +298,7 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Asignado a (miembros del proyecto)
+              // Asignado a (uno o varios miembros del proyecto)
               Builder(
                 builder: (context) {
                   // Deduplicate by userId — safety against duplicate Firestore docs
@@ -298,45 +306,27 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
                   final uniqueMembers = members
                       .where((m) => seen.add(m.assignment.userId))
                       .toList();
-                  // Guard: only use _assignedToUid as initialValue if it exists in items
-                  final assignedValue =
-                      uniqueMembers.any(
-                        (m) => m.assignment.userId == _assignedToUid,
+                  final available = uniqueMembers
+                      .where(
+                        (m) => !_assignedToUids.contains(m.assignment.userId),
                       )
-                      ? _assignedToUid
-                      : null;
-                  return DropdownButtonFormField<String>(
-                    key: ValueKey('assigned_${uniqueMembers.length}'),
-                    initialValue: assignedValue,
-                    decoration: const InputDecoration(
-                      labelText: 'Asignar a',
-                      prefixIcon: Icon(Icons.person_outline),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('Sin asignar'),
-                      ),
-                      ...uniqueMembers.map((m) {
-                        return DropdownMenuItem<String>(
-                          value: m.assignment.userId,
-                          child: Text(
-                            m.user?.displayName ?? m.assignment.userId,
-                          ),
-                        );
-                      }),
-                    ],
-                    onChanged: (value) {
+                      .toList();
+                  return AsignadosField(
+                    assignedUids: _assignedToUids,
+                    assignedNames: _assignedToNames,
+                    available: available,
+                    onAdd: (userId, name) {
                       setState(() {
-                        _assignedToUid = value;
-                        _assignedToName = value != null
-                            ? uniqueMembers
-                                  .firstWhere(
-                                    (m) => m.assignment.userId == value,
-                                  )
-                                  .user
-                                  ?.displayName
-                            : null;
+                        _assignedToUids.add(userId);
+                        _assignedToNames.add(name);
+                      });
+                    },
+                    onRemove: (index) {
+                      setState(() {
+                        _assignedToUids.removeAt(index);
+                        if (index < _assignedToNames.length) {
+                          _assignedToNames.removeAt(index);
+                        }
                       });
                     },
                   );
@@ -905,8 +895,8 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
         createdByName: profile.displayName,
         moduleId: _selectedModuleId,
         moduleName: _selectedModuleName.isNotEmpty ? _selectedModuleName : null,
-        assignedToUid: _assignedToUid,
-        assignedToName: _assignedToName,
+        assignedToUids: List<String>.from(_assignedToUids),
+        assignedToNames: List<String>.from(_assignedToNames),
         fechaEntrega: _fechaEntrega,
         adjuntos: allAdjuntos,
         refTickets: _refTickets,
@@ -937,17 +927,17 @@ class _TareaFormScreenState extends ConsumerState<TareaFormScreen> {
   }
 
   static Color _statusColor(TareaStatus s) => switch (s) {
-    TareaStatus.pendiente => const Color(0xFFFFC107),
-    TareaStatus.enProgreso => const Color(0xFF42A5F5),
-    TareaStatus.completada => const Color(0xFF4CAF50),
-    TareaStatus.cancelada => const Color(0xFF9E9E9E),
+    TareaStatus.pendiente => AppColors.caution,
+    TareaStatus.enProgreso => AppColors.info,
+    TareaStatus.completada => AppColors.success,
+    TareaStatus.cancelada => AppColors.grey600,
   };
 
   static Color _prioridadColor(TareaPrioridad p) => switch (p) {
-    TareaPrioridad.baja => const Color(0xFF4CAF50),
-    TareaPrioridad.media => const Color(0xFFFFC107),
-    TareaPrioridad.alta => const Color(0xFFFF9800),
-    TareaPrioridad.urgente => const Color(0xFFD32F2F),
+    TareaPrioridad.baja => AppColors.success,
+    TareaPrioridad.media => AppColors.caution,
+    TareaPrioridad.alta => AppColors.warning,
+    TareaPrioridad.urgente => AppColors.error,
   };
 
   static IconData _fileIcon(String name) {
@@ -1439,7 +1429,7 @@ class _SubtareasSectionState extends State<_SubtareasSection> {
                             : Icons.circle_outlined,
                         size: 20,
                         color: sub.completada
-                            ? const Color(0xFF4CAF50)
+                            ? AppColors.success
                             : theme.colorScheme.onSurfaceVariant,
                       ),
                       tooltip: sub.completada
@@ -1670,3 +1660,5 @@ class _StatusChip extends StatelessWidget {
     );
   }
 }
+
+// ── Campo de responsables múltiples ───────────────────────

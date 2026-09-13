@@ -19,8 +19,8 @@ class Ticket {
     this.projectId,
     this.moduleId,
     this.createdBy,
-    this.assignedTo,
-    this.assignedToName,
+    this.assignedToUids = const [],
+    this.assignedToNames = const [],
     this.empresaName,
     this.cobertura,
     this.impacto,
@@ -58,8 +58,12 @@ class Ticket {
   final String? projectId;
   final String? moduleId;
   final String? createdBy; // UID (V2)
-  final String? assignedTo; // UID de Soporte (V2)
-  final String? assignedToName; // V1: fkxSoporte
+  /// UIDs de Soporte asignados al ticket (V2). El primero es el responsable
+  /// principal y se espeja en `assignedTo` / `fkxSoporte` al guardar.
+  final List<String> assignedToUids;
+
+  /// Nombres de los asignados, en el mismo orden que [assignedToUids].
+  final List<String> assignedToNames;
   final String? empresaName; // V1: fkxEmpresa
   final String? cobertura; // V1: fkxCobertura
   final int? impacto; // V1: impacto
@@ -82,6 +86,23 @@ class Ticket {
   final String? lastCommentAuthorId;
   final String? lastCommentAuthorName;
 
+  // ── Helpers de asignación ────────────────────────────────
+
+  /// Responsable principal (primero de la lista). `null` si no hay ninguno.
+  String? get assignedTo =>
+      assignedToUids.isNotEmpty ? assignedToUids.first : null;
+
+  /// Nombre del responsable principal — es lo que se guarda en `fkxSoporte`.
+  String? get assignedToName =>
+      assignedToNames.isNotEmpty ? assignedToNames.first : null;
+
+  /// Nombres de todos los asignados separados por coma, o `null` si no hay.
+  String? get assignedToLabel =>
+      assignedToNames.isEmpty ? null : assignedToNames.join(', ');
+
+  /// True si [uid] es uno de los asignados del ticket.
+  bool isAssignedTo(String? uid) => uid != null && assignedToUids.contains(uid);
+
   factory Ticket.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
 
@@ -97,6 +118,14 @@ class Ticket {
 
     List<String> parseList(dynamic value) {
       if (value is List) return value.whereType<String>().toList();
+      return [];
+    }
+
+    /// Si existe la lista nueva la usa; si no, hereda el campo único legado.
+    List<String> parseRefList(dynamic listVal, dynamic singleVal) {
+      final list = parseList(listVal);
+      if (list.isNotEmpty) return list;
+      if (singleVal is String && singleVal.isNotEmpty) return [singleVal];
       return [];
     }
 
@@ -133,9 +162,13 @@ class Ticket {
       projectId: data['projectId'] as String?,
       moduleId: data['moduleId'] as String?,
       createdBy: data['createdBy'] as String?,
-      assignedTo: data['assignedTo'] as String?,
-      assignedToName:
-          data['fkxSoporte'] as String? ?? data['assignedToName'] as String?,
+      // Migración: usa las listas nuevas; si no existen, hereda el campo único
+      // (y para el nombre, el legado V1 `fkxSoporte`).
+      assignedToUids: parseRefList(data['assignedToUids'], data['assignedTo']),
+      assignedToNames: parseRefList(
+        data['assignedToNames'],
+        data['fkxSoporte'] ?? data['assignedToName'],
+      ),
       empresaName: data['fkxEmpresa'] as String?,
       cobertura: data['fkxCobertura'] as String?,
       impacto: data['impacto'] is int
@@ -174,6 +207,7 @@ class Ticket {
       'estatusIncidente': status.v1Label,
       'prioridadIncidente': priority.v1Label,
       'fkxUsuarioReporta': createdByName,
+      // V1 solo admite un soporte: se guarda el responsable principal.
       if (assignedToName != null) 'fkxSoporte': assignedToName,
       if (empresaName != null) 'fkxEmpresa': empresaName,
       if (cobertura != null) 'fkxCobertura': cobertura,
@@ -197,8 +231,13 @@ class Ticket {
       if (projectId != null) 'projectId': projectId,
       if (moduleId != null) 'moduleId': moduleId,
       if (createdBy != null) 'createdBy': createdBy,
-      if (assignedTo != null) 'assignedTo': assignedTo,
-      if (assignedToName != null) 'assignedToName': assignedToName,
+      // Listas de asignados (fuente de verdad).
+      'assignedToUids': assignedToUids,
+      'assignedToNames': assignedToNames,
+      // Espejo del principal para compatibilidad con consultas, Cloud
+      // Functions y documentos históricos.
+      'assignedTo': assignedTo,
+      'assignedToName': assignedToName,
       'createdByName': createdByName,
       'projectName': projectName,
       'moduleName': moduleName,
@@ -222,8 +261,8 @@ class Ticket {
     TicketPriority? priority,
     String? createdByName,
     String? createdBy,
-    String? assignedTo,
-    String? assignedToName,
+    List<String>? assignedToUids,
+    List<String>? assignedToNames,
     String? empresaName,
     String? cobertura,
     int? impacto,
@@ -254,8 +293,8 @@ class Ticket {
       projectId: projectId ?? this.projectId,
       moduleId: moduleId ?? this.moduleId,
       createdBy: createdBy ?? this.createdBy,
-      assignedTo: assignedTo ?? this.assignedTo,
-      assignedToName: assignedToName ?? this.assignedToName,
+      assignedToUids: assignedToUids ?? this.assignedToUids,
+      assignedToNames: assignedToNames ?? this.assignedToNames,
       empresaName: empresaName ?? this.empresaName,
       cobertura: cobertura ?? this.cobertura,
       impacto: impacto ?? this.impacto,

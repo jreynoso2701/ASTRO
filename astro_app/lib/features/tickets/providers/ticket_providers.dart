@@ -385,9 +385,12 @@ final modulePenaltyDetailsProvider =
 
 /// Zonas del semáforo de fechas de solución programada.
 enum DeadlineZone {
-  red('Vencido', 0xFFD32F2F),
-  orange('Hoy / Mañana', 0xFFFF9800),
-  amber('2–5 días', 0xFFFFC107);
+  // Tonos de la paleta semántica (`AppColors.error/warning/caution`), en
+  // forma de int para que el enum siga siendo constante y sin dependencia
+  // de Material desde la capa de providers.
+  red('Vencido', 0xFFE5484D),
+  orange('Hoy / Mañana', 0xFFE3A008),
+  amber('2–5 días', 0xFFC9A227);
 
   const DeadlineZone(this.label, this.colorValue);
   final String label;

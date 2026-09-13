@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_typography.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/models/requerimiento.dart';
 import 'package:astro/core/models/requerimiento_status.dart';
@@ -65,14 +67,14 @@ class ReqDeadlineOverview extends ConsumerWidget {
     if (total == 0) return const SizedBox.shrink();
 
     final zones = [
-      ('red', 'VENCIDO', const Color(0xFFD32F2F), Icons.error_outline),
+      ('red', 'VENCIDO', AppColors.error, Icons.error_outline),
       (
         'orange',
         'HOY / MAÑANA',
-        const Color(0xFFFF9800),
+        AppColors.warning,
         Icons.warning_amber_outlined,
       ),
-      ('amber', '2–5 DÍAS', const Color(0xFFFFC107), Icons.schedule),
+      ('amber', '2–5 DÍAS', AppColors.caution, Icons.schedule),
     ];
 
     final cardWidth = width >= AppBreakpoints.medium
@@ -84,8 +86,7 @@ class ReqDeadlineOverview extends ConsumerWidget {
       children: [
         Text(
           'SEMÁFORO FECHAS COMPROMISO — REQUERIMIENTOS',
-          style: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
+          style: AppTypography.overline.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
@@ -156,42 +157,32 @@ class GenericDeadlineCard extends StatelessWidget {
       child: InkWell(
         onTap: count > 0 ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  label,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
+              // Sin recuadro teñido: el icono y la etiqueta ya llevan el color
+              // del estado, y la cifra es la que domina la tarjeta.
               Row(
                 children: [
-                  Icon(icon, color: color, size: 20),
-                  const Spacer(),
-                  Text(
-                    '$count',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: count > 0
-                          ? color
-                          : theme.colorScheme.onSurfaceVariant,
+                  Icon(icon, color: color, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.overline.copyWith(color: color),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$count',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: count > 0 ? color : theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),

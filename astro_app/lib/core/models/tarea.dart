@@ -20,8 +20,8 @@ class Tarea {
     required this.createdByName,
     this.moduleId,
     this.moduleName,
-    this.assignedToUid,
-    this.assignedToName,
+    this.assignedToUids = const [],
+    this.assignedToNames = const [],
     this.fechaEntrega,
     this.adjuntos = const [],
     this.refTickets = const [],
@@ -50,8 +50,14 @@ class Tarea {
   // Opcionales
   final String? moduleId;
   final String? moduleName;
-  final String? assignedToUid;
-  final String? assignedToName;
+  /// Responsables de la tarea (múltiples). El primero se considera el
+  /// responsable principal y se espeja en `assignedToUid` en Firestore
+  /// para mantener compatibilidad con datos y consultas existentes.
+  final List<String> assignedToUids;
+
+  /// Nombres de los responsables, en el mismo orden que [assignedToUids].
+  final List<String> assignedToNames;
+
   final DateTime? fechaEntrega;
   final List<String> adjuntos;
 
@@ -71,6 +77,24 @@ class Tarea {
   final bool isActive;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  // ── Helpers de responsables ──────────────────────────────
+
+  /// Responsable principal (primero de la lista). `null` si no hay ninguno.
+  String? get assignedToUid =>
+      assignedToUids.isNotEmpty ? assignedToUids.first : null;
+
+  /// Nombre del responsable principal.
+  String? get assignedToName =>
+      assignedToNames.isNotEmpty ? assignedToNames.first : null;
+
+  /// Nombres de responsables separados por coma, o `null` si no hay ninguno.
+  String? get assignedToLabel =>
+      assignedToNames.isEmpty ? null : assignedToNames.join(', ');
+
+  /// True si [uid] es uno de los responsables de la tarea.
+  bool isAssignedTo(String? uid) =>
+      uid != null && assignedToUids.contains(uid);
 
   factory Tarea.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
@@ -107,8 +131,14 @@ class Tarea {
       createdByName: data['createdByName'] as String? ?? '',
       moduleId: data['moduleId'] as String?,
       moduleName: data['moduleName'] as String?,
-      assignedToUid: data['assignedToUid'] as String?,
-      assignedToName: data['assignedToName'] as String?,
+      assignedToUids: parseRefList(
+        data['assignedToUids'],
+        data['assignedToUid'],
+      ),
+      assignedToNames: parseRefList(
+        data['assignedToNames'],
+        data['assignedToName'],
+      ),
       fechaEntrega: parseDate(data['fechaEntrega']),
       adjuntos: parseList(data['adjuntos']),
       refTickets: parseRefList(data['refTickets'], data['refTicketId']),
@@ -145,8 +175,13 @@ class Tarea {
       'createdByName': createdByName,
       if (moduleId != null) 'moduleId': moduleId,
       if (moduleName != null) 'moduleName': moduleName,
-      if (assignedToUid != null) 'assignedToUid': assignedToUid,
-      if (assignedToName != null) 'assignedToName': assignedToName,
+      // Listas de responsables (fuente de verdad).
+      'assignedToUids': assignedToUids,
+      'assignedToNames': assignedToNames,
+      // Espejo del responsable principal para compatibilidad con consultas,
+      // Cloud Functions y documentos históricos.
+      'assignedToUid': assignedToUid,
+      'assignedToName': assignedToName,
       if (fechaEntrega != null)
         'fechaEntrega': Timestamp.fromDate(fechaEntrega!),
       if (adjuntos.isNotEmpty) 'adjuntos': adjuntos,
@@ -179,8 +214,8 @@ class Tarea {
     String? createdByName,
     String? moduleId,
     String? moduleName,
-    String? assignedToUid,
-    String? assignedToName,
+    List<String>? assignedToUids,
+    List<String>? assignedToNames,
     DateTime? fechaEntrega,
     List<String>? adjuntos,
     List<String>? refTickets,
@@ -207,8 +242,8 @@ class Tarea {
       createdByName: createdByName ?? this.createdByName,
       moduleId: moduleId ?? this.moduleId,
       moduleName: moduleName ?? this.moduleName,
-      assignedToUid: assignedToUid ?? this.assignedToUid,
-      assignedToName: assignedToName ?? this.assignedToName,
+      assignedToUids: assignedToUids ?? this.assignedToUids,
+      assignedToNames: assignedToNames ?? this.assignedToNames,
       fechaEntrega: fechaEntrega ?? this.fechaEntrega,
       adjuntos: adjuntos ?? this.adjuntos,
       refTickets: refTickets ?? this.refTickets,

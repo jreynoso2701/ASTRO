@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/ticket.dart';
 import 'package:astro/core/models/ticket_status.dart';
@@ -562,7 +563,7 @@ class _KanbanCard extends ConsumerWidget {
             // ── Soporte ──
             _CardInfoRow(
               icon: Icons.headset_mic_outlined,
-              text: ticket.assignedToName ?? 'Sin asignar',
+              text: ticket.assignedToLabel ?? 'Sin asignar',
             ),
 
             // ── Fecha reporte ──
@@ -578,12 +579,12 @@ class _KanbanCard extends ConsumerWidget {
                 icon: Icons.warning_amber_rounded,
                 text: 'Impacto: ${ticket.impacto}/10',
                 color: ticket.impacto! <= 3
-                    ? const Color(0xFF4CAF50)
+                    ? AppColors.success
                     : ticket.impacto! <= 6
-                    ? const Color(0xFFFFC107)
+                    ? AppColors.caution
                     : ticket.impacto! <= 9
-                    ? const Color(0xFFFF9800)
-                    : const Color(0xFFF44336),
+                    ? AppColors.warning
+                    : AppColors.error,
               ),
 
             // ── Deadline semaphore (Root / Soporte) ──
@@ -819,13 +820,13 @@ DateTime? parseDeadlineDate(String? solucion) {
 /// Calcula color y etiqueta del semáforo de deadline.
 ({Color color, String label}) deadlineInfo(String? solucion) {
   if (solucion == null || solucion.isEmpty) {
-    return (color: const Color(0xFF9E9E9E), label: 'Sin fecha límite');
+    return (color: AppColors.grey600, label: 'Sin fecha límite');
   }
 
   final target = parseDeadlineDate(solucion);
 
   if (target == null) {
-    return (color: const Color(0xFF9E9E9E), label: 'Fecha inválida');
+    return (color: AppColors.grey600, label: 'Fecha inválida');
   }
 
   final now = DateTime.now();
@@ -834,15 +835,15 @@ DateTime? parseDeadlineDate(String? solucion) {
   final days = deadline.difference(today).inDays;
 
   if (days < 0) {
-    return (color: const Color(0xFFD32F2F), label: 'Vencido (${-days}d)');
+    return (color: AppColors.error, label: 'Vencido (${-days}d)');
   } else if (days <= 1) {
     return (
-      color: const Color(0xFFFF9800),
+      color: AppColors.warning,
       label: days == 0 ? 'Vence hoy' : 'Vence mañana',
     );
   } else if (days <= 5) {
-    return (color: const Color(0xFFFFC107), label: 'Vence en ${days}d');
+    return (color: AppColors.caution, label: 'Vence en ${days}d');
   } else {
-    return (color: const Color(0xFF4CAF50), label: 'Vence en ${days}d');
+    return (color: AppColors.success, label: 'Vence en ${days}d');
   }
 }

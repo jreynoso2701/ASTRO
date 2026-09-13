@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/features/dashboard/presentation/widgets/dashboard_stats_summary.dart';
@@ -49,7 +50,7 @@ class DashboardTabStatCards extends StatelessWidget {
             icon: Icons.calendar_today_outlined,
             label: 'Próximas citas',
             value: '${upcomingCitas.length}',
-            color: const Color(0xFF2196F3),
+            color: AppColors.info,
             onTap: upcomingCitas.isNotEmpty
                 ? () => _showUpcomingCitasSheet(context, upcomingCitas)
                 : null,
@@ -64,7 +65,7 @@ class DashboardTabStatCards extends StatelessWidget {
 
 void _showUpcomingCitasSheet(BuildContext context, List<Cita> citas) {
   final theme = Theme.of(context);
-  const color = Color(0xFF2196F3);
+  const color = AppColors.info;
 
   // Ordenar cronológicamente
   final sorted = [...citas]

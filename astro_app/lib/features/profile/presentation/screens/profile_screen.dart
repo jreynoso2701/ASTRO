@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -600,13 +601,13 @@ class _ProfileHeader extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFD71921).withValues(alpha: 0.15),
+              color: AppColors.error.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
               'ROOT',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: const Color(0xFFD71921),
+                color: AppColors.error,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
               ),

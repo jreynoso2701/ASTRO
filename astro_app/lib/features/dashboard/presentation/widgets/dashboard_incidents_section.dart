@@ -46,8 +46,6 @@ class _DashboardIncidentsTabbedSectionState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -57,13 +55,8 @@ class _DashboardIncidentsTabbedSectionState
           isScrollable: true,
           tabAlignment: TabAlignment.start,
           indicatorSize: TabBarIndicatorSize.label,
-          labelStyle: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
-            fontWeight: FontWeight.bold,
-          ),
-          unselectedLabelStyle: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
-          ),
+          // Los estilos de pestaña los define el tema (mayúsculas con tracking
+          // amplio y trazo grueso bajo la activa).
           tabs: const [
             Tab(text: 'TICKETS'),
             Tab(text: 'REQUERIMIENTOS'),

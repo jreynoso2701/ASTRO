@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -220,17 +221,17 @@ class TareasListScreen extends ConsumerWidget {
   }
 
   static Color _statusColor(TareaStatus s) => switch (s) {
-    TareaStatus.pendiente => const Color(0xFFFFC107),
-    TareaStatus.enProgreso => const Color(0xFF42A5F5),
-    TareaStatus.completada => const Color(0xFF4CAF50),
-    TareaStatus.cancelada => const Color(0xFF9E9E9E),
+    TareaStatus.pendiente => AppColors.caution,
+    TareaStatus.enProgreso => AppColors.info,
+    TareaStatus.completada => AppColors.success,
+    TareaStatus.cancelada => AppColors.grey600,
   };
 
   static Color _prioridadColor(TareaPrioridad p) => switch (p) {
-    TareaPrioridad.baja => const Color(0xFF4CAF50),
-    TareaPrioridad.media => const Color(0xFFFFC107),
-    TareaPrioridad.alta => const Color(0xFFFF9800),
-    TareaPrioridad.urgente => const Color(0xFFD32F2F),
+    TareaPrioridad.baja => AppColors.success,
+    TareaPrioridad.media => AppColors.caution,
+    TareaPrioridad.alta => AppColors.warning,
+    TareaPrioridad.urgente => AppColors.error,
   };
 
   static void _showArchivedSheet(
@@ -347,16 +348,18 @@ class _TareaTile extends ConsumerWidget {
                       // Fecha entrega + asignado
                       Row(
                         children: [
-                          if (tarea.assignedToName != null) ...[
+                          if (tarea.assignedToLabel != null) ...[
                             Icon(
-                              Icons.person_outline,
+                              tarea.assignedToUids.length > 1
+                                  ? Icons.people_outline
+                                  : Icons.person_outline,
                               size: 14,
                               color: theme.colorScheme.primary,
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                tarea.assignedToName!,
+                                tarea.assignedToLabel!,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.primary,
                                 ),
@@ -366,7 +369,7 @@ class _TareaTile extends ConsumerWidget {
                             ),
                           ],
                           if (fechaStr != null) ...[
-                            if (tarea.assignedToName != null)
+                            if (tarea.assignedToLabel != null)
                               const SizedBox(width: 12),
                             Icon(
                               Icons.calendar_today_outlined,

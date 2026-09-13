@@ -1,5 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/app_user.dart';
@@ -328,7 +329,7 @@ class _UserInfoSection extends StatelessWidget {
 
   static Color _roleColor(UserRole role) {
     return switch (role) {
-      UserRole.root => const Color(0xFFD71921),
+      UserRole.root => AppColors.error,
       UserRole.liderProyecto => const Color(0xFF9C27B0),
       UserRole.supervisor => const Color(0xFF2196F3),
       UserRole.soporte => const Color(0xFFFFC107),
@@ -512,7 +513,7 @@ class _AssignmentsSection extends StatelessWidget {
 
   static Color _roleColor(UserRole role) {
     return switch (role) {
-      UserRole.root => const Color(0xFFD71921),
+      UserRole.root => AppColors.error,
       UserRole.liderProyecto => const Color(0xFF9C27B0),
       UserRole.supervisor => const Color(0xFF2196F3),
       UserRole.soporte => const Color(0xFFFFC107),

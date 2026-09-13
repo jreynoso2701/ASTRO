@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/utils/progress_color.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
@@ -126,16 +127,16 @@ class DashboardProjectCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.warning_amber_rounded,
                       size: 12,
-                      color: const Color(0xFFFF9800),
+                      color: AppColors.warning,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Base: ${baseProgress.round()}%  ▼${penalty.toStringAsFixed(1)}% por tickets',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: const Color(0xFFFF9800),
+                        color: AppColors.warning,
                         fontSize: 10,
                       ),
                     ),

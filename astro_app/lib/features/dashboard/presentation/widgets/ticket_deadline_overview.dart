@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_typography.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
@@ -88,8 +89,7 @@ class TicketDeadlineOverview extends ConsumerWidget {
       children: [
         Text(
           'SEMÁFORO DE FECHAS COMPROMISO - TICKETS',
-          style: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
+          style: AppTypography.overline.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
@@ -158,42 +158,30 @@ class DeadlineZoneCard extends StatelessWidget {
       child: InkWell(
         onTap: count > 0 ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  zone.label.toUpperCase(),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(icon, color: color, size: 20),
-                  const Spacer(),
-                  Text(
-                    '$count',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: count > 0
-                          ? color
-                          : theme.colorScheme.onSurfaceVariant,
+                  Icon(icon, color: color, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      zone.label.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.overline.copyWith(color: color),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$count',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: count > 0 ? color : theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -219,42 +207,30 @@ class NoDeadlineCard extends StatelessWidget {
       child: InkWell(
         onTap: count > 0 ? onTap : null,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: color.withValues(alpha: 0.25)),
-                ),
-                child: Text(
-                  'SIN FECHA',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.event_busy_outlined, color: color, size: 20),
-                  const Spacer(),
-                  Text(
-                    '$count',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: count > 0
-                          ? color
-                          : theme.colorScheme.onSurfaceVariant,
+                  Icon(Icons.event_busy_outlined, color: color, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'SIN FECHA',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.overline.copyWith(color: color),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$count',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: count > 0 ? color : theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.6.0+28
+version: 3.0.0+29
 
 environment:
   sdk: ^3.9.2
@@ -103,10 +103,8 @@ flutter:
     - assets/images/branding/
     - assets/sounds/
 
-  fonts:
-    - family: NDOT47
-      fonts:
-        - asset: assets/fonts/ndot-47-inspired-by-nothing.otf
+  # Sin fuentes empaquetadas: el lenguaje visual usa la sans del sistema
+  # (Roboto en Android, SF Pro en iOS) en sus pesos altos.
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf

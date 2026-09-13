@@ -108,7 +108,7 @@ final tareaEtiquetaFilterProvider =
 ///
 /// Visibilidad por rol:
 /// - Root / Supervisor / Soporte → todas las tareas del proyecto.
-/// - Usuario → solo sus propias tareas (assignedToUid o createdByUid).
+/// - Usuario → solo sus propias tareas (responsable o creador).
 final filteredTareasProvider = Provider.family<List<Tarea>, String>((
   ref,
   projectId,
@@ -134,7 +134,7 @@ final filteredTareasProvider = Provider.family<List<Tarea>, String>((
   // Rol Usuario → solo sus propias tareas.
   if (isUsuarioOnly && uid != null) {
     allTareas = allTareas
-        .where((t) => t.assignedToUid == uid || t.createdByUid == uid)
+        .where((t) => t.isAssignedTo(uid) || t.createdByUid == uid)
         .toList();
   }
 
@@ -241,7 +241,7 @@ final myAllTareasProvider = Provider<List<TareaConProyecto>>((ref) {
     );
 
     for (final t in tareas) {
-      if (isUserOnly && t.assignedToUid != uid) continue;
+      if (isUserOnly && !t.isAssignedTo(uid)) continue;
       result.add((tarea: t, projectId: p.id, projectName: p.nombreProyecto));
     }
   }
@@ -285,7 +285,7 @@ final myArchivedTareasProvider = Provider<List<TareaConProyecto>>((ref) {
     );
 
     for (final t in archived) {
-      if (isUserOnly && t.assignedToUid != uid) continue;
+      if (isUserOnly && !t.isAssignedTo(uid)) continue;
       result.add((tarea: t, projectId: p.id, projectName: p.nombreProyecto));
     }
   }

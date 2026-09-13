@@ -387,8 +387,10 @@ export const onTicketUpdated = onDocumentUpdated(
     const folio = after.folioIncidente as string ?? after.folio ?? "";
     const ticketId = event.params.ticketId;
     const createdBy = after.createdBy as string | undefined;
-    const assignedTo = after.assignedTo as string | undefined;
-    const participantUids = [createdBy, assignedTo].filter(Boolean) as string[];
+    const assignees = getAssignees(after);
+    const participantUids = [createdBy, ...assignees].filter(
+      Boolean
+    ) as string[];
 
     // Cambio de status
     if (before.status !== after.status) {
@@ -409,8 +411,8 @@ export const onTicketUpdated = onDocumentUpdated(
       });
     }
 
-    // Cambio de asignación
-    if (before.assignedTo !== after.assignedTo && after.assignedTo) {
+    // Cambio de asignación (compara la lista completa de responsables)
+    if (assigneesChanged(before, after) && assignees.length > 0) {
       const updatedBy = after.updatedBy as string | undefined;
       const recipients = await getTicketRecipients(
         projectId,
@@ -419,7 +421,7 @@ export const onTicketUpdated = onDocumentUpdated(
       );
       await sendNotifications(recipients, {
         titulo: `${pfx(projectName)}${folio} asignado`,
-        cuerpo: `Ticket asignado a ${after.assignedToName ?? "alguien"}`,
+        cuerpo: `Ticket asignado a ${getAssigneeLabel(after)}`,
         tipo: "ticket_asignado",
         refType: "ticket",
         refId: ticketId,
@@ -524,8 +526,9 @@ export const onTicketCommentCreated = onDocumentCreated(
     const projectName = ticket.projectName as string ?? "";
     const folio = ticket.folioIncidente as string ?? ticket.folio ?? "";
     const createdBy = ticket.createdBy as string | undefined;
-    const assignedTo = ticket.assignedTo as string | undefined;
-    const participantUids = [createdBy, assignedTo].filter(Boolean) as string[];
+    const participantUids = [createdBy, ...getAssignees(ticket)].filter(
+      Boolean
+    ) as string[];
 
     const recipients = await getTicketRecipients(
       projectId,
@@ -572,7 +575,7 @@ export const onReqCreated = onDocumentCreated(
     const participantes = (data.participantes as Array<{uid: string}>) ?? [];
     const participantUids = [
       createdBy,
-      data.assignedTo as string | undefined,
+      ...getAssignees(data),
       ...participantes.map((p) => p.uid),
     ].filter(Boolean) as string[];
 
@@ -611,11 +614,11 @@ export const onReqUpdated = onDocumentUpdated(
     const folio = after.folio as string ?? "";
     const reqId = event.params.reqId;
     const createdBy = after.createdBy as string | undefined;
-    const assignedTo = after.assignedTo as string | undefined;
+    const assignees = getAssignees(after);
     const participantes = (after.participantes as Array<{uid: string}>) ?? [];
     const participantUids = [
       createdBy,
-      assignedTo,
+      ...assignees,
       ...participantes.map((p: {uid: string}) => p.uid),
     ].filter(Boolean) as string[];
 
@@ -639,7 +642,7 @@ export const onReqUpdated = onDocumentUpdated(
     }
 
     // Cambio de asignación
-    if (before.assignedTo !== after.assignedTo && after.assignedTo) {
+    if (assigneesChanged(before, after) && assignees.length > 0) {
       const updatedBy = after.updatedBy as string | undefined;
       const recipients = await getReqRecipients(
         projectId,
@@ -648,7 +651,7 @@ export const onReqUpdated = onDocumentUpdated(
       );
       await sendNotifications(recipients, {
         titulo: `${pfx(projectName)}${folio} asignado`,
-        cuerpo: `Requerimiento asignado a ${after.assignedToName ?? "alguien"}`,
+        cuerpo: `Requerimiento asignado a ${getAssigneeLabel(after)}`,
         tipo: "req_asignado",
         refType: "requerimiento",
         refId: reqId,
@@ -764,11 +767,10 @@ export const onReqCommentCreated = onDocumentCreated(
     const projectName = req.projectName as string ?? "";
     const folio = req.folio as string ?? "";
     const createdBy = req.createdBy as string | undefined;
-    const assignedTo = req.assignedTo as string | undefined;
     const participantes = (req.participantes as Array<{uid: string}>) ?? [];
     const participantUids = [
       createdBy,
-      assignedTo,
+      ...getAssignees(req),
       ...participantes.map((p: {uid: string}) => p.uid),
     ].filter(Boolean) as string[];
 
@@ -1317,10 +1319,30 @@ async function performAnonymizeAndDelete(uid: string): Promise<{success: boolean
 
     const incidentesAssigned = await db
       .collection("Incidentes")
-      .where("assignedTo", "==", uid)
+      .where("assignedToUids", "array-contains", uid)
       .get();
     for (const doc of incidentesAssigned.docs) {
-      ops.push({type: "update", ref: doc.ref, data: {assignedToName: anonymizedName}});
+      const data = doc.data();
+      const uids = getAssignees(data);
+      const names = Array.isArray(data.assignedToNames) ?
+        [...(data.assignedToNames as string[])] :
+        (data.assignedToName ? [data.assignedToName as string] : []);
+      // Anonimizar el nombre en cada posición donde aparezca el usuario.
+      uids.forEach((u, i) => {
+        if (u === uid) names[i] = anonymizedName;
+      });
+      const isPrimary = uids[0] === uid;
+      ops.push({
+        type: "update",
+        ref: doc.ref,
+        data: {
+          assignedToNames: names,
+          // `fkxSoporte` (V1) solo guarda al responsable principal.
+          ...(isPrimary ?
+            {assignedToName: anonymizedName, fkxSoporte: anonymizedName} :
+            {}),
+        },
+      });
     }
 
     // ─── 2. Comentarios de Incidentes (subcollection)
@@ -1347,10 +1369,25 @@ async function performAnonymizeAndDelete(uid: string): Promise<{success: boolean
 
     const reqAssigned = await db
       .collection("Requerimientos")
-      .where("assignedTo", "==", uid)
+      .where("assignedToUids", "array-contains", uid)
       .get();
     for (const doc of reqAssigned.docs) {
-      ops.push({type: "update", ref: doc.ref, data: {assignedToName: anonymizedName}});
+      const data = doc.data();
+      const uids = getAssignees(data);
+      const names = Array.isArray(data.assignedToNames) ?
+        [...(data.assignedToNames as string[])] :
+        (data.assignedToName ? [data.assignedToName as string] : []);
+      uids.forEach((u, i) => {
+        if (u === uid) names[i] = anonymizedName;
+      });
+      ops.push({
+        type: "update",
+        ref: doc.ref,
+        data: {
+          assignedToNames: names,
+          ...(uids[0] === uid ? {assignedToName: anonymizedName} : {}),
+        },
+      });
     }
 
     // Comentarios de Requerimientos
@@ -1488,10 +1525,26 @@ async function performAnonymizeAndDelete(uid: string): Promise<{success: boolean
 
     const tareasAssigned = await db
       .collection("Tareas")
-      .where("assignedToUid", "==", uid)
+      .where("assignedToUids", "array-contains", uid)
       .get();
     for (const doc of tareasAssigned.docs) {
-      ops.push({type: "update", ref: doc.ref, data: {assignedToName: anonymizedName}});
+      const data = doc.data();
+      const uids = getTareaAssignees(data);
+      const names = Array.isArray(data.assignedToNames) ?
+        [...(data.assignedToNames as string[])] :
+        (data.assignedToName ? [data.assignedToName as string] : []);
+      // Anonimizar el nombre en cada posición donde aparezca el usuario.
+      uids.forEach((u, i) => {
+        if (u === uid) names[i] = anonymizedName;
+      });
+      ops.push({
+        type: "update",
+        ref: doc.ref,
+        data: {
+          assignedToNames: names,
+          ...(uids[0] === uid ? {assignedToName: anonymizedName} : {}),
+        },
+      });
     }
 
     // ─── 7. DocumentosProyecto: createdByName, versiones[]
@@ -1946,7 +1999,83 @@ export const checkCompromisoDeadlines = onSchedule(
   }
 );
 
+// ── Helpers: TICKETS / REQUERIMIENTOS ────────────────────
+
+/**
+ * Responsables de un ticket o requerimiento.
+ *
+ * Lee la lista `assignedToUids`; si el documento aún no fue migrado, cae
+ * al campo legado `assignedTo`.
+ */
+function getAssignees(data: FirebaseFirestore.DocumentData): string[] {
+  const list = data.assignedToUids;
+  if (Array.isArray(list)) {
+    const uids = list.filter((v): v is string => typeof v === "string" && !!v);
+    if (uids.length > 0) return uids;
+  }
+  const legacy = data.assignedTo as string | undefined;
+  return legacy ? [legacy] : [];
+}
+
+/**
+ * Etiqueta legible de los responsables de un ticket o requerimiento.
+ *
+ * Para tickets no migrados también considera el campo V1 `fkxSoporte`.
+ */
+function getAssigneeLabel(data: FirebaseFirestore.DocumentData): string {
+  const names = data.assignedToNames;
+  if (Array.isArray(names)) {
+    const list = names.filter((v): v is string => typeof v === "string" && !!v);
+    if (list.length > 0) return list.join(", ");
+  }
+  return (
+    (data.assignedToName as string | undefined) ??
+    (data.fkxSoporte as string | undefined) ??
+    "alguien"
+  );
+}
+
+/**
+ * True si la lista de responsables cambió entre dos versiones del documento.
+ */
+function assigneesChanged(
+  before: FirebaseFirestore.DocumentData,
+  after: FirebaseFirestore.DocumentData
+): boolean {
+  const a = getAssignees(before);
+  const b = getAssignees(after);
+  return a.length !== b.length || b.some((uid) => !a.includes(uid));
+}
+
 // ── Helpers: TAREAS ──────────────────────────────────────
+
+/**
+ * Responsables de una tarea.
+ *
+ * Lee la lista `assignedToUids`; si el documento aún no fue migrado, cae
+ * al campo legado `assignedToUid`.
+ */
+function getTareaAssignees(data: FirebaseFirestore.DocumentData): string[] {
+  const list = data.assignedToUids;
+  if (Array.isArray(list)) {
+    const uids = list.filter((v): v is string => typeof v === "string" && !!v);
+    if (uids.length > 0) return uids;
+  }
+  const legacy = data.assignedToUid as string | undefined;
+  return legacy ? [legacy] : [];
+}
+
+/**
+ * Etiqueta legible de los responsables de una tarea.
+ */
+function getTareaAssigneeLabel(data: FirebaseFirestore.DocumentData): string {
+  const names = data.assignedToNames;
+  if (Array.isArray(names)) {
+    const list = names.filter((v): v is string => typeof v === "string" && !!v);
+    if (list.length > 0) return list.join(", ");
+  }
+  return (data.assignedToName as string | undefined) ?? "alguien";
+}
 
 /**
  * Determina los destinatarios de una notificación de tareas.
@@ -2036,11 +2165,13 @@ export const onTareaCreated = onDocumentCreated(
     const createdBy = data.createdByUid as string | undefined;
     const titulo = data.titulo as string ?? "Nueva tarea";
     const folio = data.folio as string ?? "";
-    const assignedTo = data.assignedToUid as string | undefined;
+    const assignees = getTareaAssignees(data);
 
     if (!projectId) return;
 
-    const participantUids = [createdBy, assignedTo].filter(Boolean) as string[];
+    const participantUids = [createdBy, ...assignees].filter(
+      Boolean
+    ) as string[];
     const recipients = await getTareaRecipients(
       projectId,
       participantUids,
@@ -2076,8 +2207,10 @@ export const onTareaUpdated = onDocumentUpdated(
     const folio = after.folio as string ?? "";
     const tareaId = event.params.tareaId;
     const createdBy = after.createdByUid as string | undefined;
-    const assignedTo = after.assignedToUid as string | undefined;
-    const participantUids = [createdBy, assignedTo].filter(Boolean) as string[];
+    const assignees = getTareaAssignees(after);
+    const participantUids = [createdBy, ...assignees].filter(
+      Boolean
+    ) as string[];
 
     // Cambio de status
     if (before.status !== after.status) {
@@ -2098,8 +2231,13 @@ export const onTareaUpdated = onDocumentUpdated(
       });
     }
 
-    // Cambio de asignación
-    if (before.assignedToUid !== after.assignedToUid && after.assignedToUid) {
+    // Cambio de asignación (compara la lista completa de responsables)
+    const beforeAssignees = getTareaAssignees(before);
+    const assigneesChanged =
+      beforeAssignees.length !== assignees.length ||
+      assignees.some((uid) => !beforeAssignees.includes(uid));
+
+    if (assigneesChanged && assignees.length > 0) {
       const updatedBy = after.updatedBy as string | undefined;
       const recipients = await getTareaRecipients(
         projectId,
@@ -2108,7 +2246,7 @@ export const onTareaUpdated = onDocumentUpdated(
       );
       await sendNotifications(recipients, {
         titulo: `${pfx(projectName)}${folio} asignada`,
-        cuerpo: `Tarea asignada a ${after.assignedToName ?? "alguien"}`,
+        cuerpo: `Tarea asignada a ${getTareaAssigneeLabel(after)}`,
         tipo: "tarea_asignada",
         refType: "tarea",
         refId: tareaId,
@@ -2202,11 +2340,8 @@ export const checkTareaDeadlines = onSchedule(
       const projectName = data.projectName as string ?? "";
       const folio = data.folio as string ?? "";
       const titulo = data.titulo as string ?? "";
-      const assignedToUid = data.assignedToUid as string | undefined;
-
-      // Notificar al asignado + Root del proyecto
-      const recipientUids: string[] = [];
-      if (assignedToUid) recipientUids.push(assignedToUid);
+      // Notificar a todos los responsables + Root del proyecto
+      const recipientUids: string[] = [...getTareaAssignees(data)];
 
       const assignments = await getProjectAssignments(projectId);
       for (const a of assignments) {
@@ -2319,11 +2454,8 @@ async function _checkReqDeadlinesLogic(runTag: string): Promise<void> {
     const projectName = (data.projectName as string) ?? "";
     const folio = (data.folio as string) ?? "";
     const titulo = (data.titulo as string) ?? "";
-    const assignedToUid = data.assignedToUid as string | undefined;
-
-    // Notificar al asignado + Root del proyecto
-    const recipientUids: string[] = [];
-    if (assignedToUid) recipientUids.push(assignedToUid);
+    // Notificar a todos los responsables + Root del proyecto
+    const recipientUids: string[] = [...getTareaAssignees(data)];
 
     const assignments = await getProjectAssignments(projectId);
     for (const a of assignments) {

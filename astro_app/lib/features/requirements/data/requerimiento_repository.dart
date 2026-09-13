@@ -198,16 +198,24 @@ class RequerimientoRepository {
     });
   }
 
-  /// Asignar responsable.
+  /// Asignar responsables (uno o varios).
+  ///
+  /// El primero de la lista es el responsable principal y se espeja en
+  /// `assignedTo` / `assignedToName` para compatibilidad con documentos
+  /// históricos, consultas y Cloud Functions.
   Future<void> assign(
     String id,
-    String assignedTo,
-    String assignedToName, {
+    List<String> assignedToUids,
+    List<String> assignedToNames, {
     required String updatedBy,
   }) async {
     await _ref.doc(id).update({
-      'assignedTo': assignedTo,
-      'assignedToName': assignedToName,
+      'assignedToUids': assignedToUids,
+      'assignedToNames': assignedToNames,
+      'assignedTo': assignedToUids.isNotEmpty ? assignedToUids.first : null,
+      'assignedToName': assignedToNames.isNotEmpty
+          ? assignedToNames.first
+          : null,
       'updatedBy': updatedBy,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });

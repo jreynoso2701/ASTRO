@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/models/minuta_modalidad.dart';
@@ -119,11 +120,12 @@ class DashboardCitaTile extends StatelessWidget {
     );
   }
 
+  // El color solo transmite estado: se toma de la paleta semántica.
   static Color _citaStatusColor(CitaStatus status) => switch (status) {
-    CitaStatus.programada => const Color(0xFF2196F3),
-    CitaStatus.enCurso => const Color(0xFFFFC107),
-    CitaStatus.completada => const Color(0xFF4CAF50),
-    CitaStatus.cancelada => const Color(0xFFD32F2F),
+    CitaStatus.programada => AppColors.info,
+    CitaStatus.enCurso => AppColors.warning,
+    CitaStatus.completada => AppColors.success,
+    CitaStatus.cancelada => AppColors.error,
   };
 
   static IconData _citaModalidadIcon(MinutaModalidad modalidad) =>

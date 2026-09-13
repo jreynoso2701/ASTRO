@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/ticket.dart';
@@ -562,12 +563,12 @@ class _TicketCard extends StatelessWidget {
                         label: 'Impacto:',
                         value: '${ticket.impacto}/10',
                         valueColor: ticket.impacto! <= 3
-                            ? const Color(0xFF4CAF50)
+                            ? AppColors.success
                             : ticket.impacto! <= 6
-                            ? const Color(0xFFFFC107)
+                            ? AppColors.caution
                             : ticket.impacto! <= 9
-                            ? const Color(0xFFFF9800)
-                            : const Color(0xFFF44336),
+                            ? AppColors.warning
+                            : AppColors.error,
                       ),
                     ),
                 ],
@@ -622,7 +623,7 @@ class _TicketCard extends StatelessWidget {
                     child: _IconLabel(
                       icon: Icons.headset_mic_outlined,
                       label: 'Soporte:',
-                      value: ticket.assignedToName ?? 'Sin asignar',
+                      value: ticket.assignedToLabel ?? 'Sin asignar',
                     ),
                   ),
                 ],
@@ -956,7 +957,7 @@ class _ArchivedTicketsSheetState extends ConsumerState<_ArchivedTicketsSheet> {
             t.folio.toUpperCase().contains(q) ||
             t.descripcion.toUpperCase().contains(q) ||
             t.createdByName.toUpperCase().contains(q) ||
-            (t.assignedToName?.toUpperCase().contains(q) ?? false);
+            (t.assignedToLabel?.toUpperCase().contains(q) ?? false);
       }).toList();
     }
 
@@ -1226,7 +1227,7 @@ class _ArchivedTicketCard extends StatelessWidget {
               _ArchivedInfoRow(
                 icon: Icons.headset_mic_outlined,
                 label: 'Soporte',
-                value: ticket.assignedToName ?? 'Sin asignar',
+                value: ticket.assignedToLabel ?? 'Sin asignar',
               ),
               if (ticket.createdAt != null)
                 _ArchivedInfoRow(
@@ -1507,7 +1508,7 @@ class _TicketStatsSheet extends ConsumerWidget {
                 _StatsSectionHeader(
                   icon: Icons.widgets_outlined,
                   title: 'Módulos con más incidentes',
-                  color: const Color(0xFF42A5F5),
+                  color: AppColors.info,
                 ),
                 if (moduleStats.isEmpty)
                   const _StatsEmptyMessage(text: 'Sin datos de módulos')
@@ -1521,7 +1522,7 @@ class _TicketStatsSheet extends ConsumerWidget {
                       label: item.moduleName,
                       count: item.count,
                       fraction: maxCount > 0 ? item.count / maxCount : 0,
-                      color: const Color(0xFF42A5F5),
+                      color: AppColors.info,
                     );
                   }),
 

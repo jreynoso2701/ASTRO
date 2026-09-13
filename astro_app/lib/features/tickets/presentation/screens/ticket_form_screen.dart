@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/core/widgets/asignados_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -62,9 +64,9 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
   String _selectedModuleName = '';
   TicketPriority _priority = TicketPriority.media;
 
-  // Asignado
-  String? _assignedToUid;
-  String? _assignedToName;
+  // Asignados (uno o varios). El primero es el responsable principal.
+  final List<String> _assignedToUids = [];
+  final List<String> _assignedToNames = [];
 
   // Campos adicionales
   double _porcentajeAvance = 0;
@@ -136,8 +138,12 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           _selectedModuleId = ticket.moduleId;
           _selectedModuleName = ticket.moduleName;
           _priority = ticket.priority;
-          _assignedToUid = ticket.assignedTo;
-          _assignedToName = ticket.assignedToName;
+          _assignedToUids
+            ..clear()
+            ..addAll(ticket.assignedToUids);
+          _assignedToNames
+            ..clear()
+            ..addAll(ticket.assignedToNames);
           _porcentajeAvance = ticket.porcentajeAvance;
           _impacto = ticket.impacto;
           _cobertura = ticket.cobertura;
@@ -340,13 +346,22 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
                 const SizedBox(height: 8),
 
                 // Asignado a (miembros del proyecto)
-                _AssigneeDropdown(
+                _AsignadosSelector(
                   projectId: widget.projectId,
-                  selectedUid: _assignedToUid,
-                  onChanged: (uid, name) {
+                  assignedUids: _assignedToUids,
+                  assignedNames: _assignedToNames,
+                  onAdd: (userId, name) {
                     setState(() {
-                      _assignedToUid = uid;
-                      _assignedToName = name;
+                      _assignedToUids.add(userId);
+                      _assignedToNames.add(name);
+                    });
+                  },
+                  onRemove: (index) {
+                    setState(() {
+                      _assignedToUids.removeAt(index);
+                      if (index < _assignedToNames.length) {
+                        _assignedToNames.removeAt(index);
+                      }
                     });
                   },
                 ),
@@ -861,8 +876,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
             moduleId: _selectedModuleId,
             moduleName: _selectedModuleName,
             priority: _priority,
-            assignedTo: _assignedToUid,
-            assignedToName: _assignedToName,
+            assignedToUids: List<String>.from(_assignedToUids),
+            assignedToNames: List<String>.from(_assignedToNames),
             empresaName: empresaName,
             porcentajeAvance: _porcentajeAvance,
             impacto: _impacto,
@@ -900,8 +915,8 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
           projectId: widget.projectId,
           moduleId: _selectedModuleId!,
           createdBy: profile.uid,
-          assignedTo: _assignedToUid,
-          assignedToName: _assignedToName,
+          assignedToUids: List<String>.from(_assignedToUids),
+          assignedToNames: List<String>.from(_assignedToNames),
           empresaName: empresaName,
           porcentajeAvance: _porcentajeAvance,
           impacto: _impacto,
@@ -959,10 +974,10 @@ class _TicketFormScreenState extends ConsumerState<TicketFormScreen> {
 
 Color _priorityColor(TicketPriority priority) {
   return switch (priority) {
-    TicketPriority.baja => const Color(0xFF4CAF50),
-    TicketPriority.media => const Color(0xFF2196F3),
-    TicketPriority.alta => const Color(0xFFFFC107),
-    TicketPriority.critica => const Color(0xFFD71921),
+    TicketPriority.baja => AppColors.success,
+    TicketPriority.media => AppColors.info,
+    TicketPriority.alta => AppColors.caution,
+    TicketPriority.critica => AppColors.error,
   };
 }
 
@@ -978,57 +993,47 @@ IconData _fileIcon(String filename) {
   };
 }
 
-class _AssigneeDropdown extends ConsumerWidget {
-  const _AssigneeDropdown({
+/// Selector de varios asignados, alimentado con los miembros del proyecto.
+class _AsignadosSelector extends ConsumerWidget {
+  const _AsignadosSelector({
     required this.projectId,
-    required this.selectedUid,
-    required this.onChanged,
+    required this.assignedUids,
+    required this.assignedNames,
+    required this.onAdd,
+    required this.onRemove,
   });
 
   final String projectId;
-  final String? selectedUid;
-  final void Function(String? uid, String? name) onChanged;
+  final List<String> assignedUids;
+  final List<String> assignedNames;
+  final void Function(String userId, String name) onAdd;
+  final void Function(int index) onRemove;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final members = ref.watch(projectMembersProvider(projectId));
     // Deduplicate by userId, keep only members with resolved user
     final seen = <String>{};
-    final activeMembers =
+    final available =
         members
-            .where((m) => m.user != null && seen.add(m.assignment.userId))
+            .where(
+              (m) =>
+                  m.user != null &&
+                  !assignedUids.contains(m.assignment.userId) &&
+                  seen.add(m.assignment.userId),
+            )
             .toList()
           ..sort(
             (a, b) => (a.user!.displayName).compareTo(b.user!.displayName),
           );
 
-    return DropdownButtonFormField<String>(
-      initialValue: activeMembers.any((m) => m.user!.uid == selectedUid)
-          ? selectedUid
-          : null,
-      decoration: const InputDecoration(
-        labelText: 'Asignado a',
-        prefixIcon: Icon(Icons.person_outline),
-      ),
-      items: [
-        const DropdownMenuItem<String>(value: null, child: Text('Sin asignar')),
-        ...activeMembers.map((m) {
-          final user = m.user!;
-          final role = m.assignment.role;
-          return DropdownMenuItem<String>(
-            value: user.uid,
-            child: Text('${user.displayName} ($role)'),
-          );
-        }),
-      ],
-      onChanged: (uid) {
-        if (uid == null) {
-          onChanged(null, null);
-        } else {
-          final member = activeMembers.firstWhere((m) => m.user!.uid == uid);
-          onChanged(uid, member.user!.displayName);
-        }
-      },
+    return AsignadosField(
+      assignedUids: assignedUids,
+      assignedNames: assignedNames,
+      available: available,
+      onAdd: onAdd,
+      onRemove: onRemove,
+      labelText: 'Asignado a',
     );
   }
 }

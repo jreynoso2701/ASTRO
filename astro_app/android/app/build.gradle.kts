@@ -20,7 +20,10 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.constelacionr.apps.astro"
-    compileSdk = flutter.compileSdkVersion
+    // Fijado explícitamente: Google Play exige orientar a Android 16 (API 36).
+    // No se usa `flutter.compileSdkVersion` para que el nivel no cambie de
+    // forma silenciosa al actualizar el SDK de Flutter.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -36,7 +39,8 @@ android {
     defaultConfig {
         applicationId = "com.constelacionr.apps.astro"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Android 16 (API 36) — requisito de Google Play a partir del 1 nov.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/ai_chat_message.dart';
@@ -884,7 +885,7 @@ Color _ticketStatusColor(String upper) => switch (upper) {
   'EN DESARROLLO' => const Color(0xFF00BCD4),
   'PRUEBAS INTERNAS' => const Color(0xFFFF9800),
   'PRUEBAS CLIENTE' => const Color(0xFFFFC107),
-  'BUGS' => const Color(0xFFD71921),
+  'BUGS' => AppColors.error,
   'RESUELTO' => const Color(0xFF4CAF50),
   'ARCHIVADO' => const Color(0xFF9E9E9E),
   _ => const Color(0xFF90A4AE),
@@ -918,7 +919,7 @@ Color _priorityColor(String prioridad) {
     'BAJA' => const Color(0xFF4CAF50),
     'NORMAL' => const Color(0xFF2196F3),
     'ALTA' => const Color(0xFFFFC107),
-    'CRITICA' || 'CRÍTICA' => const Color(0xFFD71921),
+    'CRITICA' || 'CRÍTICA' => AppColors.error,
     _ => const Color(0xFF90A4AE),
   };
 }
@@ -1201,7 +1202,7 @@ class _InputBar extends StatelessWidget {
               icon: Icon(
                 isListening ? Icons.mic : Icons.mic_none,
                 color: isListening
-                    ? const Color(0xFFD71921)
+                    ? AppColors.error
                     : theme.colorScheme.onSurfaceVariant,
               ),
               onPressed: isLoading ? null : onMicPressed,

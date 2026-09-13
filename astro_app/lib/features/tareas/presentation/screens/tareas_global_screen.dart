@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -70,11 +71,11 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
 
     // Separar: mis tareas vs tareas de compañeros
     final myTareas = _applyFilters(
-      allTareas.where((t) => t.tarea.assignedToUid == uid).toList(),
+      allTareas.where((t) => t.tarea.isAssignedTo(uid)).toList(),
     );
     final othersTareas = canSeeOthers
         ? _applyFilters(
-            allTareas.where((t) => t.tarea.assignedToUid != uid).toList(),
+            allTareas.where((t) => !t.tarea.isAssignedTo(uid)).toList(),
           )
         : <TareaConProyecto>[];
 
@@ -315,17 +316,17 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
   }
 
   static Color statusColor(TareaStatus s) => switch (s) {
-    TareaStatus.pendiente => const Color(0xFFFFC107),
-    TareaStatus.enProgreso => const Color(0xFF42A5F5),
-    TareaStatus.completada => const Color(0xFF4CAF50),
-    TareaStatus.cancelada => const Color(0xFF9E9E9E),
+    TareaStatus.pendiente => AppColors.caution,
+    TareaStatus.enProgreso => AppColors.info,
+    TareaStatus.completada => AppColors.success,
+    TareaStatus.cancelada => AppColors.grey600,
   };
 
   static Color prioridadColor(TareaPrioridad p) => switch (p) {
-    TareaPrioridad.baja => const Color(0xFF4CAF50),
-    TareaPrioridad.media => const Color(0xFFFFC107),
-    TareaPrioridad.alta => const Color(0xFFFF9800),
-    TareaPrioridad.urgente => const Color(0xFFD32F2F),
+    TareaPrioridad.baja => AppColors.success,
+    TareaPrioridad.media => AppColors.caution,
+    TareaPrioridad.alta => AppColors.warning,
+    TareaPrioridad.urgente => AppColors.error,
   };
 }
 
@@ -549,16 +550,18 @@ class _GlobalTareaTile extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          if (tarea.assignedToName != null) ...[
+                          if (tarea.assignedToLabel != null) ...[
                             Icon(
-                              Icons.person_outline,
+                              tarea.assignedToUids.length > 1
+                                  ? Icons.people_outline
+                                  : Icons.person_outline,
                               size: 14,
                               color: theme.colorScheme.primary,
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                tarea.assignedToName!,
+                                tarea.assignedToLabel!,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.primary,
                                 ),
@@ -568,7 +571,7 @@ class _GlobalTareaTile extends ConsumerWidget {
                             ),
                           ],
                           if (fechaStr != null) ...[
-                            if (tarea.assignedToName != null)
+                            if (tarea.assignedToLabel != null)
                               const SizedBox(width: 12),
                             Icon(
                               Icons.calendar_today_outlined,
@@ -906,14 +909,14 @@ class _GlobalArchivedTile extends StatelessWidget {
 // ── Agrupación por tiempo ────────────────────────────────
 
 enum _TimeGroup {
-  overdue('Vencidas', Icons.warning_amber_rounded, Color(0xFFD32F2F)),
-  today('Hoy', Icons.today, Color(0xFFFF9800)),
-  tomorrow('Mañana', Icons.event, Color(0xFFFFC107)),
-  thisWeek('Esta semana', Icons.date_range, Color(0xFF42A5F5)),
-  upcoming('Próximamente', Icons.event_note, Color(0xFF66BB6A)),
-  noDate('Sin fecha', Icons.event_busy, Color(0xFF9E9E9E)),
-  completed('Completadas', Icons.task_alt, Color(0xFF4CAF50)),
-  cancelled('Canceladas', Icons.cancel_outlined, Color(0xFF9E9E9E));
+  overdue('Vencidas', Icons.warning_amber_rounded, AppColors.error),
+  today('Hoy', Icons.today, AppColors.warning),
+  tomorrow('Mañana', Icons.event, AppColors.caution),
+  thisWeek('Esta semana', Icons.date_range, AppColors.info),
+  upcoming('Próximamente', Icons.event_note, AppColors.success),
+  noDate('Sin fecha', Icons.event_busy, AppColors.grey600),
+  completed('Completadas', Icons.task_alt, AppColors.success),
+  cancelled('Canceladas', Icons.cancel_outlined, AppColors.grey600);
 
   const _TimeGroup(this.label, this.icon, this.color);
   final String label;
@@ -1274,11 +1277,11 @@ Color _projectColor(String projectId) {
   final days = d.difference(today).inDays;
 
   if (days < 0) {
-    return (label: 'Vencida (${-days}d)', color: const Color(0xFFD32F2F));
+    return (label: 'Vencida (${-days}d)', color: AppColors.error);
   } else if (days == 0) {
-    return (label: 'Hoy', color: const Color(0xFFFF9800));
+    return (label: 'Hoy', color: AppColors.warning);
   } else if (days == 1) {
-    return (label: 'Mañana', color: const Color(0xFFFFC107));
+    return (label: 'Mañana', color: AppColors.caution);
   }
   return null;
 }

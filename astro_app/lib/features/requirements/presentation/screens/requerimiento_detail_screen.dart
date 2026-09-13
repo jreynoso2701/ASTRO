@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:astro/core/widgets/asignados_field.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -450,34 +452,12 @@ class _RequerimientoDetailScreenState
     final members = ref.read(projectMembersProvider(widget.projectId));
     if (!mounted) return;
 
-    final selected = await showDialog<({String uid, String name})>(
+    final selected = await showAsignadosDialog(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Asignar responsable'),
-        children: [
-          if (members.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('No hay miembros en este proyecto'),
-            ),
-          for (final m in members)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, (
-                uid: m.assignment.userId,
-                name: m.user?.displayName ?? m.assignment.userId,
-              )),
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Text((m.user?.displayName ?? '?')[0].toUpperCase()),
-                ),
-                title: Text(m.user?.displayName ?? m.assignment.userId),
-                subtitle: Text(
-                  '${m.assignment.role.label} — ${m.user?.email ?? ''}',
-                ),
-              ),
-            ),
-        ],
-      ),
+      members: members,
+      initialUids: req.assignedToUids,
+      title: 'Asignar responsables',
+      emptyMessage: 'No hay miembros en este proyecto',
     );
 
     if (selected != null) {
@@ -485,17 +465,20 @@ class _RequerimientoDetailScreenState
       final profile = ref.read(currentUserProfileProvider).value;
       await repo.assign(
         req.id,
-        selected.uid,
-        selected.name,
+        selected.uids,
+        selected.names,
         updatedBy: profile?.uid ?? '',
       );
 
       if (profile != null) {
+        final texto = selected.names.isEmpty
+            ? 'Quitó la asignación de responsables'
+            : 'Asignó responsables: "${selected.names.join(', ')}"';
         await repo.addComment(
           req.id,
           RequerimientoComment(
             id: '',
-            text: 'Asignó responsable: "${selected.name}"',
+            text: texto,
             authorId: profile.uid,
             authorName: profile.displayName,
             type: ReqCommentType.assignment,
@@ -684,8 +667,10 @@ class _InfoSection extends StatelessWidget {
           _DetailRow(label: 'Empresa', value: req.empresaName!),
         _DetailRow(label: 'Solicitó', value: req.createdByName),
         _DetailRow(
-          label: 'Responsable',
-          value: req.assignedToName ?? 'Sin asignar',
+          label: req.assignedToUids.length > 1
+              ? 'Responsables (${req.assignedToUids.length})'
+              : 'Responsable',
+          value: req.assignedToLabel ?? 'Sin asignar',
         ),
         if (req.faseAsignada != null)
           _DetailRow(label: 'Fase asignada', value: req.faseAsignada!.label),
@@ -1069,7 +1054,7 @@ class _InfoSection extends StatelessWidget {
       add(
         s,
         color: s == RequerimientoStatus.descartado
-            ? const Color(0xFFEF5350)
+            ? AppColors.error
             : null,
       );
     }
@@ -1130,11 +1115,11 @@ class _StatusBadge extends StatelessWidget {
 
 Color _statusColor(RequerimientoStatus status) => switch (status) {
   RequerimientoStatus.propuesto => const Color(0xFF90A4AE),
-  RequerimientoStatus.enRevision => const Color(0xFF42A5F5),
-  RequerimientoStatus.enDesarrollo => const Color(0xFFFFC107),
-  RequerimientoStatus.implementado => const Color(0xFF4CAF50),
+  RequerimientoStatus.enRevision => AppColors.info,
+  RequerimientoStatus.enDesarrollo => AppColors.caution,
+  RequerimientoStatus.implementado => AppColors.success,
   RequerimientoStatus.completado => const Color(0xFF388E3C),
-  RequerimientoStatus.descartado => const Color(0xFFEF5350),
+  RequerimientoStatus.descartado => AppColors.error,
 };
 
 IconData _statusIcon(RequerimientoStatus status) => switch (status) {

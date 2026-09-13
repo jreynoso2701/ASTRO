@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -214,7 +215,7 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
                 data: (t) {
                   if (t == null) return null;
                   final canEdit =
-                      isRoot || t.assignedToUid == uid || t.createdByUid == uid;
+                      isRoot || t.isAssignedTo(uid) || t.createdByUid == uid;
                   if (!canEdit) return null;
                   return IconButton(
                     icon: const Icon(Icons.edit_outlined),
@@ -237,7 +238,7 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
           }
 
           final canInteract =
-              isRoot || tarea.assignedToUid == uid || tarea.createdByUid == uid;
+              isRoot || tarea.isAssignedTo(uid) || tarea.createdByUid == uid;
 
           final width = MediaQuery.sizeOf(context).width;
           final isWide = width >= AppBreakpoints.medium;
@@ -663,7 +664,7 @@ class _HeroSection extends StatelessWidget {
             _ActionButton(
               icon: Icons.play_arrow_outlined,
               label: 'Iniciar',
-              color: const Color(0xFF42A5F5),
+              color: AppColors.info,
               onPressed: isLoading
                   ? null
                   : () => onUpdateStatus(TareaStatus.enProgreso),
@@ -671,7 +672,7 @@ class _HeroSection extends StatelessWidget {
             _ActionButton(
               icon: Icons.check_circle_outline,
               label: 'Completar',
-              color: const Color(0xFF4CAF50),
+              color: AppColors.success,
               onPressed: isLoading
                   ? null
                   : () => onUpdateStatus(TareaStatus.completada),
@@ -679,7 +680,7 @@ class _HeroSection extends StatelessWidget {
             _ActionButton(
               icon: Icons.cancel_outlined,
               label: 'Cancelar',
-              color: const Color(0xFF9E9E9E),
+              color: AppColors.grey600,
               onPressed: isLoading
                   ? null
                   : () => onUpdateStatus(TareaStatus.cancelada),
@@ -690,7 +691,7 @@ class _HeroSection extends StatelessWidget {
             _ActionButton(
               icon: Icons.pause_outlined,
               label: 'Pendiente',
-              color: const Color(0xFFFFC107),
+              color: AppColors.caution,
               onPressed: isLoading
                   ? null
                   : () => onUpdateStatus(TareaStatus.pendiente),
@@ -698,7 +699,7 @@ class _HeroSection extends StatelessWidget {
             _ActionButton(
               icon: Icons.check_circle_outline,
               label: 'Completar',
-              color: const Color(0xFF4CAF50),
+              color: AppColors.success,
               onPressed: isLoading
                   ? null
                   : () => onUpdateStatus(TareaStatus.completada),
@@ -706,7 +707,7 @@ class _HeroSection extends StatelessWidget {
             _ActionButton(
               icon: Icons.cancel_outlined,
               label: 'Cancelar',
-              color: const Color(0xFF9E9E9E),
+              color: AppColors.grey600,
               onPressed: isLoading
                   ? null
                   : () => onUpdateStatus(TareaStatus.cancelada),
@@ -718,7 +719,7 @@ class _HeroSection extends StatelessWidget {
               _ActionButton(
                 icon: Icons.replay_outlined,
                 label: 'Reabrir',
-                color: const Color(0xFFFFC107),
+                color: AppColors.caution,
                 onPressed: isLoading
                     ? null
                     : () => onUpdateStatus(TareaStatus.pendiente),
@@ -731,7 +732,7 @@ class _HeroSection extends StatelessWidget {
               _ActionButton(
                 icon: Icons.replay_outlined,
                 label: 'Reabrir',
-                color: const Color(0xFFFFC107),
+                color: AppColors.caution,
                 onPressed: isLoading
                     ? null
                     : () => onUpdateStatus(TareaStatus.pendiente),
@@ -771,17 +772,17 @@ class _HeroSection extends StatelessWidget {
   }
 
   static Color _statusColor(TareaStatus s) => switch (s) {
-    TareaStatus.pendiente => const Color(0xFFFFC107),
-    TareaStatus.enProgreso => const Color(0xFF42A5F5),
-    TareaStatus.completada => const Color(0xFF4CAF50),
-    TareaStatus.cancelada => const Color(0xFF9E9E9E),
+    TareaStatus.pendiente => AppColors.caution,
+    TareaStatus.enProgreso => AppColors.info,
+    TareaStatus.completada => AppColors.success,
+    TareaStatus.cancelada => AppColors.grey600,
   };
 
   static Color _prioridadColor(TareaPrioridad p) => switch (p) {
-    TareaPrioridad.baja => const Color(0xFF4CAF50),
-    TareaPrioridad.media => const Color(0xFFFFC107),
-    TareaPrioridad.alta => const Color(0xFFFF9800),
-    TareaPrioridad.urgente => const Color(0xFFD32F2F),
+    TareaPrioridad.baja => AppColors.success,
+    TareaPrioridad.media => AppColors.caution,
+    TareaPrioridad.alta => AppColors.warning,
+    TareaPrioridad.urgente => AppColors.error,
   };
 
   static IconData _statusIcon(TareaStatus s) => switch (s) {
@@ -885,19 +886,19 @@ class _DeadlineIndicator extends StatelessWidget {
     late final String text;
 
     if (days < 0) {
-      color = const Color(0xFFD32F2F);
+      color = AppColors.error;
       text = 'Vencida hace ${-days} día${days == -1 ? '' : 's'}';
     } else if (days == 0) {
-      color = const Color(0xFFD32F2F);
+      color = AppColors.error;
       text = 'Vence hoy';
     } else if (days <= 2) {
-      color = const Color(0xFFFF9800);
+      color = AppColors.warning;
       text = '$days día${days == 1 ? '' : 's'} restante${days == 1 ? '' : 's'}';
     } else if (days <= 7) {
-      color = const Color(0xFFFFC107);
+      color = AppColors.caution;
       text = '$days días restantes';
     } else {
-      color = const Color(0xFF4CAF50);
+      color = AppColors.success;
       text = '$days días restantes';
     }
 
@@ -1111,8 +1112,10 @@ class _DetailsCard extends StatelessWidget {
             if (tarea.moduleName != null && tarea.moduleName!.isNotEmpty)
               _InfoRow(label: 'Módulo', value: tarea.moduleName!),
             _InfoRow(
-              label: 'Asignado a',
-              value: tarea.assignedToName ?? 'Sin asignar',
+              label: tarea.assignedToUids.length > 1
+                  ? 'Asignado a (${tarea.assignedToUids.length})'
+                  : 'Asignado a',
+              value: tarea.assignedToLabel ?? 'Sin asignar',
             ),
             _InfoRow(label: 'Fecha entrega', value: fechaStr),
             _InfoRow(label: 'Creado por', value: tarea.createdByName),

@@ -912,13 +912,24 @@ class GeminiService {
 
     var tareas = snap.docs.map((d) {
       final data = d.data();
+      // Una tarea puede tener varios responsables: se concatenan para que
+      // el agente los lea y los busque como un solo texto.
+      final nombres =
+          (data['assignedToNames'] as List<dynamic>?)
+              ?.whereType<String>()
+              .where((n) => n.isNotEmpty)
+              .toList() ??
+          const <String>[];
+      final asignados = nombres.isNotEmpty
+          ? nombres.join(', ')
+          : (data['assignedToName'] ?? '');
       return {
         'id': d.id,
         'folio': data['folio'] ?? '',
         'titulo': data['titulo'] ?? '',
         'status': data['status'] ?? '',
         'prioridad': data['prioridad'] ?? '',
-        'assignedToName': data['assignedToName'] ?? '',
+        'assignedToName': asignados,
         'moduleName': data['moduleName'] ?? '',
         'fechaEntrega':
             (data['fechaEntrega'] as Timestamp?)?.toDate().toIso8601String() ??

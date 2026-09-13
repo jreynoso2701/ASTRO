@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/requerimiento.dart';
@@ -519,7 +520,7 @@ class _ReqCard extends StatelessWidget {
                     child: _IconLabel(
                       icon: Icons.engineering_outlined,
                       label: 'Responsable:',
-                      value: req.assignedToName ?? 'Sin asignar',
+                      value: req.assignedToLabel ?? 'Sin asignar',
                     ),
                   ),
                 ],
@@ -705,11 +706,11 @@ class _FilterChip extends StatelessWidget {
 
 Color _statusColor(RequerimientoStatus status) => switch (status) {
   RequerimientoStatus.propuesto => const Color(0xFF90A4AE),
-  RequerimientoStatus.enRevision => const Color(0xFF42A5F5),
-  RequerimientoStatus.enDesarrollo => const Color(0xFFFFC107),
-  RequerimientoStatus.implementado => const Color(0xFF4CAF50),
+  RequerimientoStatus.enRevision => AppColors.info,
+  RequerimientoStatus.enDesarrollo => AppColors.caution,
+  RequerimientoStatus.implementado => AppColors.success,
   RequerimientoStatus.completado => const Color(0xFF388E3C),
-  RequerimientoStatus.descartado => const Color(0xFFEF5350),
+  RequerimientoStatus.descartado => AppColors.error,
 };
 
 String _formatDate(DateTime? date) {
@@ -740,7 +741,7 @@ class _ArchivedReqsSheetState extends ConsumerState<_ArchivedReqsSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const archiveColor = Color(0xFF9E9E9E);
+    const archiveColor = AppColors.grey600;
 
     final archivedAsync = ref.watch(
       archivedReqsByProjectProvider(widget.projectId),

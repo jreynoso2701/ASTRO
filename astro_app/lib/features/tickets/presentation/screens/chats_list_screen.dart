@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -355,12 +356,12 @@ class _ChatListTile extends ConsumerWidget {
   static Color _statusColor(TicketStatus status) {
     return switch (status) {
       TicketStatus.pendiente => const Color(0xFF6366F1),
-      TicketStatus.enDesarrollo => const Color(0xFFF59E0B),
-      TicketStatus.pruebasInternas => const Color(0xFF3B82F6),
+      TicketStatus.enDesarrollo => AppColors.warning,
+      TicketStatus.pruebasInternas => AppColors.info,
       TicketStatus.pruebasCliente => const Color(0xFF8B5CF6),
-      TicketStatus.bugs => const Color(0xFFEF4444),
-      TicketStatus.resuelto => const Color(0xFF10B981),
-      TicketStatus.archivado => const Color(0xFF6B7280),
+      TicketStatus.bugs => AppColors.error,
+      TicketStatus.resuelto => AppColors.success,
+      TicketStatus.archivado => AppColors.grey600,
     };
   }
 

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:astro/core/constants/app_typography.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -96,8 +97,7 @@ class TicketStatusOverview extends ConsumerWidget {
         children: [
           Text(
             'INCIDENTES',
-            style: theme.textTheme.labelLarge?.copyWith(
-              letterSpacing: 1,
+            style: AppTypography.overline.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
@@ -143,8 +143,7 @@ class TicketStatusOverview extends ConsumerWidget {
       children: [
         Text(
           'INCIDENTES',
-          style: theme.textTheme.labelLarge?.copyWith(
-            letterSpacing: 1,
+          style: AppTypography.overline.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),

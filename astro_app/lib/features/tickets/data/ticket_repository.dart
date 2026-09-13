@@ -220,21 +220,31 @@ class TicketRepository {
     });
   }
 
-  /// Asigna el ticket a un usuario de Soporte.
+  /// Asigna el ticket a uno o varios usuarios de Soporte.
+  ///
+  /// El primero de la lista es el responsable principal: es el único que se
+  /// escribe en el campo V1 `fkxSoporte` (que solo admite un soporte) y el que
+  /// se espeja en `assignedTo` / `assignedToName`.
   Future<void> assign(
     String ticketId,
-    String assignedTo,
-    String assignedToName, {
+    List<String> assignedToUids,
+    List<String> assignedToNames, {
     required String updatedBy,
   }) async {
     final now = DateTime.now();
+    final primaryUid = assignedToUids.isNotEmpty ? assignedToUids.first : null;
+    final primaryName = assignedToNames.isNotEmpty
+        ? assignedToNames.first
+        : null;
     await _ref.doc(ticketId).update({
-      // V1
-      'fkxSoporte': assignedToName,
+      // V1 solo admite un soporte: se guarda el responsable principal.
+      'fkxSoporte': primaryName,
       'fhActualizacion': _nowV1String(now),
       // V2
-      'assignedTo': assignedTo,
-      'assignedToName': assignedToName,
+      'assignedToUids': assignedToUids,
+      'assignedToNames': assignedToNames,
+      'assignedTo': primaryUid,
+      'assignedToName': primaryName,
       'updatedAt': Timestamp.fromDate(now),
       'updatedBy': updatedBy,
     });
