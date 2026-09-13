@@ -105,8 +105,22 @@ final adjustedModuleProgressProvider =
       return max(0, base - penalty).toDouble();
     });
 
+/// Indica si el proyecto tiene algún módulo activo.
+///
+/// Un proyecto sin módulos no tiene un avance del 0%: no tiene avance que
+/// medir. La interfaz necesita distinguir los dos casos para no acusar de
+/// parado a un proyecto que todavía no se ha desglosado.
+final projectHasModulesProvider = Provider.family<bool, String>((
+  ref,
+  projectName,
+) {
+  final modules = ref.watch(activeModulosByProjectProvider(projectName)).value;
+  return modules != null && modules.isNotEmpty;
+});
+
 /// Calcula el porcentaje promedio de completado ajustado (con penalización
-/// de tickets) de los módulos activos de un proyecto. Retorna 0 si no hay módulos.
+/// de tickets) de los módulos activos de un proyecto. Retorna 0 si no hay
+/// módulos; usa [projectHasModulesProvider] para distinguir ese caso.
 final projectProgressProvider = Provider.family<double, String>((
   ref,
   projectName,
@@ -115,15 +129,20 @@ final projectProgressProvider = Provider.family<double, String>((
       ref.watch(activeModulosByProjectProvider(projectName)).value ?? [];
   if (modules.isEmpty) return 0;
 
+  // El avance se toma del módulo que ya trajo el stream del proyecto, no de
+  // moduloByIdProvider: eso abría un stream por módulo y, hasta que cada uno
+  // resolvía, el módulo contaba como 0, así que el porcentaje del proyecto
+  // aparecía bajo y subía a saltos durante la carga.
   double total = 0;
   for (final m in modules) {
-    total += ref.watch(
-      adjustedModuleProgressProvider((
-        id: m.id,
+    final base = m.porcentCompletaModulo ?? 0;
+    final penalty = ref.watch(
+      modulePenaltyProvider((
         projectName: projectName,
         moduleName: m.nombreModulo,
       )),
     );
+    total += max(0, base - penalty).toDouble();
   }
   return total / modules.length;
 });

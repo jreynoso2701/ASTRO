@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:astro/core/models/aviso.dart';
 import 'package:astro/core/models/aviso_prioridad.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/avisos/providers/aviso_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -68,7 +69,7 @@ class AvisoListScreen extends ConsumerWidget {
               return SafeArea(
                 top: false,
                 child: AdaptiveBody(
-                  maxWidth: 960,
+                  maxWidth: AdaptiveBody.wide,
                   child: Column(
                     children: [
                       // Barra de búsqueda
@@ -146,7 +147,7 @@ class AvisoListScreen extends ConsumerWidget {
                                   ],
                                 ),
                               )
-                            : ListView.separated(
+                            : AdaptiveCardList(
                                 padding: const EdgeInsets.fromLTRB(
                                   16,
                                   4,
@@ -154,13 +155,14 @@ class AvisoListScreen extends ConsumerWidget {
                                   24,
                                 ),
                                 itemCount: filteredAvisos.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (ctx, i) => _AvisoCard(
-                                  aviso: filteredAvisos[i],
-                                  projectId: projectId,
-                                  isRoot: isRoot,
-                                  currentUid: uid,
+                                itemBuilder: (ctx, i) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _AvisoCard(
+                                    aviso: filteredAvisos[i],
+                                    projectId: projectId,
+                                    isRoot: isRoot,
+                                    currentUid: uid,
+                                  ),
                                 ),
                               ),
                       ),

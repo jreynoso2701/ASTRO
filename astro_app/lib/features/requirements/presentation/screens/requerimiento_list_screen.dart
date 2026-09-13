@@ -15,6 +15,7 @@ import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_bu
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/adaptive_card_list.dart';
 
 /// Pantalla de listado de requerimientos de un proyecto.
 /// En móvil muestra lista; en pantallas anchas, tablero Kanban.
@@ -342,8 +343,8 @@ class _RequerimientoListScreenState
     }
 
     return AdaptiveBody(
-      maxWidth: 960,
-      child: ListView.builder(
+      maxWidth: AdaptiveBody.wide,
+      child: AdaptiveCardList(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         itemCount: reqs.length,
         itemBuilder: (context, index) {

@@ -13,6 +13,7 @@ import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
@@ -448,8 +449,8 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
     }
 
     return AdaptiveBody(
-      maxWidth: 960,
-      child: ListView.builder(
+      maxWidth: AdaptiveBody.wide,
+      child: AdaptiveCardList(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         itemCount: tickets.length,
         itemBuilder: (context, index) {

@@ -7,6 +7,7 @@ import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
 import 'package:astro/core/models/tarea_prioridad.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
@@ -109,7 +110,7 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
             )
           : null,
       body: AdaptiveBody(
-        maxWidth: 960,
+        maxWidth: AdaptiveBody.wide,
         child: Column(
           children: [
             // Barra de búsqueda
@@ -993,6 +994,12 @@ class _ProjectGroupedTareaList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Las tareas se reparten en columnas cuando hay ancho; las cabeceras de
+    // proyecto y de tiempo siguen ocupando la fila entera.
+    final columns = adaptiveColumnsFor(
+      MediaQuery.sizeOf(context).width,
+      minColumnWidth: 420,
+    );
 
     if (items.isEmpty) {
       return Column(
@@ -1118,15 +1125,16 @@ class _ProjectGroupedTareaList extends StatelessWidget {
           ),
         );
 
-        for (final item in tareas) {
-          widgets.add(
-            _GlobalTareaTile(
-              tarea: item.tarea,
-              projectId: item.projectId,
-              projectName: item.projectName,
-            ),
-          );
-        }
+        widgets.addAll(
+          adaptiveRows([
+            for (final item in tareas)
+              _GlobalTareaTile(
+                tarea: item.tarea,
+                projectId: item.projectId,
+                projectName: item.projectName,
+              ),
+          ], columns: columns),
+        );
       }
     }
 

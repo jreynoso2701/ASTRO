@@ -38,6 +38,11 @@ class DashboardProjectCard extends StatelessWidget {
     final leads = ref.watch(projectLeadNamesProvider(proyecto.id));
     final penalty = baseProgress - progress;
     final hasPenalty = penalty > 0.5;
+    // Sin módulos no hay avance que medir: mostrar 0% haría parecer parado un
+    // proyecto que solo está sin desglosar.
+    final hasModules = ref.watch(
+      projectHasModulesProvider(proyecto.nombreProyecto),
+    );
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -124,23 +129,31 @@ class DashboardProjectCard extends StatelessWidget {
               const Spacer(),
 
               // Progress bar
-              Row(
-                children: [
-                  Expanded(child: AnimatedProgressBar(percent: progress)),
-                  const SizedBox(width: 8),
-                  AnimatedCounter(
-                    value: progress,
-                    suffix: '%',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: progressColor(progress),
-                    ),
+              if (!hasModules)
+                Text(
+                  'Sin módulos',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                ],
-              ),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(child: AnimatedProgressBar(percent: progress)),
+                    const SizedBox(width: 8),
+                    AnimatedCounter(
+                      value: progress,
+                      suffix: '%',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: progressColor(progress),
+                      ),
+                    ),
+                  ],
+                ),
 
               // Penalty indicator (only when tickets are dragging progress down)
-              if (hasPenalty) ...[
+              if (hasModules && hasPenalty) ...[
                 const SizedBox(height: 4),
                 Row(
                   children: [

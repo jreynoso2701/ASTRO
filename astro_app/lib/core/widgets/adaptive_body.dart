@@ -9,15 +9,23 @@ import 'package:astro/core/constants/app_breakpoints.dart';
 class AdaptiveBody extends StatelessWidget {
   const AdaptiveBody({
     required this.child,
-    this.maxWidth = 720,
+    this.maxWidth = readable,
     this.padding,
     super.key,
   });
 
+  /// Ancho de lectura: formularios y pantallas de detalle, donde una linea
+  /// larga cansa la vista.
+  static const double readable = 720;
+
+  /// Ancho para listados y tableros, que si aprovechan el espacio porque su
+  /// contenido se reparte en columnas.
+  static const double wide = 1400;
+
   /// El contenido a mostrar.
   final Widget child;
 
-  /// Ancho máximo del contenido (default: 720 — óptimo para lectura).
+  /// Ancho máximo del contenido (default: [readable]).
   final double maxWidth;
 
   /// Padding adicional alrededor del contenido (opcional).
@@ -46,6 +54,7 @@ class AdaptiveBody extends StatelessWidget {
 
 /// Retorna el número de columnas para grids según el ancho disponible.
 int adaptiveGridColumns(double width) {
+  if (width >= AppBreakpoints.large) return 4;
   if (width >= AppBreakpoints.expanded) return 3;
   if (width >= AppBreakpoints.medium) return 2;
   return 1;

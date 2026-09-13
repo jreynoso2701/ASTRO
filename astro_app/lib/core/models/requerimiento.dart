@@ -187,8 +187,7 @@ class Requerimiento {
       assignedToNames.isEmpty ? null : assignedToNames.join(', ');
 
   /// True si [uid] es uno de los responsables del requerimiento.
-  bool isAssignedTo(String? uid) =>
-      uid != null && assignedToUids.contains(uid);
+  bool isAssignedTo(String? uid) => uid != null && assignedToUids.contains(uid);
 
   factory Requerimiento.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,

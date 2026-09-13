@@ -50,6 +50,7 @@ class Tarea {
   // Opcionales
   final String? moduleId;
   final String? moduleName;
+
   /// Responsables de la tarea (múltiples). El primero se considera el
   /// responsable principal y se espeja en `assignedToUid` en Firestore
   /// para mantener compatibilidad con datos y consultas existentes.
@@ -93,8 +94,7 @@ class Tarea {
       assignedToNames.isEmpty ? null : assignedToNames.join(', ');
 
   /// True si [uid] es uno de los responsables de la tarea.
-  bool isAssignedTo(String? uid) =>
-      uid != null && assignedToUids.contains(uid);
+  bool isAssignedTo(String? uid) => uid != null && assignedToUids.contains(uid);
 
   factory Tarea.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;

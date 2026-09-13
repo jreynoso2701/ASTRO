@@ -153,14 +153,18 @@ abstract final class AppTheme {
       ),
 
       // ── Tarjetas ──
-      // Sin borde: el contraste con el fondo es suficiente.
+      // Filo de un pixel sobre el fondo. La tarjeta y el lienzo estan a muy
+      // pocos tonos de distancia, que es lo que da el aire sobrio de la
+      // interfaz; sin el borde los bloques se funden y no se distingue donde
+      // termina uno y empieza el siguiente.
       cardTheme: CardThemeData(
         color: card,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(_radiusCard)),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(color: border),
+          borderRadius: const BorderRadius.all(Radius.circular(_radiusCard)),
         ),
       ),
 
@@ -316,9 +320,7 @@ abstract final class AppTheme {
         side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         labelStyle: AppTypography.labelSmall.copyWith(color: onSurface),
-        secondaryLabelStyle: AppTypography.labelSmall.copyWith(
-          color: onAccent,
-        ),
+        secondaryLabelStyle: AppTypography.labelSmall.copyWith(color: onAccent),
         shape: const RoundedRectangleBorder(borderRadius: _pill),
       ),
 
@@ -363,11 +365,7 @@ abstract final class AppTheme {
 
       // ── Divisores ──
       // Casi invisibles a propósito: la separación la da el espacio.
-      dividerTheme: DividerThemeData(
-        color: border,
-        thickness: 1,
-        space: 1,
-      ),
+      dividerTheme: DividerThemeData(color: border, thickness: 1, space: 1),
 
       // ── Controles ──
       listTileTheme: ListTileThemeData(
@@ -405,9 +403,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(4)),
         ),
       ),
-      radioTheme: RadioThemeData(
-        fillColor: WidgetStatePropertyAll(accent),
-      ),
+      radioTheme: RadioThemeData(fillColor: WidgetStatePropertyAll(accent)),
       sliderTheme: SliderThemeData(
         activeTrackColor: accent,
         inactiveTrackColor: elevated,
@@ -416,10 +412,7 @@ abstract final class AppTheme {
         trackHeight: 4,
       ),
       tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(
-          color: accent,
-          borderRadius: _pill,
-        ),
+        decoration: BoxDecoration(color: accent, borderRadius: _pill),
         textStyle: AppTypography.labelSmall.copyWith(color: onAccent),
       ),
     );

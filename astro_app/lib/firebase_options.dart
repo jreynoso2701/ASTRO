@@ -72,5 +72,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'astro-b97c2.appspot.com',
     iosBundleId: 'com.constelacionr.apps.astro',
   );
-
 }

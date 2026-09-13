@@ -14,12 +14,13 @@ abstract final class AppColors {
   static const Color black = Color(0xFF000000);
   static const Color darkBackground = Color(0xFF0A0A0A);
   static const Color darkSurface = Color(0xFF111111);
-  static const Color darkCard = Color(0xFF161616);
-  static const Color darkElevated = Color(0xFF1F1F1F);
+  static const Color darkCard = Color(0xFF1A1A1A);
+  static const Color darkElevated = Color(0xFF262626);
 
-  /// Separador apenas perceptible. En este lenguaje la separación se logra
-  /// con espacio en blanco, no con líneas: úsalo solo cuando sea inevitable.
-  static const Color darkBorder = Color(0xFF242424);
+  /// Separador tenue. La separación principal sigue siendo el espacio en
+  /// blanco, pero las tarjetas llevan este borde como filo: sin él, sobre un
+  /// fondo casi del mismo tono, se pierden los límites de cada bloque.
+  static const Color darkBorder = Color(0xFF303030);
 
   // ── Neutrals (Light theme base) ────────────────────────
   // El tema claro invierte la relación: lienzo blanco puro y tarjetas en un
@@ -27,9 +28,9 @@ abstract final class AppColors {
   static const Color white = Color(0xFFFFFFFF);
   static const Color lightBackground = Color(0xFFFFFFFF);
   static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightCard = Color(0xFFF5F5F5);
-  static const Color lightElevated = Color(0xFFEBEBEB);
-  static const Color lightBorder = Color(0xFFE4E4E4);
+  static const Color lightCard = Color(0xFFF2F2F4);
+  static const Color lightElevated = Color(0xFFE6E6EA);
+  static const Color lightBorder = Color(0xFFDCDCE1);
 
   // ── Escala de grises ───────────────────────────────────
   static const Color grey900 = Color(0xFF191919);

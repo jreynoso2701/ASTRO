@@ -145,9 +145,7 @@ class AppShell extends ConsumerWidget {
                 onDestinationSelected: (i) =>
                     _onDestinationSelected(context, i, destinations),
                 // Trazo vertical sobre el destino activo, en lugar de píldora.
-                indicatorShape: const Border(
-                  left: BorderSide(width: 3),
-                ),
+                indicatorShape: const Border(left: BorderSide(width: 3)),
                 destinations: destinations.map((d) {
                   final isBell = d.path == '/notifications';
                   final isCal = d.path == '/calendar';
@@ -197,12 +195,13 @@ class AppShell extends ConsumerWidget {
 
 // ── Barra de navegación inferior ────────────────────────────────────────────
 
-typedef _BadgeIconBuilder = Widget Function(
-  IconData icon,
-  bool isBell, {
-  bool isCalendar,
-  bool isTareas,
-});
+typedef _BadgeIconBuilder =
+    Widget Function(
+      IconData icon,
+      bool isBell, {
+      bool isCalendar,
+      bool isTareas,
+    });
 
 /// Barra de navegación plana, al estilo de las apps de Nike.
 ///
@@ -290,8 +289,9 @@ class _NikeNavBar extends StatelessWidget {
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: color,
                         fontSize: 10,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
                       ),
                     ),
                     const Spacer(),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:astro/core/models/cita.dart';
 import 'package:astro/core/models/cita_status.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/citas/providers/cita_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
@@ -69,7 +70,7 @@ class CitaListScreen extends ConsumerWidget {
               return SafeArea(
                 top: false,
                 child: AdaptiveBody(
-                  maxWidth: 960,
+                  maxWidth: AdaptiveBody.wide,
                   child: Column(
                     children: [
                       // Barra de búsqueda
@@ -181,7 +182,7 @@ class CitaListScreen extends ConsumerWidget {
                                   ],
                                 ),
                               )
-                            : ListView.builder(
+                            : AdaptiveCardList(
                                 padding: const EdgeInsets.fromLTRB(
                                   16,
                                   0,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/widgets/adaptive_body.dart';
+import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/minutas/providers/minuta_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 
@@ -64,7 +65,7 @@ class MinutaListScreen extends ConsumerWidget {
               return SafeArea(
                 top: false,
                 child: AdaptiveBody(
-                  maxWidth: 960,
+                  maxWidth: AdaptiveBody.wide,
                   child: Column(
                     children: [
                       // Barra de búsqueda
@@ -135,7 +136,7 @@ class MinutaListScreen extends ConsumerWidget {
                                   ],
                                 ),
                               )
-                            : ListView.builder(
+                            : AdaptiveCardList(
                                 padding: const EdgeInsets.fromLTRB(
                                   16,
                                   0,
