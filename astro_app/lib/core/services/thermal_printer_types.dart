@@ -8,13 +8,41 @@ class ThermalPrinterException implements Exception {
   String toString() => message;
 }
 
-/// Impresora Bluetooth emparejada.
+/// Vía por la que se habla con la impresora.
+enum ThermalConnection {
+  ble('Bluetooth'),
+  usb('USB'),
+  network('Red');
+
+  const ThermalConnection(this.label);
+
+  final String label;
+}
+
+/// Una impresora encontrada durante el escaneo.
 ///
-/// Es un tipo propio en vez del `BluetoothInfo` del paquete para que la interfaz
-/// no dependa de una librería que solo existe en móvil.
-class BluetoothPrinter {
-  const BluetoothPrinter({required this.name, required this.macAddress});
+/// Es un tipo propio y no el `Printer` del paquete para que la interfaz y los
+/// recibos no dependan de una librería que solo existe fuera de web.
+class ThermalPrinter {
+  const ThermalPrinter({
+    required this.id,
+    required this.name,
+    required this.connection,
+    this.isConnected = false,
+  });
+
+  /// Dirección del dispositivo; identifica a la impresora entre escaneos y es
+  /// lo que se guarda como "última usada".
+  final String id;
 
   final String name;
-  final String macAddress;
+  final ThermalConnection connection;
+  final bool isConnected;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ThermalPrinter && other.id == id && other.name == name;
+
+  @override
+  int get hashCode => Object.hash(id, name);
 }

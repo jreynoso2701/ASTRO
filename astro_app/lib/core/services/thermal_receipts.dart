@@ -388,3 +388,18 @@ Future<List<int>> buildMinutaReceipt(Minuta m) async {
   w.footer();
   return w.bytes;
 }
+
+/// Recibo corto para comprobar que la impresora responde y que el ancho de
+/// papel configurado coincide con el rollo puesto.
+Future<List<int>> buildTestReceipt() async {
+  final w = await _writer('PRUEBA', 'ASTRO');
+
+  w
+    ..centered('Impresora conectada')
+    ..blank()
+    ..paragraph('Regla de 32 columnas:')
+    ..paragraph('12345678901234567890123456789012')
+    ..footer();
+
+  return w.bytes;
+}

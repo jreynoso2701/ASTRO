@@ -26,18 +26,22 @@
     <!-- Micrófono (speech-to-text para el agente IA) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- Impresora termica Bluetooth (ESC/POS sobre SPP). BLUETOOTH y
-         BLUETOOTH_ADMIN cubren Android 11 y anteriores; BLUETOOTH_CONNECT es
-         el permiso en tiempo de ejecucion desde Android 12. neverForLocation
-         evita pedir ubicacion: solo se usan equipos ya emparejados. -->
-    <uses-permission android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
-        android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
-        android:usesPermissionFlags="neverForLocation" />
-    <uses-feature android:name="android.hardware.bluetooth"
-        android:required="false" />
+    <!-- Impresora termica (ESC/POS por BLE). BLUETOOTH y BLUETOOTH_ADMIN
+         cubren Android 11 y anteriores; BLUETOOTH_SCAN y BLUETOOTH_CONNECT son
+         los permisos en tiempo de ejecucion desde Android 12. El escaneo BLE
+         exigia ubicacion hasta Android 11, de ahi el maxSdkVersion; desde
+         Android 12 neverForLocation lo evita. -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-feature android:name="android.hardware.bluetooth_le"
+        android:required="false" />
 
     <application
         android:label="ASTRO"

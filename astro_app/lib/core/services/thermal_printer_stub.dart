@@ -1,21 +1,44 @@
 import 'thermal_printer_types.dart';
 
-/// Implementación vacía para las plataformas sin Bluetooth Classic (web).
+/// Implementación vacía para web, donde el navegador no puede abrir un socket
+/// con la impresora.
 ///
 /// Con [isSupported] en `false` la interfaz nunca ofrece imprimir, así que
 /// estos métodos solo existen para que el tipo compile.
 class ThermalPrinterService {
-  const ThermalPrinterService();
+  factory ThermalPrinterService() => _instance;
+
+  ThermalPrinterService._();
+
+  static final ThermalPrinterService _instance = ThermalPrinterService._();
 
   static bool get isSupported => false;
 
-  Future<List<BluetoothPrinter>> pairedPrinters() async =>
-      throw const ThermalPrinterException(
-        'La impresión térmica no está disponible en esta plataforma.',
-      );
+  ThermalPrinter? get connectedPrinter => null;
 
-  Future<void> printBytes(String macAddress, List<int> bytes) async =>
-      throw const ThermalPrinterException(
-        'La impresión térmica no está disponible en esta plataforma.',
-      );
+  String? get lastPrinterName => null;
+
+  bool isLastUsed(ThermalPrinter printer) => false;
+
+  Future<void> loadLastPrinter() async {}
+
+  Future<List<ThermalPrinter>> scan({
+    Duration timeout = const Duration(seconds: 6),
+    void Function(List<ThermalPrinter>)? onFound,
+  }) async => throw _unsupported;
+
+  Future<void> stopScan() async {}
+
+  Future<void> turnOnBluetooth() async => throw _unsupported;
+
+  Future<void> connect(ThermalPrinter printer) async => throw _unsupported;
+
+  Future<void> disconnect() async {}
+
+  Future<void> printBytes(ThermalPrinter printer, List<int> bytes) async =>
+      throw _unsupported;
+
+  static const _unsupported = ThermalPrinterException(
+    'La impresión térmica no está disponible en esta plataforma.',
+  );
 }

@@ -57,6 +57,11 @@
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
 		<!-- Permisos de privacidad (App Store requiere justificación) -->
+		<!-- Bluetooth (impresoras térmicas ESC/POS por BLE) -->
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>ASTRO usa Bluetooth para buscar y conectar impresoras térmicas e imprimir tickets, requerimientos, tareas y minutas.</string>
+		<key>NSBluetoothPeripheralUsageDescription</key>
+		<string>ASTRO usa Bluetooth para enviar documentos a tu impresora térmica.</string>
 		<!-- Cámara -->
 		<key>NSCameraUsageDescription</key>
 		<string>ASTRO necesita acceso a tu cámara para capturar fotos y videos como evidencia en tickets y minutas.</string>

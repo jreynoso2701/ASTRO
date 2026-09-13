@@ -56,20 +56,29 @@ flutter build appbundle --release --dart-define-from-file=secrets.json
 ## Impresión térmica
 
 Los detalles de Ticket, Requerimiento, Tarea y Minuta pueden imprimirse en una
-impresora térmica Bluetooth (ESC/POS sobre Bluetooth Classic SPP), con el
-formato de 32 columnas del rollo de **58 mm**.
+impresora térmica ESC/POS, con el formato de 32 columnas del rollo de **58 mm**.
 
-**Solo Android.** El perfil SPP no está disponible para apps de iOS sin
-certificación MFi y el navegador no puede abrir un socket Bluetooth, así que la
-implementación real se elige con un import condicional
-(`thermal_printer_service.dart`) y en web queda un stub. En iOS y en web el
-botón de imprimir no se muestra: `ThermalPrinterService.isSupported` es `false`.
+El descubrimiento es por **BLE y USB** (`flutter_thermal_printer`), no por
+Bluetooth Classic SPP: no hace falta emparejar la impresora desde los ajustes
+del sistema, la app la encuentra por sí misma con el botón «Buscar» de la hoja
+de impresión.
 
-Antes de imprimir, la impresora debe estar **emparejada desde los ajustes de
-Bluetooth del teléfono**; la app solo lista los equipos ya emparejados. El
-manifiesto declara `BLUETOOTH` / `BLUETOOTH_ADMIN` (hasta Android 11) y
-`BLUETOOTH_CONNECT` con `neverForLocation` (Android 12+), así que no se pide
-permiso de ubicación.
+Plataformas: **Android, iOS, macOS y Windows**. En web el navegador no puede
+hablar con la impresora, así que la implementación real se elige con un import
+condicional (`thermal_printer_service.dart`) y queda un stub; el botón de
+imprimir no se muestra porque `ThermalPrinterService.isSupported` es `false`.
+
+La última impresora usada se guarda en `SharedPreferences` y aparece primera en
+la lista, marcada como «Última». El botón «Prueba» imprime una regla de 32
+columnas para comprobar que el rollo puesto coincide con el ancho configurado.
+
+Permisos declarados:
+
+- Android: `BLUETOOTH` / `BLUETOOTH_ADMIN` y `ACCESS_FINE_LOCATION` hasta
+  Android 11 (el escaneo BLE exigía ubicación), `BLUETOOTH_SCAN` con
+  `neverForLocation` y `BLUETOOTH_CONNECT` desde Android 12.
+- iOS: `NSBluetoothAlwaysUsageDescription` y
+  `NSBluetoothPeripheralUsageDescription`.
 
 El recibo termina avanzando papel en vez de cortar: el modelo en uso no lleva
 cuchilla. Los acentos se transliteran a ASCII porque estas impresoras suelen
