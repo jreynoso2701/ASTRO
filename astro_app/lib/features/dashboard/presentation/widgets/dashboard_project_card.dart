@@ -38,6 +38,12 @@ class DashboardProjectCard extends StatelessWidget {
     final leads = ref.watch(projectLeadNamesProvider(proyecto.id));
     final penalty = baseProgress - progress;
     final hasPenalty = penalty > 0.5;
+    // Carga de tickets sin diluir: es lo que de verdad queda por resolver,
+    // frente a la resta que el promedio de modulos deja casi invisible.
+    final pendingWeight = ref.watch(
+      projectPendingWeightProvider(proyecto.nombreProyecto),
+    );
+    final hasPending = pendingWeight >= 1;
     // Sin módulos no hay avance que medir: mostrar 0% haría parecer parado un
     // proyecto que solo está sin desglosar.
     final hasModules = ref.watch(
@@ -152,8 +158,9 @@ class DashboardProjectCard extends StatelessWidget {
                   ],
                 ),
 
-              // Penalty indicator (only when tickets are dragging progress down)
-              if (hasModules && hasPenalty) ...[
+              // Lo pendiente por tickets. Se muestra con el peso en crudo
+              // porque la resta al porcentaje queda diluida entre modulos.
+              if (hasModules && hasPending) ...[
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -163,11 +170,17 @@ class DashboardProjectCard extends StatelessWidget {
                       color: AppColors.warning,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      'Base: ${baseProgress.round()}%  ▼${penalty.toStringAsFixed(1)}% por tickets',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: AppColors.warning,
-                        fontSize: 10,
+                    Expanded(
+                      child: Text(
+                        hasPenalty
+                            ? 'Pendiente ${pendingWeight.toStringAsFixed(0)} pts · ▼${penalty.toStringAsFixed(1)}%'
+                            : 'Pendiente ${pendingWeight.toStringAsFixed(0)} pts por tickets',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: AppColors.warning,
+                          fontSize: 10,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],

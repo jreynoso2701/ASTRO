@@ -236,6 +236,15 @@ class _ProjectCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final progress = ref.watch(projectProgressProvider(project.nombreProyecto));
+    // Un proyecto sin modulos no esta al 0%: no tiene avance que medir.
+    final hasModules = ref.watch(
+      projectHasModulesProvider(project.nombreProyecto),
+    );
+    // Peso en crudo de los tickets abiertos; la resta al porcentaje queda
+    // diluida entre los modulos y no se aprecia.
+    final pendingWeight = ref.watch(
+      projectPendingWeightProvider(project.nombreProyecto),
+    );
     final leads = ref.watch(projectLeadNamesProvider(project.id));
     final activeColor = project.estatusProyecto
         ? AppColors.success
@@ -359,7 +368,40 @@ class _ProjectCard extends ConsumerWidget {
               ],
 
               const SizedBox(height: 10),
-              ProgressSummary(percent: progress),
+              if (!hasModules)
+                Text(
+                  'Sin módulos',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                )
+              else ...[
+                ProgressSummary(percent: progress),
+                if (pendingWeight >= 1) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 12,
+                        color: AppColors.warning,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Pendiente ${pendingWeight.toStringAsFixed(0)} pts por tickets',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.warning,
+                            fontSize: 10,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ],
           ),
         ),

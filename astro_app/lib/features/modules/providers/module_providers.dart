@@ -147,6 +147,30 @@ final projectProgressProvider = Provider.family<double, String>((
   return total / modules.length;
 });
 
+/// Peso total de los tickets abiertos del proyecto, **sin diluir**.
+///
+/// [projectProgressProvider] resta la penalización dentro de cada módulo y
+/// luego promedia, así que en un proyecto con muchos módulos una carga grande
+/// de tickets apenas mueve el porcentaje. Este provider devuelve la suma en
+/// crudo para poder enseñar al lado del avance lo que queda pendiente.
+final projectPendingWeightProvider = Provider.family<double, String>((
+  ref,
+  projectName,
+) {
+  final modules =
+      ref.watch(activeModulosByProjectProvider(projectName)).value ?? [];
+  double total = 0;
+  for (final m in modules) {
+    total += ref.watch(
+      modulePenaltyProvider((
+        projectName: projectName,
+        moduleName: m.nombreModulo,
+      )),
+    );
+  }
+  return total;
+});
+
 /// Progreso base del proyecto (sin penalización de tickets). Útil para
 /// mostrar la diferencia entre progreso base y ajustado en dashboards.
 final projectBaseProgressProvider = Provider.family<double, String>((
