@@ -24,7 +24,9 @@ Future<AsignadosSelection?> showAsignadosDialog({
 }) {
   // Selección ordenada: se respeta el orden actual y luego el de marcado.
   final selected = <String>[
-    ...initialUids.where((uid) => members.any((m) => m.assignment.userId == uid)),
+    ...initialUids.where(
+      (uid) => members.any((m) => m.assignment.userId == uid),
+    ),
   ];
 
   String nameOf(String uid) {

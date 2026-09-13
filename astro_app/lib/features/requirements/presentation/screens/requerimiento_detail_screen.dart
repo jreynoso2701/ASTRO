@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/services/thermal_printer_service.dart';
+import 'package:astro/core/services/thermal_receipts.dart';
+import 'package:astro/core/widgets/thermal_print_sheet.dart';
 import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/widgets/asignados_field.dart';
@@ -63,6 +66,22 @@ class _RequerimientoDetailScreenState
           onPressed: () => context.pop(),
         ),
         actions: [
+          // Impresión térmica (solo Android: SPP no existe en iOS ni en web)
+          if (ThermalPrinterService.isSupported)
+            reqAsync.whenOrNull(
+                  data: (r) => r != null
+                      ? IconButton(
+                          icon: const Icon(Icons.receipt_long_outlined),
+                          tooltip: 'Imprimir en térmica',
+                          onPressed: () => showThermalPrintSheet(
+                            context,
+                            title: '${r.folio} — ${r.titulo}',
+                            buildBytes: () => buildRequerimientoReceipt(r),
+                          ),
+                        )
+                      : null,
+                ) ??
+                const SizedBox.shrink(),
           if (isManager)
             reqAsync.whenOrNull(
                   data: (r) => r != null
@@ -663,10 +682,7 @@ class _InfoSection extends StatelessWidget {
 
         // Descripción
         if (req.descripcion.isNotEmpty)
-          CopyableSectionLabel(
-            label: 'Descripción',
-            text: req.descripcion,
-          ),
+          CopyableSectionLabel(label: 'Descripción', text: req.descripcion),
         RichTextViewer(markdown: req.descripcion),
         const SizedBox(height: 16),
 
@@ -1068,9 +1084,7 @@ class _InfoSection extends StatelessWidget {
       if (s == current) continue;
       add(
         s,
-        color: s == RequerimientoStatus.descartado
-            ? AppColors.error
-            : null,
+        color: s == RequerimientoStatus.descartado ? AppColors.error : null,
       );
     }
 

@@ -96,25 +96,27 @@ class _TicketChatScreenState extends ConsumerState<TicketChatScreen> {
           adjuntosUrls.add(url);
         }
       }
-      await ref.read(ticketRepositoryProvider).addComment(
-        widget.ticketId,
-        TicketComment(
-          id: '',
-          text: text,
-          authorId: profile.uid,
-          authorName: profile.displayName,
-          adjuntos: adjuntosUrls,
-        ),
-      );
+      await ref
+          .read(ticketRepositoryProvider)
+          .addComment(
+            widget.ticketId,
+            TicketComment(
+              id: '',
+              text: text,
+              authorId: profile.uid,
+              authorName: profile.displayName,
+              adjuntos: adjuntosUrls,
+            ),
+          );
       _textController.clear();
       setState(() => _pendingFiles = []);
       _markAsRead(); // best-effort, error handled internally
       _scrollToBottom(animated: true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al enviar: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al enviar: $e')));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -198,7 +200,9 @@ class _TicketChatScreenState extends ConsumerState<TicketChatScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     final ticket = ticketAsync.value;
-    final title = ticket != null ? '${ticket.folio} · ${ticket.titulo}' : 'Chat';
+    final title = ticket != null
+        ? '${ticket.folio} · ${ticket.titulo}'
+        : 'Chat';
 
     // Auto-scroll when new messages arrive
     commentsAsync.whenData((_) => _scrollToBottom());
@@ -236,14 +240,17 @@ class _TicketChatScreenState extends ConsumerState<TicketChatScreen> {
                         Icon(
                           Icons.chat_bubble_outline,
                           size: 48,
-                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.4,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           'Sin mensajes aún\nSé el primero en escribir',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -256,7 +263,10 @@ class _TicketChatScreenState extends ConsumerState<TicketChatScreen> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   itemCount: items.length,
                   itemBuilder: (context, i) {
                     final item = items[i];
@@ -270,10 +280,13 @@ class _TicketChatScreenState extends ConsumerState<TicketChatScreen> {
                     final isMe = comment.authorId == uid;
                     // Determine if we should show avatar (first of a sequence)
                     final prevIdx = items.indexOf(comment) - 1;
-                    final showAvatar = !isMe && (prevIdx < 0 ||
-                        items[prevIdx] is _DateSeparatorItem ||
-                        (items[prevIdx] is TicketComment &&
-                            (items[prevIdx] as TicketComment).authorId != comment.authorId));
+                    final showAvatar =
+                        !isMe &&
+                        (prevIdx < 0 ||
+                            items[prevIdx] is _DateSeparatorItem ||
+                            (items[prevIdx] is TicketComment &&
+                                (items[prevIdx] as TicketComment).authorId !=
+                                    comment.authorId));
                     return _ChatBubble(
                       comment: comment,
                       isMe: isMe,
@@ -357,7 +370,9 @@ class _ChatDateSeparator extends StatelessWidget {
             child: Text(
               label,
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.7,
+                ),
                 letterSpacing: 0.5,
               ),
             ),
@@ -447,7 +462,12 @@ class _ChatBubble extends StatelessWidget {
         : '';
 
     final initials = comment.authorName.isNotEmpty
-        ? comment.authorName.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join()
+        ? comment.authorName
+              .trim()
+              .split(' ')
+              .take(2)
+              .map((w) => w[0].toUpperCase())
+              .join()
         : '?';
 
     return Padding(
@@ -459,7 +479,9 @@ class _ChatBubble extends StatelessWidget {
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isMe) ...[
             if (showAvatar)
@@ -481,7 +503,9 @@ class _ChatBubble extends StatelessWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 if (!isMe && showAvatar)
                   Padding(
@@ -495,7 +519,10 @@ class _ChatBubble extends StatelessWidget {
                     ),
                   ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: bubbleColor,
                     borderRadius: BorderRadius.only(
@@ -511,7 +538,9 @@ class _ChatBubble extends StatelessWidget {
                       if (comment.text.isNotEmpty)
                         Text(
                           comment.text,
-                          style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: textColor,
+                          ),
                         ),
                       if (comment.adjuntos.isNotEmpty) ...[
                         if (comment.text.isNotEmpty) const SizedBox(height: 6),
@@ -673,7 +702,8 @@ class _ChatInputBar extends StatelessWidget {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.6),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
@@ -726,7 +756,14 @@ class _PendingFilesStrip extends StatelessWidget {
         itemBuilder: (context, i) {
           final file = files[i];
           final ext = file.name.split('.').last.toLowerCase();
-          final isImage = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'}.contains(ext);
+          final isImage = {
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'webp',
+            'bmp',
+          }.contains(ext);
           return Stack(
             children: [
               Container(
@@ -759,7 +796,11 @@ class _PendingFilesStrip extends StatelessWidget {
                       color: Colors.black54,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close, size: 12, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 12,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

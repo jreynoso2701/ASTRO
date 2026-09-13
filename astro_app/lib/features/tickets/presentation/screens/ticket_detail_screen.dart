@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:astro/core/services/thermal_printer_service.dart';
+import 'package:astro/core/services/thermal_receipts.dart';
+import 'package:astro/core/widgets/thermal_print_sheet.dart';
 import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/widgets/asignados_field.dart';
@@ -39,7 +42,6 @@ class TicketDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
-
   @override
   void dispose() {
     super.dispose();
@@ -71,25 +73,43 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
               '/projects/${widget.projectId}/tickets/${widget.ticketId}/chat',
             ),
           ),
+          // Impresión térmica (solo Android: SPP no existe en iOS ni en web)
+          if (ThermalPrinterService.isSupported)
+            ticketAsync.whenOrNull(
+                  data: (t) => t != null
+                      ? IconButton(
+                          icon: const Icon(Icons.receipt_long_outlined),
+                          tooltip: 'Imprimir en térmica',
+                          onPressed: () => showThermalPrintSheet(
+                            context,
+                            title: '${t.folio} — ${t.titulo}',
+                            buildBytes: () => buildTicketReceipt(t),
+                          ),
+                        )
+                      : null,
+                ) ??
+                const SizedBox.shrink(),
           // Botón compartir (siempre visible cuando el ticket carga)
           ticketAsync.whenOrNull(
-            data: (t) => t != null
-                ? IconButton(
-                    icon: const Icon(Icons.ios_share),
-                    tooltip: 'Compartir ticket',
-                    onPressed: () => SharePlus.instance.share(
-                      ShareParams(
-                        text: '${t.folio}: ${t.titulo}\n'
-                            'Proyecto: ${t.projectName}\n'
-                            'Estado: ${t.status.label}\n\n'
-                            'Abrir en ASTRO:\n'
-                            'astro://projects/${widget.projectId}/tickets/${widget.ticketId}',
-                        subject: t.folio,
-                      ),
-                    ),
-                  )
-                : null,
-          ) ?? const SizedBox.shrink(),
+                data: (t) => t != null
+                    ? IconButton(
+                        icon: const Icon(Icons.ios_share),
+                        tooltip: 'Compartir ticket',
+                        onPressed: () => SharePlus.instance.share(
+                          ShareParams(
+                            text:
+                                '${t.folio}: ${t.titulo}\n'
+                                'Proyecto: ${t.projectName}\n'
+                                'Estado: ${t.status.label}\n\n'
+                                'Abrir en ASTRO:\n'
+                                'astro://projects/${widget.projectId}/tickets/${widget.ticketId}',
+                            subject: t.folio,
+                          ),
+                        ),
+                      )
+                    : null,
+              ) ??
+              const SizedBox.shrink(),
           if (canManage || isRoot)
             ticketAsync.whenOrNull(
                   data: (t) => t != null
@@ -140,7 +160,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
             onTap: () => context.push(
               '/projects/${widget.projectId}/tickets/${widget.ticketId}/chat',
             ),
-            commentCount: comments.where((c) => c.type == CommentType.comment).length,
+            commentCount: comments
+                .where((c) => c.type == CommentType.comment)
+                .length,
           );
 
           if (isWide) {
@@ -206,7 +228,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
                               )
                               ?.toList() ??
                           [],
-                      if (comments.where((c) => c.type == CommentType.comment).isEmpty)
+                      if (comments
+                          .where((c) => c.type == CommentType.comment)
+                          .isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
@@ -400,8 +424,7 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       members: soporteMembers,
       initialUids: ticket.assignedToUids,
       title: 'Asignar a Soporte',
-      emptyMessage:
-          'No hay usuarios Soporte o Líder Proyecto en este proyecto',
+      emptyMessage: 'No hay usuarios Soporte o Líder Proyecto en este proyecto',
       avatarIcon: Icons.support_agent,
     );
 
@@ -2101,8 +2124,9 @@ class _CommentsReadOnly extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userComments =
-        comments.where((c) => c.type == CommentType.comment).toList();
+    final userComments = comments
+        .where((c) => c.type == CommentType.comment)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

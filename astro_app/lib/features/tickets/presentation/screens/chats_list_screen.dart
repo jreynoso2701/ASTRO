@@ -45,8 +45,13 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
               isDense: true,
             ),
             onChanged: (v) => setState(() => _search = v.trim().toLowerCase()),
@@ -69,7 +74,10 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
                     return t.titulo.toLowerCase().contains(_search) ||
                         t.folio.toLowerCase().contains(_search) ||
                         t.projectName.toLowerCase().contains(_search) ||
-                        (t.lastCommentPreview?.toLowerCase().contains(_search) ?? false);
+                        (t.lastCommentPreview?.toLowerCase().contains(
+                              _search,
+                            ) ??
+                            false);
                   }).toList();
 
             if (filtered.isEmpty) {
@@ -82,7 +90,9 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
                       Icon(
                         Icons.chat_bubble_outline,
                         size: 48,
-                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.4,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -91,7 +101,9 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
                             : 'Sin resultados para "$_search"',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
                     ],
@@ -105,7 +117,11 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
                 children: [
                   const Divider(height: 1),
                   ...filtered.map(
-                    (t) => _ChatListTile(ticket: t, uid: uid, showProjectBadge: true),
+                    (t) => _ChatListTile(
+                      ticket: t,
+                      uid: uid,
+                      showProjectBadge: true,
+                    ),
                   ),
                 ],
               );
@@ -117,9 +133,16 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final group in grouped) ...[
-                  _ProjectChatHeader(projectName: group.projectName, color: group.color),
+                  _ProjectChatHeader(
+                    projectName: group.projectName,
+                    color: group.color,
+                  ),
                   ...group.tickets.map(
-                    (t) => _ChatListTile(ticket: t, uid: uid, showProjectBadge: false),
+                    (t) => _ChatListTile(
+                      ticket: t,
+                      uid: uid,
+                      showProjectBadge: false,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -143,7 +166,11 @@ class _ChatsListScreenState extends ConsumerState<ChatsListScreen> {
     final groups = map.entries.map((e) {
       final color = _projectColor(e.key);
       // Find project id for navigation
-      final proj = projects.where((p) => p.nombreProyecto == e.key || p.id == e.value.first.projectId).firstOrNull;
+      final proj = projects
+          .where(
+            (p) => p.nombreProyecto == e.key || p.id == e.value.first.projectId,
+          )
+          .firstOrNull;
       final projectId = e.value.first.projectId ?? proj?.id ?? '';
       return _ProjectGroup(
         projectName: e.key,
@@ -248,7 +275,8 @@ class _ChatListTile extends ConsumerWidget {
         : const AsyncData<DateTime?>(null);
     final lastRead = chatReadAsync.value;
     final lastCommentAt = ticket.lastCommentAt;
-    final hasUnread = lastCommentAt != null &&
+    final hasUnread =
+        lastCommentAt != null &&
         ticket.lastCommentAuthorId != uid &&
         (lastRead == null || lastCommentAt.isAfter(lastRead));
 
@@ -258,7 +286,9 @@ class _ChatListTile extends ConsumerWidget {
     return InkWell(
       onTap: () {
         if (ticket.projectId != null) {
-          context.push('/projects/${ticket.projectId}/tickets/${ticket.id}/chat');
+          context.push(
+            '/projects/${ticket.projectId}/tickets/${ticket.id}/chat',
+          );
         }
       },
       child: Padding(
@@ -292,7 +322,9 @@ class _ChatListTile extends ConsumerWidget {
                         child: Text(
                           '#${ticket.folio} · ${ticket.titulo}',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: hasUnread
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -304,7 +336,9 @@ class _ChatListTile extends ConsumerWidget {
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: hasUnread
                               ? primary
-                              : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                              : theme.colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
                         ),
                       ),
                     ],
@@ -326,7 +360,8 @@ class _ChatListTile extends ConsumerWidget {
                           preview.isNotEmpty ? '"$preview"' : 'Sin mensajes',
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontStyle: FontStyle.italic,
-                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.8),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

@@ -67,9 +67,7 @@ class TareaRepository {
 
   /// Genera folio: TAR-PROYECTO_ABBR-NUM.
   Future<String> _nextFolio(String projectId, String projectName) async {
-    final snap = await _ref
-        .where('projectId', isEqualTo: projectId)
-        .get();
+    final snap = await _ref.where('projectId', isEqualTo: projectId).get();
     int maxNum = 0;
     for (final doc in snap.docs) {
       final folio = doc.data()['folio'] as String? ?? '';

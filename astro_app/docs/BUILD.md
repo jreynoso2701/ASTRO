@@ -52,3 +52,25 @@ flutter build appbundle --release --dart-define-from-file=secrets.json
 ```
 
 `secrets.json` debe estar en `.gitignore`.
+
+## Impresión térmica
+
+Los detalles de Ticket, Requerimiento, Tarea y Minuta pueden imprimirse en una
+impresora térmica Bluetooth (ESC/POS sobre Bluetooth Classic SPP), con el
+formato de 32 columnas del rollo de **58 mm**.
+
+**Solo Android.** El perfil SPP no está disponible para apps de iOS sin
+certificación MFi y el navegador no puede abrir un socket Bluetooth, así que la
+implementación real se elige con un import condicional
+(`thermal_printer_service.dart`) y en web queda un stub. En iOS y en web el
+botón de imprimir no se muestra: `ThermalPrinterService.isSupported` es `false`.
+
+Antes de imprimir, la impresora debe estar **emparejada desde los ajustes de
+Bluetooth del teléfono**; la app solo lista los equipos ya emparejados. El
+manifiesto declara `BLUETOOTH` / `BLUETOOTH_ADMIN` (hasta Android 11) y
+`BLUETOOTH_CONNECT` con `neverForLocation` (Android 12+), así que no se pide
+permiso de ubicación.
+
+El recibo termina avanzando papel en vez de cortar: el modelo en uso no lleva
+cuchilla. Los acentos se transliteran a ASCII porque estas impresoras suelen
+ignorar la tabla de códigos y los sustituyen por símbolos sueltos.

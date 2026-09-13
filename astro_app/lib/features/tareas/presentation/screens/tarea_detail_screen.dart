@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:astro/core/services/thermal_printer_service.dart';
+import 'package:astro/core/services/thermal_receipts.dart';
+import 'package:astro/core/widgets/thermal_print_sheet.dart';
 import 'package:astro/core/constants/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -212,6 +215,22 @@ class _TareaDetailScreenState extends ConsumerState<TareaDetailScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          // Impresión térmica (solo Android: SPP no existe en iOS ni en web)
+          if (ThermalPrinterService.isSupported)
+            tareaAsync.whenOrNull(
+                  data: (t) => t != null
+                      ? IconButton(
+                          icon: const Icon(Icons.receipt_long_outlined),
+                          tooltip: 'Imprimir en térmica',
+                          onPressed: () => showThermalPrintSheet(
+                            context,
+                            title: '${t.folio} — ${t.titulo}',
+                            buildBytes: () => buildTareaReceipt(t),
+                          ),
+                        )
+                      : null,
+                ) ??
+                const SizedBox.shrink(),
           tareaAsync.whenOrNull(
                 data: (t) {
                   if (t == null) return null;
@@ -449,68 +468,68 @@ class _HeroSection extends StatelessWidget {
     // Anillo de progreso animado o icono de estado
     final progressWidget = RepaintBoundary(
       child: SizedBox(
-      width: ringSize,
-      height: ringSize,
-      child: hasSubtareas
-          ? TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: progress),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) {
-                return CustomPaint(
-                  painter: _ProgressRingPainter(
-                    progress: value,
-                    trackColor: theme.colorScheme.onSurface.withValues(
-                      alpha: 0.08,
+        width: ringSize,
+        height: ringSize,
+        child: hasSubtareas
+            ? TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: progress),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) {
+                  return CustomPaint(
+                    painter: _ProgressRingPainter(
+                      progress: value,
+                      trackColor: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.08,
+                      ),
+                      progressColor: isArchived
+                          ? theme.colorScheme.onSurfaceVariant
+                          : statusColor,
+                      strokeWidth: strokeWidth,
                     ),
-                    progressColor: isArchived
-                        ? theme.colorScheme.onSurfaceVariant
-                        : statusColor,
-                    strokeWidth: strokeWidth,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${(value * 100).toInt()}%',
-                      style: TextStyle(
-                        fontSize: isWide ? 26 : 20,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'monospace',
-                        color: isArchived
-                            ? theme.colorScheme.onSurfaceVariant
-                            : statusColor,
+                    child: Center(
+                      child: Text(
+                        '${(value * 100).toInt()}%',
+                        style: TextStyle(
+                          fontSize: isWide ? 26 : 20,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'monospace',
+                          color: isArchived
+                              ? theme.colorScheme.onSurfaceVariant
+                              : statusColor,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            )
-          : Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color:
-                    (isArchived
-                            ? theme.colorScheme.onSurfaceVariant
-                            : statusColor)
-                        .withValues(alpha: 0.12),
-                border: Border.all(
+                  );
+                },
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
                   color:
                       (isArchived
                               ? theme.colorScheme.onSurfaceVariant
                               : statusColor)
-                          .withValues(alpha: 0.3),
-                  width: 3,
+                          .withValues(alpha: 0.12),
+                  border: Border.all(
+                    color:
+                        (isArchived
+                                ? theme.colorScheme.onSurfaceVariant
+                                : statusColor)
+                            .withValues(alpha: 0.3),
+                    width: 3,
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    _statusIcon(tarea.status),
+                    size: ringSize * 0.4,
+                    color: isArchived
+                        ? theme.colorScheme.onSurfaceVariant
+                        : statusColor,
+                  ),
                 ),
               ),
-              child: Center(
-                child: Icon(
-                  _statusIcon(tarea.status),
-                  size: ringSize * 0.4,
-                  color: isArchived
-                      ? theme.colorScheme.onSurfaceVariant
-                      : statusColor,
-                ),
-              ),
-            ),
       ),
     );
 

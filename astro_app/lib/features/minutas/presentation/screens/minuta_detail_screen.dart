@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
+import 'package:astro/core/services/thermal_printer_service.dart';
+import 'package:astro/core/services/thermal_receipts.dart';
+import 'package:astro/core/widgets/thermal_print_sheet.dart';
 import 'package:astro/core/models/minuta.dart';
 import 'package:astro/core/models/tarea.dart';
 import 'package:astro/core/models/tarea_status.dart';
@@ -116,6 +119,16 @@ class _MinutaDetailScreenState extends ConsumerState<MinutaDetailScreen> {
                             tooltip: 'Imprimir / PDF',
                             onPressed: () => _printPdf(m),
                           ),
+                          if (ThermalPrinterService.isSupported)
+                            IconButton(
+                              icon: const Icon(Icons.receipt_long_outlined),
+                              tooltip: 'Imprimir en termica',
+                              onPressed: () => showThermalPrintSheet(
+                                context,
+                                title: '${m.folio} — ${m.projectName}',
+                                buildBytes: () => buildMinutaReceipt(m),
+                              ),
+                            ),
                           IconButton(
                             icon: const Icon(Icons.share_outlined),
                             tooltip: 'Compartir PDF',

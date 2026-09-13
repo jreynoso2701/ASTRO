@@ -302,9 +302,15 @@ class TicketRepository {
     // Strip basic markdown/quill JSON to plain text preview
     String plain = text.trim();
     if (plain.startsWith('{') || plain.startsWith('[')) {
-      plain = plain.replaceAll(RegExp(r'\{[^}]*\}'), '').replaceAll('[', '').replaceAll(']', '');
+      plain = plain
+          .replaceAll(RegExp(r'\{[^}]*\}'), '')
+          .replaceAll('[', '')
+          .replaceAll(']', '');
     }
-    plain = plain.replaceAll(RegExp(r'[*_~`#>]'), '').replaceAll('\n', ' ').trim();
+    plain = plain
+        .replaceAll(RegExp(r'[*_~`#>]'), '')
+        .replaceAll('\n', ' ')
+        .trim();
     if (plain.length > 60) return '${plain.substring(0, 60)}…';
     return plain;
   }
@@ -318,12 +324,16 @@ class TicketRepository {
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map((snap) {
-          final tickets = snap.docs
-              .map(Ticket.fromFirestore)
-              .where((t) => t.lastCommentAt != null)
-              .toList()
-            ..sort((a, b) =>
-                (b.lastCommentAt ?? DateTime(2000)).compareTo(a.lastCommentAt ?? DateTime(2000)));
+          final tickets =
+              snap.docs
+                  .map(Ticket.fromFirestore)
+                  .where((t) => t.lastCommentAt != null)
+                  .toList()
+                ..sort(
+                  (a, b) => (b.lastCommentAt ?? DateTime(2000)).compareTo(
+                    a.lastCommentAt ?? DateTime(2000),
+                  ),
+                );
           return tickets;
         });
   }

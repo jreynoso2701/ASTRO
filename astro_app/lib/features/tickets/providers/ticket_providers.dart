@@ -551,13 +551,20 @@ final ticketStatsByCoverageProvider =
 final ticketsWithCommentsProvider = StreamProvider<List<Ticket>>((ref) {
   final projects = ref.watch(myProjectsProvider);
   final projectNames = projects.map((p) => p.nombreProyecto).toList();
-  return ref.watch(ticketRepositoryProvider).watchTicketsWithComments(projectNames);
+  return ref
+      .watch(ticketRepositoryProvider)
+      .watchTicketsWithComments(projectNames);
 });
 
 /// Stream de la última fecha de lectura del chat de un ticket por el usuario actual.
 final chatReadProvider =
-    StreamProvider.family<DateTime?, ({String uid, String ticketId})>((ref, params) {
-      return ref.watch(ticketRepositoryProvider).watchChatRead(params.uid, params.ticketId);
+    StreamProvider.family<DateTime?, ({String uid, String ticketId})>((
+      ref,
+      params,
+    ) {
+      return ref
+          .watch(ticketRepositoryProvider)
+          .watchChatRead(params.uid, params.ticketId);
     });
 
 // ── Cross-project ticket search (Dashboard) ──────────────────────────────────
@@ -590,7 +597,7 @@ final globalTicketSearchResultsProvider =
       final userName = profile?.displayName ?? '';
       final allAssignments = uid != null
           ? (ref.watch(userAssignmentsProvider(uid)).value ??
-              <ProjectAssignment>[])
+                <ProjectAssignment>[])
           : <ProjectAssignment>[];
 
       final results = <({Proyecto project, Ticket ticket})>[];
@@ -599,19 +606,23 @@ final globalTicketSearchResultsProvider =
         final tickets =
             ref.watch(ticketsByProjectProvider(p.nombreProyecto)).value ?? [];
 
-        final projectAssignments =
-            allAssignments.where((a) => a.projectId == p.id && a.isActive);
-        final isUsuarioOnly = !isRoot &&
+        final projectAssignments = allAssignments.where(
+          (a) => a.projectId == p.id && a.isActive,
+        );
+        final isUsuarioOnly =
+            !isRoot &&
             projectAssignments.isNotEmpty &&
             projectAssignments.every((a) => a.role == UserRole.usuario);
 
         for (final t in tickets) {
           if (isUsuarioOnly && uid != null) {
-            final isOwn = t.createdBy == uid ||
+            final isOwn =
+                t.createdBy == uid ||
                 t.createdByName.toUpperCase() == userName.toUpperCase();
             if (!isOwn) continue;
           }
-          final matches = t.titulo.toUpperCase().contains(upperQuery) ||
+          final matches =
+              t.titulo.toUpperCase().contains(upperQuery) ||
               t.folio.toUpperCase().contains(upperQuery) ||
               t.descripcion.toUpperCase().contains(upperQuery);
           if (matches) results.add((project: p, ticket: t));
