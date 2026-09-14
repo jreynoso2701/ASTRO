@@ -1,5 +1,8 @@
 # ── Etapa 1: Build Flutter Web ──
-FROM ghcr.io/cirruslabs/flutter:3.35.7 AS build
+# 3.44.0 es el tag mas nuevo publicado por cirruslabs y comparte minor con
+# el Flutter de desarrollo (3.44.2). Mantenerlos alineados evita que una API
+# nueva compile en local y rompa aqui, que es lo que paso con onReorderItem.
+FROM ghcr.io/cirruslabs/flutter:3.44.0 AS build
 
 WORKDIR /app
 
