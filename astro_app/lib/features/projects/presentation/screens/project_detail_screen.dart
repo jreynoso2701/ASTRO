@@ -7,7 +7,7 @@ import 'package:astro/core/models/app_user.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/widgets/copy_button.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
-import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/widgets/animated_progress_bar.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/requirements/providers/requerimiento_providers.dart';
@@ -324,40 +324,29 @@ class _ProjectInfoSection extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            // El avance es el dato principal de la pantalla, asi que va como
+            // anillo y no como barra: se lee de un vistazo desde lejos.
+            child: Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'PROGRESO',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        letterSpacing: 1,
-                        color: theme.colorScheme.onSurfaceVariant,
+                AnimatedProgressRing(percent: progress),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PROGRESO',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          letterSpacing: 1,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${progress.clamp(0, 100).toStringAsFixed(0)}%',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: progressColor(progress),
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 10),
+                      AnimatedProgressBar(
+                        percent: progress.clamp(0, 100).toDouble(),
+                        height: 8,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: progress.clamp(0, 100) / 100,
-                    minHeight: 8,
-                    backgroundColor: theme.colorScheme.onSurface.withValues(
-                      alpha: 0.1,
-                    ),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      progressColor(progress),
-                    ),
+                    ],
                   ),
                 ),
               ],

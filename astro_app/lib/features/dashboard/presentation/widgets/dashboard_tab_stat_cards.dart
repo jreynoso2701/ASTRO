@@ -38,6 +38,8 @@ class DashboardTabStatCards extends StatelessWidget {
             icon: Icons.trending_up,
             label: 'Progreso general',
             value: '${avgProgress.round()}%',
+            numericValue: avgProgress,
+            valueSuffix: '%',
             color: progressColor(avgProgress),
             subtitle: hasPenalty
                 ? 'Base: ${avgBaseProgress.round()}%  (-${(avgBaseProgress - avgProgress).toStringAsFixed(1)}%)'
@@ -50,6 +52,7 @@ class DashboardTabStatCards extends StatelessWidget {
             icon: Icons.calendar_today_outlined,
             label: 'Próximas citas',
             value: '${upcomingCitas.length}',
+            numericValue: upcomingCitas.length.toDouble(),
             color: AppColors.info,
             onTap: upcomingCitas.isNotEmpty
                 ? () => _showUpcomingCitasSheet(context, upcomingCitas)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:astro/core/constants/app_colors.dart';
 import 'package:astro/core/constants/app_typography.dart';
+import 'package:astro/core/widgets/animated_progress_bar.dart';
 
 // ── Stats Summary (solo Root) ────────────────────────────
 
@@ -16,6 +17,7 @@ class DashboardStatsSummary extends StatelessWidget {
       icon: Icons.folder_outlined,
       label: 'Proyectos activos',
       value: '$activeCount',
+      numericValue: activeCount.toDouble(),
       color: AppColors.info,
     );
   }
@@ -28,13 +30,26 @@ class DashboardStatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.numericValue,
+    this.valueSuffix = '',
     this.subtitle,
     this.onTap,
   });
 
   final IconData icon;
   final String label;
+
+  /// Texto que se muestra cuando no hay [numericValue] que animar.
   final String value;
+
+  /// Cifra a la que cuenta la tarjeta. Al informarla, el valor sube desde su
+  /// lectura anterior en vez de saltar: una metrica que cambia en vivo se lee
+  /// como movimiento y no como un redibujado.
+  final double? numericValue;
+
+  /// Sufijo que acompana a [numericValue] (por ejemplo `%`).
+  final String valueSuffix;
+
   final Color color;
   final String? subtitle;
   final VoidCallback? onTap;
@@ -70,10 +85,17 @@ class DashboardStatCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              Text(
-                value,
-                style: theme.textTheme.displaySmall?.copyWith(color: color),
-              ),
+              if (numericValue != null)
+                AnimatedCounter(
+                  value: numericValue!,
+                  suffix: valueSuffix,
+                  style: theme.textTheme.displaySmall?.copyWith(color: color),
+                )
+              else
+                Text(
+                  value,
+                  style: theme.textTheme.displaySmall?.copyWith(color: color),
+                ),
               if (subtitle != null) ...[
                 const SizedBox(height: 6),
                 Text(

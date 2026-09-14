@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/modulo.dart';
 import 'package:astro/core/constants/app_breakpoints.dart';
 import 'package:astro/core/utils/progress_color.dart';
+import 'package:astro/core/widgets/animated_progress_bar.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -219,8 +220,9 @@ class _ProjectProgressBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Progreso del proyecto', style: theme.textTheme.labelMedium),
-              Text(
-                '${percent.toStringAsFixed(0)}%',
+              AnimatedCounter(
+                value: percent,
+                suffix: '%',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: progressColor(percent),
                   fontWeight: FontWeight.bold,
@@ -229,17 +231,7 @@ class _ProjectProgressBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percent / 100,
-              minHeight: 6,
-              backgroundColor: theme.colorScheme.onSurface.withValues(
-                alpha: 0.1,
-              ),
-              valueColor: AlwaysStoppedAnimation<Color>(progressColor(percent)),
-            ),
-          ),
+          AnimatedProgressBar(percent: percent),
         ],
       ),
     );
@@ -328,23 +320,15 @@ class _ModuleCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: percent / 100,
-                        minHeight: 4,
-                        backgroundColor: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.1,
-                        ),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          progressColor(percent.toDouble()),
-                        ),
-                      ),
+                    child: AnimatedProgressBar(
+                      percent: percent.toDouble(),
+                      height: 4,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    '${percent.toStringAsFixed(0)}%',
+                  AnimatedCounter(
+                    value: percent.toDouble(),
+                    suffix: '%',
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
