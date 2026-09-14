@@ -24,6 +24,7 @@ import 'package:astro/features/dashboard/presentation/widgets/dashboard_stats_su
 import 'package:astro/features/dashboard/presentation/widgets/dashboard_incidents_section.dart';
 import 'package:astro/features/dashboard/presentation/widgets/dashboard_project_sort_button.dart';
 import 'package:astro/features/dashboard/presentation/widgets/dashboard_project_card.dart';
+import 'package:astro/features/dashboard/presentation/widgets/dashboard_charts.dart';
 
 /// Pantalla de Dashboard — vista principal tras login.
 class DashboardScreen extends ConsumerWidget {
@@ -211,6 +212,12 @@ class _IncidentsColumn extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
+        // Las graficas van antes del listado: dan el estado del conjunto, y
+        // las pestanas de abajo son ya el detalle ticket a ticket.
+        const TicketStatusChart(),
+        const SizedBox(height: 12),
+        const TicketFlowChart(),
+        const SizedBox(height: 24),
         DashboardIncidentsTabbedSection(isRoot: isRoot),
       ],
     );

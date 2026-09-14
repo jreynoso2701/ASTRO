@@ -73,6 +73,7 @@ dependencies:
   markdown: ^7.3.1
   esc_pos_utils_plus: ^2.0.4
   flutter_thermal_printer: ^2.0.1
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:
