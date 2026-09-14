@@ -413,7 +413,7 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _asuntos.length,
                   buildDefaultDragHandles: false,
-                  onReorderItem: _reorderAsuntos,
+                  onReorder: _reorderAsuntos,
                   itemBuilder: (ctx, i) => _AsuntoRow(
                     // La clave va sobre la posición original del asunto: el
                     // texto puede repetirse y el número cambia al reordenar.
@@ -891,8 +891,12 @@ class _MinutaFormScreenState extends ConsumerState<MinutaFormScreen> {
 
   void _reorderAsuntos(int oldIndex, int newIndex) {
     setState(() {
+      // `onReorder` entrega el indice de destino contando el elemento que
+      // todavia ocupa su sitio, asi que al bajar hay que restarle uno; si no,
+      // el asunto cae una posicion mas abajo de donde se solto.
+      final target = newIndex > oldIndex ? newIndex - 1 : newIndex;
       final item = _asuntos.removeAt(oldIndex);
-      _asuntos.insert(newIndex, item);
+      _asuntos.insert(target, item);
       _renumberAsuntos();
     });
   }
