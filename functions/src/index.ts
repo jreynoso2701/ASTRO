@@ -1901,6 +1901,49 @@ export const checkPendingRegistrations = onSchedule(
 // ── Scheduled: COMPROMISOS DE MINUTAS — DEADLINES ────────
 
 /**
+ * Minuta creada -> avisar a los participantes convocados.
+ *
+ * Las minutas eran el unico modulo sin ninguna notificacion: quien aparece en
+ * una minuta se enteraba solo si entraba a buscarla. Se notifica a los
+ * participantes, no a todo el proyecto, porque una minuta le concierne a
+ * quienes estuvieron en la reunion.
+ */
+export const onMinutaCreated = onDocumentCreated(
+  "Minutas/{minutaId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const projectId = data.projectId as string | undefined;
+    if (!projectId) return;
+
+    const projectName = (data.projectName as string) ?? "";
+    const folio = (data.folio as string) ?? "";
+    const createdBy = data.createdBy as string | undefined;
+    const createdByName = (data.createdByName as string) ?? "alguien";
+
+    const participantes = Array.isArray(data.participantUids) ?
+      (data.participantUids as unknown[]).filter(
+        (v): v is string => typeof v === "string" && !!v
+      ) :
+      [];
+
+    const recipients = participantes.filter((uid) => uid !== createdBy);
+    if (recipients.length === 0) return;
+
+    await sendNotifications(recipients, {
+      titulo: `${pfx(projectName)}\u{1F4DD} Minuta ${folio}`,
+      cuerpo: `${createdByName} registro una minuta en la que participas.`,
+      tipo: "minuta_creada",
+      refType: "minuta",
+      refId: event.params.minutaId,
+      projectId,
+      projectName,
+    });
+  }
+);
+
+/**
  * Se ejecuta diariamente a las 08:00 AM (CDMX).
  * Revisa todos los compromisos de minutas activas y envía
  * notificaciones push al responsable cuando la fecha de entrega
@@ -1960,23 +2003,27 @@ export const checkCompromisoDeadlines = onSchedule(
 
         let emoji = "";
         let label = "";
-        let shouldNotify = false;
+        // La zona viaja en el `tipo` igual que en tickets, tareas y
+        // requerimientos: la app resuelve icono y color a partir de el, y un
+        // `compromiso_deadline` a secas no existe en su enum, asi que caia al
+        // valor por defecto y se pintaba como un ticket nuevo.
+        let zone: "amber" | "orange" | "red" | null = null;
 
         if (days < 0) {
           emoji = "\u{1F534}"; // red circle
           label = `Vencido hace ${-days} día(s)`;
-          shouldNotify = true;
+          zone = "red";
         } else if (days <= 1) {
           emoji = "\u{1F7E0}"; // orange circle
           label = days === 0 ? "Vence HOY" : "Vence MAÑANA";
-          shouldNotify = true;
+          zone = "orange";
         } else if (days <= 3) {
           emoji = "\u{1F7E1}"; // yellow circle
           label = `Vence en ${days} días`;
-          shouldNotify = true;
+          zone = "amber";
         }
 
-        if (!shouldNotify) continue;
+        if (!zone) continue;
 
         const tarea = (c.tarea as string) ?? "";
         const responsable = (c.responsable as string) ?? "";
@@ -1985,7 +2032,7 @@ export const checkCompromisoDeadlines = onSchedule(
           sendNotifications([responsableUid], {
             titulo: `${emoji} Compromiso — ${label}`,
             cuerpo: `${tarea} (${responsable}) — Minuta ${folio}`,
-            tipo: "compromiso_deadline",
+            tipo: `compromiso_deadline_${zone}`,
             refType: "minuta",
             refId: minutaId,
             projectId,

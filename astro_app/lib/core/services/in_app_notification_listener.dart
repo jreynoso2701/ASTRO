@@ -158,6 +158,10 @@ class _InAppNotificationListenerState
         router.push('/projects/${n.projectId}/avisos/${n.refId}');
       case NotificationRefType.proyecto:
         router.push('/projects/${n.refId}');
+      case NotificationRefType.user:
+        // Altas de usuarios: el refId es un uid, no algo que se pueda abrir
+        // dentro de un proyecto. La gestion vive en el panel de usuarios.
+        router.push('/users');
     }
   }
 }

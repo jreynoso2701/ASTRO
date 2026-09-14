@@ -43,6 +43,9 @@ enum NotificationType {
   tareaDeadlineOrange('tarea_deadline_orange', 'Tarea vence hoy/mañana'),
   tareaDeadlineRed('tarea_deadline_red', 'Tarea vencida'),
 
+  // Minutas
+  minutaCreada('minuta_creada', 'Minuta registrada'),
+
   // Compromisos deadline
   compromisoDeadlineAmber(
     'compromiso_deadline_amber',
@@ -72,6 +75,26 @@ enum NotificationType {
   seguimientoSemanal(
     'seguimiento_semanal',
     'Recordatorio de seguimiento semanal',
+  ),
+
+  // Tickets sin fecha compromiso
+  ticketsSinFecha('tickets_sin_fecha', 'Tickets sin fecha compromiso'),
+
+  // Avance de modulos
+  moduloProgresoActualizado(
+    'modulo_progreso_actualizado',
+    'Avance de modulo actualizado',
+  ),
+
+  // Altas de usuarios
+  solicitudRegistro('solicitud_registro', 'Nueva solicitud de registro'),
+  registroAprobado('registro_aprobado', 'Registro aprobado'),
+  registroAprobadoAdmin('registro_aprobado_admin', 'Registro aprobado'),
+  registroRechazado('registro_rechazado', 'Registro rechazado'),
+  registroRechazadoAdmin('registro_rechazado_admin', 'Registro rechazado'),
+  recordatorioSolicitudes(
+    'recordatorio_solicitudes',
+    'Solicitudes de registro pendientes',
   );
 
   const NotificationType(this.value, this.label);
@@ -89,6 +112,9 @@ enum NotificationType {
 /// Referencia al recurso que originó la notificación.
 enum NotificationRefType {
   ticket('ticket'),
+  // Las altas de usuarios notifican con refType `user`; sin este valor caian
+  // al `ticket` por defecto y al tocarlas se abria un ticket inexistente.
+  user('user'),
   requerimiento('requerimiento'),
   cita('cita'),
   minuta('minuta'),

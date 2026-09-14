@@ -195,6 +195,9 @@ class _NotificationTile extends ConsumerWidget {
       context.push('/projects/${n.projectId}/avisos/${n.refId}');
     } else if (n.refType == NotificationRefType.proyecto) {
       context.push('/projects/${n.refId}');
+    } else if (n.refType == NotificationRefType.user) {
+      // El refId es un uid: la gestion de altas vive en el panel de usuarios.
+      context.push('/users');
     }
   }
 
@@ -238,6 +241,15 @@ class _NotificationTile extends ConsumerWidget {
       NotificationType.resumenDiario => Icons.bar_chart_outlined,
       NotificationType.seguimientoSemanal =>
         Icons.assignment_turned_in_outlined,
+      NotificationType.minutaCreada => Icons.description_outlined,
+      NotificationType.ticketsSinFecha => Icons.event_busy_outlined,
+      NotificationType.moduloProgresoActualizado => Icons.donut_large,
+      NotificationType.solicitudRegistro => Icons.person_add_alt_outlined,
+      NotificationType.registroAprobado ||
+      NotificationType.registroAprobadoAdmin => Icons.how_to_reg_outlined,
+      NotificationType.registroRechazado ||
+      NotificationType.registroRechazadoAdmin => Icons.person_off_outlined,
+      NotificationType.recordatorioSolicitudes => Icons.pending_actions,
     };
   }
 

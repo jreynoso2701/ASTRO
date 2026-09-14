@@ -202,6 +202,7 @@ class _InAppToastWidgetState extends State<InAppToastWidget>
       NotificationRefType.minuta => const Color(0xFF8E24AA), // Púrpura
       NotificationRefType.aviso => const Color(0xFFFFB300), // Ámbar
       NotificationRefType.proyecto => const Color(0xFF78909C), // Gris azulado
+      NotificationRefType.user => const Color(0xFF5C6BC0), // Indigo
     };
   }
 
@@ -246,6 +247,15 @@ class _InAppToastWidgetState extends State<InAppToastWidget>
       NotificationType.resumenDiario => Icons.bar_chart_outlined,
       NotificationType.seguimientoSemanal =>
         Icons.assignment_turned_in_outlined,
+      NotificationType.minutaCreada => Icons.description_outlined,
+      NotificationType.ticketsSinFecha => Icons.event_busy_outlined,
+      NotificationType.moduloProgresoActualizado => Icons.donut_large,
+      NotificationType.solicitudRegistro => Icons.person_add_alt_outlined,
+      NotificationType.registroAprobado ||
+      NotificationType.registroAprobadoAdmin => Icons.how_to_reg_outlined,
+      NotificationType.registroRechazado ||
+      NotificationType.registroRechazadoAdmin => Icons.person_off_outlined,
+      NotificationType.recordatorioSolicitudes => Icons.pending_actions,
     };
   }
 }
