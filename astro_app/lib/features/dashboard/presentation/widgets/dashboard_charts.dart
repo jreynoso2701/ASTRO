@@ -9,7 +9,7 @@ import 'package:astro/core/models/ticket_status.dart';
 import 'package:astro/core/utils/ticket_colors.dart';
 import 'package:astro/core/widgets/animated_progress_bar.dart';
 import 'package:astro/features/dashboard/providers/chart_providers.dart';
-import 'package:astro/features/tickets/providers/ticket_providers.dart';
+import 'package:astro/core/models/proyecto.dart';
 
 // ── Envoltorio comun ─────────────────────────────────────
 
@@ -100,7 +100,10 @@ class _ChartEmpty extends StatelessWidget {
 /// El total va en el centro en vez de en una etiqueta aparte: es el dato que
 /// se busca primero y el anillo deja ese hueco libre de todas formas.
 class TicketStatusChart extends ConsumerStatefulWidget {
-  const TicketStatusChart({super.key});
+  const TicketStatusChart({required this.projects, super.key});
+
+  /// Proyectos que entran en el conteo, ya pasados por el filtro de la pestana.
+  final List<Proyecto> projects;
 
   @override
   ConsumerState<TicketStatusChart> createState() => _TicketStatusChartState();
@@ -113,7 +116,7 @@ class _TicketStatusChartState extends ConsumerState<TicketStatusChart> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final counts = ref.watch(globalTicketCountsByStatusProvider);
+    final counts = ticketCountsByStatusFor(ref, widget.projects);
 
     final entries = [
       for (final status in TicketStatus.kanbanValues)
@@ -253,12 +256,15 @@ class _TicketStatusChartState extends ConsumerState<TicketStatusChart> {
 
 /// Entradas y salidas de tickets mes a mes, en barras enfrentadas.
 class TicketFlowChart extends ConsumerWidget {
-  const TicketFlowChart({super.key});
+  const TicketFlowChart({required this.projects, super.key});
+
+  /// Proyectos que entran en el conteo, ya pasados por el filtro de la pestana.
+  final List<Proyecto> projects;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final flow = ref.watch(ticketFlowByMonthProvider);
+    final flow = ticketFlowByMonth(ref, projects);
     final hasData = flow.any((f) => f.opened > 0 || f.closed > 0);
 
     if (!hasData) {

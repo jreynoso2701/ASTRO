@@ -104,12 +104,16 @@ class AdaptiveCardList extends StatelessWidget {
 /// Es la versión para listas ya construidas (por ejemplo un listado agrupado
 /// por secciones, donde las tarjetas van intercaladas con cabeceras y no se
 /// pueden indexar de corrido). Con `columns == 1` devuelve la lista tal cual.
+///
+/// Una sola tarjeta tambien se reparte: si se devolvia tal cual, un grupo con
+/// un unico elemento se estiraba de lado a lado de la pantalla y rompia la
+/// rejilla de los grupos vecinos.
 List<Widget> adaptiveRows(
   List<Widget> items, {
   required int columns,
   double spacing = 12,
 }) {
-  if (columns <= 1 || items.length <= 1) return items;
+  if (columns <= 1 || items.isEmpty) return items;
 
   final rows = <Widget>[];
   for (var i = 0; i < items.length; i += columns) {

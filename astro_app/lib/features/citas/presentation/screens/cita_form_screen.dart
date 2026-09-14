@@ -20,6 +20,7 @@ import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_picker.dart';
+import 'package:astro/core/widgets/filled_icon_button.dart';
 
 /// Pantalla de creación / edición de cita.
 class CitaFormScreen extends ConsumerStatefulWidget {
@@ -1046,7 +1047,7 @@ class _AgendaSectionState extends State<_AgendaSection> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(icon: const Icon(Icons.add), onPressed: _submit),
+            FilledIconButton(icon: const Icon(Icons.add), onPressed: _submit),
           ],
         ),
       ],

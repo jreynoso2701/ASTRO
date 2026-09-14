@@ -13,6 +13,7 @@ import 'package:astro/features/dashboard/presentation/widgets/ticket_status_over
 import 'package:astro/features/dashboard/presentation/widgets/ticket_deadline_overview.dart';
 import 'package:astro/features/dashboard/presentation/widgets/req_status_overview.dart';
 import 'package:astro/features/dashboard/presentation/widgets/req_deadline_overview.dart';
+import 'package:astro/features/dashboard/presentation/widgets/dashboard_charts.dart';
 
 // ── Tabbed Incidents / Requirements ──────────────────────
 
@@ -173,6 +174,12 @@ class _TicketsTabContent extends ConsumerWidget {
           avgBaseProgress: avgBaseProgress,
           upcomingCitas: filteredCitas,
         ),
+        const SizedBox(height: 16),
+        // Las graficas viven dentro de la pestana para que compartan el mismo
+        // filtro de proyectos que el resto de sus tarjetas.
+        TicketStatusChart(projects: effectiveProjects),
+        const SizedBox(height: 12),
+        TicketFlowChart(projects: effectiveProjects),
         const SizedBox(height: 16),
         TicketStatusOverview(projects: effectiveProjects),
         if (isRoot) ...[

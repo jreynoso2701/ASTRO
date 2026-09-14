@@ -13,6 +13,7 @@ import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
+import 'package:astro/core/widgets/filled_icon_button.dart';
 
 /// Pantalla de detalle de una cita.
 class CitaDetailScreen extends ConsumerWidget {
@@ -1252,7 +1253,7 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton.filled(
+                  FilledIconButton(
                     onPressed: _sending ? null : _send,
                     icon: _sending
                         ? const SizedBox(

@@ -25,6 +25,7 @@ import 'package:astro/core/widgets/rich_text_editor.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
 import 'package:astro/core/widgets/rich_text_viewer.dart';
+import 'package:astro/core/widgets/filled_icon_button.dart';
 
 /// Pantalla de detalle de un ticket con hilo de comentarios.
 class TicketDetailScreen extends ConsumerStatefulWidget {
@@ -1958,7 +1959,7 @@ class _CommentInput extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(
+              FilledIconButton(
                 tooltip: 'Enviar comentario',
                 onPressed: sending ? null : onSend,
                 icon: sending

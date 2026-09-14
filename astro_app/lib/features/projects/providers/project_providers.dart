@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:astro/core/models/proyecto.dart';
 import 'package:astro/core/models/project_assignment.dart';
 import 'package:astro/core/models/app_user.dart';
+import 'package:astro/core/models/user_role.dart';
 import 'package:astro/features/modules/providers/module_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 
@@ -194,7 +195,16 @@ final projectLeadsProvider =
       String
     >((ref, projectId) {
       final members = ref.watch(projectMembersProvider(projectId));
-      final leads = members.where((m) => m.assignment.isLead).toList();
+      var leads = members.where((m) => m.assignment.isLead).toList();
+      // `isLead` se marca a mano y hoy casi ningun proyecto lo tiene, asi que
+      // sin respaldo las tarjetas salian sin responsable. El rol Lider
+      // Proyecto ya expresa lo mismo en los datos que existen; en cuanto
+      // alguien marque responsables explicitos, esos mandan.
+      if (leads.isEmpty) {
+        leads = members
+            .where((m) => m.assignment.role == UserRole.liderProyecto)
+            .toList();
+      }
       leads.sort((a, b) {
         final an = a.user?.displayName ?? '';
         final bn = b.user?.displayName ?? '';

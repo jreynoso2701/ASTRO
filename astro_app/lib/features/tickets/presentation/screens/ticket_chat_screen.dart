@@ -16,6 +16,7 @@ import 'package:astro/core/presentation/screens/file_viewer_screen.dart';
 import 'package:astro/features/tickets/providers/ticket_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
+import 'package:astro/core/widgets/filled_icon_button.dart';
 
 /// Pantalla de chat para los comentarios de un ticket.
 /// Estilo WhatsApp: burbujas izquierda/derecha, input plano, separadores de fecha.
@@ -717,7 +718,7 @@ class _ChatInputBar extends StatelessWidget {
                 animation: controller,
                 builder: (context, _) {
                   final hasContent = controller.text.trim().isNotEmpty;
-                  return IconButton.filled(
+                  return FilledIconButton(
                     icon: sending
                         ? const SizedBox(
                             width: 18,
