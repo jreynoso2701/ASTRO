@@ -105,10 +105,11 @@ class TareasListScreen extends ConsumerWidget {
                     ),
 
                     // Filtros de estado
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         children: [
                           _FilterChip(
                             label: 'Todos',
@@ -134,10 +135,11 @@ class TareasListScreen extends ConsumerWidget {
                     ),
 
                     // Filtros de prioridad
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         children: [
                           _FilterChip(
                             label: 'Prioridad: Todas',
@@ -274,6 +276,10 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilterChip(
+      // FilterChip reserva 48 px de area tactil aunque mida menos, y las
+      // tiras de filtros miden 40: el chip se desbordaba y pintaba encima
+      // del conteo de resultados de la fila siguiente.
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       label: Text(label),
       selected: selected,
       onSelected: onSelected,

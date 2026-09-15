@@ -39,21 +39,39 @@ class CopyButton extends StatelessWidget {
   Widget build(BuildContext context) {
     if (text.trim().isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
+    final diameter = size + 16;
 
-    // Un icono suelto en gris apagado sobre la tarjeta no se leia como un
-    // control: había que saber que estaba ahí para encontrarlo. Con un fondo
-    // propio y el icono a `onSurface` se ve como lo que es, un botón.
-    return IconButton(
-      icon: Icon(Icons.copy_rounded, size: size),
-      tooltip: label == null ? 'Copiar' : 'Copiar $label',
-      visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.all(4),
-      constraints: BoxConstraints(minWidth: size + 16, minHeight: size + 16),
-      style: IconButton.styleFrom(
-        foregroundColor: scheme.onSurface,
-        backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+    // Se construye a mano en vez de con `IconButton` a proposito. IconButton
+    // resuelve el color del icono por `ButtonStyle`, mezclando el estilo del
+    // widget, `IconButtonTheme`, el `IconTheme` heredado y los valores por
+    // omision de M3; en web ese encadenado dejaba el glifo sin pintar y solo
+    // se veia el circulo del fondo. Un `Icon` con `color` explicito no
+    // depende de esa cadena.
+    //
+    // Ademas, un icono suelto en gris apagado sobre la tarjeta no se leia
+    // como un control: hay que saber que esta ahi para encontrarlo. El fondo
+    // propio lo declara como boton.
+    return Tooltip(
+      message: label == null ? 'Copiar' : 'Copiar $label',
+      child: Material(
+        color: scheme.onSurface.withValues(alpha: 0.08),
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => copyToClipboard(context, text, label: label),
+          child: SizedBox(
+            width: diameter,
+            height: diameter,
+            child: Center(
+              child: Icon(
+                Icons.copy_rounded,
+                size: size,
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+        ),
       ),
-      onPressed: () => copyToClipboard(context, text, label: label),
     );
   }
 }
