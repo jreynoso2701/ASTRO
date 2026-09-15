@@ -7,7 +7,7 @@
 
 ## Fase 1 — MVP: Sistema Base de Gestión de Proyectos
 
-**Estado:** � En progreso
+**Estado:** 🔶 En progreso
 
 ### 1.1 Setup del Proyecto
 
@@ -24,7 +24,7 @@
 - [x] Configurar FCM para iOS (AppDelegate con APNs token forwarding, Background Modes, `FirebaseAppDelegateProxyEnabled`).
 - [x] Configurar sistema de temas Dark (default) / Light inspirado en Nothing Phone.
 - [x] Definir tipografías y paleta de colores.
-- [ ] Configurar deploy web en Railway.
+- [x] Configurar deploy web en Railway.
 
 ### 1.2 Autenticación y Onboarding
 
@@ -358,12 +358,16 @@
 - [x] Versión bumped a `2.5.3+22`.
 - [x] Versión bumped a `2.5.4+23`.
 - [x] Versión bumped a `2.5.5+24`.
+- [x] Versión bumped a `2.5.6+25`, `2.5.7+26`, `2.5.8+27` y `2.5.9+28`.
+- [x] Versión bumped a `3.0.0+29` (Android 16: `compileSdk`/`targetSdk` 36, edge-to-edge, predictive back).
+- [x] Versión bumped a `3.0.1+30`.
+- [x] Versión bumped a `3.1.0+31` — versión de publicación en tiendas de todo lo descrito en 2.13–2.22.
 - [x] Configurar firma de release para Android (keystore) — `key.properties` + signing config en `build.gradle.kts`.
 - [x] Build de release para Android (`flutter build appbundle`) — AAB 54.6MB.
 - [x] Actualización en Google Play (Closed Testing) — versiones: v7 (1.4.1), v8 (2.0.0+9), v9 (2.1.0+10), v10 (2.1.2+11), v11-v14 (intermedias), v15 (2.2.22+15).
 - [x] **Hardening de Firestore Security Rules**: eliminada regla catch-all abierta (`request.time < 2044`), reemplazadas todas las reglas `if true` por `request.auth != null`, reglas explícitas para las 28+ colecciones y sub-colecciones del proyecto, denegación por defecto para colecciones no listadas. Cloud Functions no afectadas (Admin SDK). Archivo fuente: `firestore.rules`.
 - [x] **Preparación Deploy Web (Railway)**: Dockerfile multi-stage (Flutter build + Nginx Alpine), `nginx.conf` con SPA routing + gzip + security headers + `$PORT` dinámico, `.dockerignore` optimizado. CORS configurado en Firebase Storage para dominio Railway. Dominio `astro-production-be6a.up.railway.app` agregado a Firebase Auth Authorized Domains.
-- [ ] Deploy web en Railway.
+- [x] **Deploy web en Railway** — `astro-production-be6a.up.railway.app`, desplegado con `git push origin main` (Dockerfile multi-stage `ghcr.io/cirruslabs/flutter:3.44.0` → `nginx:1.27-alpine`, `--pwa-strategy none`).
 - [ ] Build para iOS / TestFlight.
 
 ### 1.13 Gestión de Cuenta y Perfil
@@ -405,7 +409,7 @@
 
 ## Fase 2 — Funcionalidades Avanzadas
 
-**Estado:** � En progreso
+**Estado:** 🔶 En progreso
 
 ### 2.1 Citas y Videoconferencias
 
@@ -711,6 +715,139 @@
 - [x] **Bugfix — Descripción se borraba al hacer scroll** — `RichTextEditorState` ahora implementa `AutomaticKeepAliveClientMixin` con `wantKeepAlive: true`. Corrige que Flutter desmontara el editor Quill al salir del caché del `ListView`, borrando el contenido del usuario. Fix aplica a todos los formularios (tickets, tareas, requerimientos, citas) de una sola vez al estar en el widget compartido.
 - [x] **Bugfix — Crash al guardar ticket sin módulo seleccionado** — `_save()` en `ticket_form_screen.dart` tenía `moduleId: _selectedModuleId!` sin guard. Añadida validación explícita antes del operador `!`: si `_selectedModuleId == null` muestra snackbar y retorna. El dropdown de módulos ahora tiene 3 estados: cargando (spinner), vacío (mensaje de advertencia naranja), con módulos (dropdown normal con `value` en lugar del deprecado `initialValue`).
 
+### 2.13 Deep Links, Menú Liquid Glass y Refactor del Dashboard
+
+> **v2.5.8+27**
+
+- [x] **Deep links `astro://` para tickets** — configuración nativa en `AndroidManifest.xml` e `Info.plist`, transformación del scheme en el `redirect` de GoRouter y botón compartir (`ios_share`) en el AppBar del detalle de ticket con `share_plus`.
+- [x] **Menú Liquid Glass** — `NavigationBar` flotante con `BackdropFilter` y bordes translúcidos en móvil (`extendBody`); `NavigationRail` con fondo *frosted glass* en tablet/desktop. Animación de escala e indicador píldora en el destino activo. *(Sustituido después por el rediseño Nike de 3.0.0 — ver 2.15.)*
+- [x] **Fix de visibilidad en Dashboard** — los usuarios con rol `usuario` solo ven sus propios tickets y requerimientos en `TicketStatusOverview` y `ReqStatusOverview`, con el mismo filtro que ya aplicaba `filteredTicketsProvider`.
+- [x] **Refactor del Dashboard** — widgets extraídos a archivos dedicados (`dashboard_incidents_section`, `ticket_status_overview`, `req_status_overview`, `dashboard_tab_stat_cards`) con providers propios.
+
+### 2.14 Chat de Tickets en Tiempo Real
+
+> **v2.5.9+28**
+
+- [x] **`TicketChatScreen`** — los comentarios del ticket pasan a ser un chat estilo WhatsApp: burbujas, separadores de fecha, mensajes de sistema para cambios de estado/asignación y barra de entrada con adjuntos.
+- [x] **Pestaña "CHATS" en el Dashboard** — lista todas las conversaciones agrupadas por proyecto, con indicador de no leídos apoyado en la subcolección `users/{uid}/chatReads`.
+- [x] **Detalle de ticket** — el editor de comentarios se reemplaza por un botón que abre el chat.
+- [x] **Datos desnormalizados en el ticket** — `lastCommentAt`, `lastCommentPreview`, `lastCommentAuthorId`, `lastCommentAuthorName` para listar conversaciones sin leer cada subcolección.
+- [x] Ruta nueva `/projects/:id/tickets/:ticketId/chat`.
+- [x] **Fix web** — guardia `kIsWeb` en `FirebaseMessaging.onBackgroundMessage`: en web dejaba bloqueado el stream de auth.
+- [x] **Fix loader infinito en CHATS** — se sustituye un `StreamProvider.family<List, List<String>>` (clave inestable por referencia) por un `StreamProvider` que observa `myProjectsProvider` internamente, y la query pasa de `projectId` (campo V2 ausente en datos históricos) a `fkxProyecto` (V1, siempre presente).
+- [x] **Fix** — botón "Buscar tickets" con `ConstrainedBox(maxWidth: 220)` en vez de `Expanded`, que lo estiraba en tablet/web.
+
+### 2.15 Multi-asignado, Android 16 y Rediseño Nike
+
+> **v3.0.0+29**
+
+**Multi-asignado en Tickets y Requerimientos**
+
+- [x] `assignedToUids` / `assignedToNames` como fuente de verdad, con el responsable principal espejado en los campos únicos heredados. En Tickets el campo V1 `fkxSoporte` sigue recibiendo solo al principal, que es lo único que admite.
+- [x] `fromFirestore` prefiere las listas y cae al campo único: los documentos sin migrar se leen igual.
+- [x] Widget compartido `AsignadosField` + `showAsignadosDialog`; el formulario de Tareas se migra a él.
+- [x] El formulario de Requerimientos gana asignación de responsables, visible solo para managers y Root.
+- [x] Cloud Functions: helpers `getAssignees` / `getAssigneeLabel` / `assigneesChanged` para notificar a todos los responsables; la anonimización recorre las listas.
+- [x] Índices compuestos `assignedToUids + isActive` para Incidentes y Requerimientos.
+- [x] Scripts de migración idempotentes para las tres colecciones.
+
+**Políticas de Google Play**
+
+- [x] `compileSdk` y `targetSdk` fijados en 36 (Android 16), sin heredarlos de Flutter para que no cambien en silencio.
+- [x] Edge-to-edge activado (obligatorio desde API 35).
+- [x] Predictive back (`enableOnBackInvokedCallback`).
+
+**Rediseño con el lenguaje visual de Nike**
+
+- [x] `app_colors`, `app_typography` y `app_theme` reescritos: contraste negro/blanco, titulares pesados con tracking negativo, microcopy en mayúsculas espaciadas, botones píldora y superficies planas. Se conservan los temas claro y oscuro.
+- [x] Se retira el rojo de marca; el rojo queda reservado a estado.
+- [x] Barra de navegación y rail planos, sin cristal ni píldora de selección.
+- [x] Dashboard con cifras grandes y etiquetas overline.
+- [x] Colores sueltos de Tickets, Tareas y Requerimientos unificados contra la paleta semántica.
+
+### 2.16 Copiar y Seleccionar Texto en Modo Consulta
+
+> **3.0.1**
+
+- [x] **Widgets base** (`core/widgets/copy_button.dart`) — `copyToClipboard()`, `CopyButton`, `CopyableSectionLabel` y `CopyOnTap` (copia al tocar un elemento compacto, como el badge de folio, donde un botón al lado pesaría más que el dato).
+- [x] **Cobertura** — título y descripción en Tickets, Requerimientos y Tareas; observaciones internas en Requerimientos; nombre y descripción en Proyectos; folios; texto de los comentarios; y en Minutas objetivo, asuntos tratados, observaciones, resumen IA y compromisos (asuntos y compromisos se aplanan a texto plano conservando la jerarquía con sangría).
+- [x] **`SelectionArea` en la raíz de la app** — Flutter web pinta el texto en canvas, así que para el navegador no había nada que seleccionar y su menú contextual no ofrecía "Copiar". Ahora arrastrar selecciona, `Ctrl+C` copia y el clic derecho abre el menú de Flutter. Quedan fuera, con `SelectionContainer.disabled()`, los editores Quill (traen su propia selección) y los tableros kanban (viven del arrastre de tarjetas).
+- [x] **Icono de copiar dibujado, no tomado de la fuente** (`_CopyGlyphPainter`) — el codepoint de `Icons.copy_rounded` no llegaba a pintarse en el build web de Docker aunque el glifo estuviera en el subconjunto compilado y el color fuera el correcto. Un trazo propio no depende del tree-shaking ni del codepoint, y toma el color del tema.
+
+### 2.17 Impresión Térmica ESC/POS
+
+> **3.0.1**
+
+- [x] **Recibos de 32 columnas (rollo de 58 mm)** para Ticket, Requerimiento, Tarea y Minuta, con botón en la barra del detalle.
+- [x] `thermal_receipts.dart` comparte un `_ReceiptWriter` entre los cuatro recibos: mismo separador, mismo par etiqueta/valor con sangría cuando no cabe y ajuste de línea por palabras. Los acentos se transliteran a ASCII porque estas impresoras ignoran la tabla de códigos.
+- [x] El recibo avanza papel en lugar de cortar: el modelo en uso no lleva cuchilla.
+- [x] **Descubrimiento BLE/USB con `flutter_thermal_printer`** — sustituye a `print_bluetooth_thermal` (Bluetooth Classic SPP, solo Android y solo equipos ya emparejados desde los ajustes del sistema). La hoja va mostrando las impresoras según aparecen, sin emparejamiento previo.
+- [x] La última impresora usada se guarda en `SharedPreferences` y se ofrece primera, marcada «Última».
+- [x] El servicio es un singleton: la conexión sobrevive a la hoja y no hay que reconectar para un segundo documento.
+- [x] Botón «Prueba»: regla de 32 columnas para verificar el ancho del rollo.
+- [x] Plataformas: Android, iOS, macOS y Windows. En web queda el stub del import condicional (`ThermalPrinterService.isSupported == false`) y el botón no se muestra.
+- [x] Permisos declarados en Android (`BLUETOOTH_SCAN` con `neverForLocation`, `BLUETOOTH_CONNECT`, y ubicación hasta Android 11) e iOS (`NSBluetoothAlwaysUsageDescription`, `NSBluetoothPeripheralUsageDescription`).
+- [x] Documentado en `astro_app/docs/BUILD.md`.
+
+### 2.18 Responsables Principales de Proyecto
+
+> **3.0.1**
+
+- [x] `isLead` en `ProjectAssignment` + `setLead` en el repositorio: un proyecto admite **varios** responsables principales y se marcan **sobre los asignados**, así que retirar a alguien del proyecto le retira la responsabilidad.
+- [x] Estrella y acción "Marcar como responsable" en el detalle del proyecto.
+- [x] Responsables y % de avance animado en la tarjeta de Gestión y en la del Dashboard.
+- [x] Ordenamiento (nombre, avance, empresa, folio) y filtro por empresa en la lista de proyectos.
+- [x] **Respaldo por rol** — ningún `projectAssignment` tiene `isLead` en producción (0 de 167 activos), así que las tarjetas salían sin responsable: se respalda con el rol Líder Proyecto mientras no haya marcas explícitas.
+
+### 2.19 Aprovechamiento del Espacio y Contraste de Temas
+
+> **3.0.1**
+
+- [x] **`AdaptiveCardList`** reparte las tarjetas en hasta 3 columnas según el ancho **disponible** (no el de la pantalla, para que funcione dentro de un panel o un fold a medio abrir). Aplicado a Tickets, Requerimientos, Minutas, Citas y Avisos.
+- [x] **Tareas globales** reparte en columnas las tareas de cada grupo, manteniendo las cabeceras de proyecto y de tiempo a fila completa.
+- [x] **Dashboard en dos paneles** a partir de 1200 px: incidencias a la izquierda, proyectos a la derecha.
+- [x] **`AdaptiveBody.readable` (720)** para formularios y **`.wide` (1400)** para listados; los grids llegan a 4 columnas en pantallas grandes.
+- [x] **Contraste Light/Dark** — tarjetas y superficies elevadas separadas del lienzo, y borde de un píxel en las `Card`: antes los bloques se fundían con el fondo.
+- [x] **Fix `adaptiveRows`** — devolvía la lista tal cual con un solo elemento, así que un grupo de una sola tarea se estiraba de lado a lado.
+- [x] **Fix del cálculo de avance** — `projectProgressProvider` calcula desde los módulos que ya trajo el stream del proyecto; antes abría un stream por módulo y cada uno contaba como 0 hasta resolverse, así que el porcentaje aparecía bajo y subía a saltos.
+- [x] **`projectHasModulesProvider`** distingue "sin módulos" de "0 % de avance" en las tarjetas del Dashboard y de Gestión > Proyectos.
+- [x] **`projectPendingWeightProvider`** — el porcentaje resta la penalización de tickets dentro de cada módulo y luego promedia, así que en proyectos con muchos módulos la resta queda diluida (medido: solo 7 de 28 proyectos mueven el número, máximo −3.5 puntos). Se muestra la carga pendiente **junto** al avance, sin cambiar ninguna fórmula.
+
+### 2.20 Animaciones y Gráficas del Dashboard
+
+> **3.0.1**
+
+- [x] **`AnimatedProgressBar`, `AnimatedCounter`, `ProgressSummary`** — el avance se rellena y la cifra cuenta desde el valor anterior.
+- [x] **`DashboardStatCard.numericValue`** — cuenta hasta la cifra en vez de saltar a ella. Lo usan Proyectos activos, Progreso general y Próximas citas.
+- [x] **Módulos** — la barra del proyecto y la de cada tarjeta pasan a `AnimatedProgressBar` + `AnimatedCounter`.
+- [x] **`AnimatedProgressRing`** — anillo que se dibuja girando con la cifra contando dentro; el bloque PROGRESO del detalle de proyecto lo usa junto a la barra.
+- [x] **`fl_chart` — Tickets por estatus (anillo)** — reutiliza `globalTicketCountsByStatusProvider` y los colores de `ticketStatusColor`, así que habla el mismo idioma que el Kanban. El total va en el centro y al tocar un sector el centro muestra ese estado.
+- [x] **`fl_chart` — Altas vs. cierres por mes (barras enfrentadas, 12 meses)** — contesta si se gana o se pierde terreno. `closedAt` solo está relleno en 70 de 242 tickets (hay 151 cerrados); para el resto se usa `updatedAt` y la tarjeta lo advierte en su subtítulo en vez de presentar el dato como firme.
+- [x] Las gráficas viven en la **pestaña de Tickets** y reciben los proyectos ya filtrados, para responder al selector de proyectos.
+- [ ] **Gráficas descartadas por falta de datos** — tiempo medio de resolución (`closedAt` en el 29 %), carga por responsable (asignados en 99 de 242) y avance por fase (`faseAsignada` en 31 de 121).
+
+### 2.21 Auditoría de Notificaciones
+
+> **3.0.1**
+
+- [x] **Tipos huérfanos** — las Cloud Functions emitían `tipo` y `refType` que el enum de la app no conocía, y `fromString` cae al primer valor en vez de fallar, así que esas notificaciones se pintaban como "Ticket creado".
+  - [x] `compromiso_deadline` no llevaba zona; ahora emite `_amber` / `_orange` / `_red` como tickets, tareas y requerimientos.
+  - [x] Se agregan al enum los tipos que solo existían en el backend: `tickets_sin_fecha`, `modulo_progreso_actualizado`, `solicitud_registro`, `registro_aprobado(_admin)`, `registro_rechazado(_admin)` y `recordatorio_solicitudes`.
+  - [x] `refType` `"user"` no existía en `NotificationRefType`, así que las altas de usuarios caían a `"ticket"` y al tocarlas se intentaba abrir un ticket con un uid. Ahora llevan a la gestión de usuarios.
+- [x] **`onMinutaCreated`** — Minutas era el único módulo sin ninguna notificación; ahora avisa a los participantes convocados (no a todo el proyecto) al registrarse una minuta.
+- [ ] Normalizar los documentos existentes de `Notificaciones` con valores antiguos de `compromiso_deadline` o `tipo` desconocido (escritura en producción; pendiente de aprobación, se ofrece con *dry-run* previo).
+
+### 2.22 Alineación del Build Web y Visibilidad de Controles
+
+> **3.0.1**
+
+- [x] **Flutter del Dockerfile alineado con el de desarrollo** — el Dockerfile fijaba 3.35.7 mientras el desarrollo va en 3.44.2, nueve meses por delante. `flutter analyze` en local nunca avisa de esa distancia: el fallo solo aparece cuando el CI compila, y `dart2js` se para en el primer error, así que puede esconder más incompatibilidades detrás. Se sube a **3.44.0**, el tag más nuevo de `cirruslabs` y el mismo minor que el Flutter local.
+- [x] **Fix `onReorderItem`** — no existía en Flutter 3.35 y rompía el build web antes de la alineación.
+- [x] **`FilledIconButton`** — `iconButtonTheme` fija `foregroundColor` para todos los `IconButton` y pisa el color propio de `IconButton.filled`: los 4 usos se sustituyen por `FilledIconButton`, que aplica `onPrimary` a mano.
+- [x] **`AppFilterChip`** (`core/widgets/app_filter_chip.dart`) — fuente única de los colores de los chips de filtro de las seis pantallas de lista, que antes tenían seis copias divergentes. `ChipThemeData.labelStyle` nunca recibe `WidgetState.selected`, así que un `WidgetStateTextStyle` caía siempre en la rama de "sin seleccionar" y el chip marcado acababa con el texto del color de su propio relleno. Aquí el estado se conoce y el contraste se calcula: blanco o negro según la luminancia del relleno, con el umbral **0.179** de WCAG (con el 0.5 intuitivo los ámbar de prioridad se quedaban con texto blanco, 2.0:1 frente a 10.4:1 del negro).
+- [x] **`materialTapTargetSize: shrinkWrap` por chip** — `FilterChip` reserva 48 px de área táctil y las tiras de filtros miden 40, así que el chip se desbordaba sobre la fila siguiente. `ChipThemeData` no tiene ese campo, hay que fijarlo por widget.
+- [x] Los chips de filtro conservan su alineación a la izquierda (`SizedBox` + `ListView` horizontal); el cambio fue solo de color.
+
 ---
 
 ## Leyenda de Estados
@@ -725,4 +862,30 @@
 
 ---
 
-*Última actualización: v2.5.7+26 — **Compartir documentos entre proyectos** (sección 2.11): documentación cross-proyecto estilo Drive con permisos por rol (Root + Lider Proyecto del proyecto dueño), regla de visibilidad por código (usuario debe estar asignado tanto al proyecto dueño como al receptor), tercera tab "COMPARTIDOS CONMIGO" en listado de documentación, diálogo de compartir/descompartir con bitácora automática, nuevo índice Firestore (`sharedWithProjectNames + isActive`). **Fix visor PDF en web** (sección 2.12): conditional imports (`dart.library.html`) con `HtmlElementView + iframe` para PDFs e imágenes (los navegadores renderizan nativamente); mensaje claro para tipos no previsualizables. (Acumulado desde v2.5.6+25: Cloud Function `weeklyFollowUpReminder` viernes 16:00 CDMX, `seguimientoSemanal` en inbox y toast.)*
+## Pendientes
+
+> Estado al corte de **3.1.0+31**. Cada punto indica dónde está descrito en detalle.
+
+### Bloqueado por decisión o por insumo del usuario
+
+- [ ] **Llave de Google Places** — la búsqueda de "Dirección" en Minutas está implementada pero desactivada mientras no se inyecte `GOOGLE_MAPS_API_KEY` con `--dart-define`. Ver `astro_app/docs/BUILD.md`. *(Solo móvil/escritorio: en web la petición la bloquea CORS.)*
+- [ ] **`pesoModulo`** — decidir si los módulos llevan peso propio en el cálculo del avance del proyecto, o si todos pesan igual como ahora.
+- [ ] **Backfill de `projectId` en Módulos** — 49 de 172 módulos no lo tienen (solo `fkxProyecto` V1).
+- [ ] **Backfill de `closedAt` en Tickets** — 151 tickets cerrados sin fecha de cierre; la gráfica de altas vs. cierres usa `updatedAt` como aproximación mientras tanto.
+- [ ] **Normalización de `Notificaciones`** — documentos con `compromiso_deadline` sin zona o `tipo` desconocido (ver 2.21).
+
+### Calidad y seguridad
+
+- [ ] **🔴 CRÍTICO — Endurecimiento de Firestore Security Rules** (ver *1.12 Tareas Post-Release*).
+- [ ] **Testing y QA** (sección 1.11) — no hay tests unitarios, de widget ni de integración.
+- [ ] **Testing visual en múltiples tamaños de pantalla** (sección 1.10).
+- [ ] Verificar el `onLongPress` del inbox de notificaciones en móvil bajo el `SelectionArea` global.
+
+### Publicación
+
+- [ ] **Subir el AAB de 3.1.0 (31) a Google Play** — el bundle se compila con `flutter build appbundle --release`; la subida a Play Console es manual.
+- [ ] **Build para iOS / TestFlight** (sección 1.12).
+
+---
+
+*Última actualización: **3.1.0+31** (publicación en tiendas de todo lo anterior) — Multi-asignado en Tickets y Requerimientos con espejo de los campos V1 (2.15), rediseño completo con el lenguaje visual de Nike y Android 16 (2.15), chat de tickets en tiempo real (2.14), deep links `astro://` (2.13), copiado y selección de texto en todo el modo consulta (2.16), impresión térmica ESC/POS de 58 mm por BLE/USB (2.17), responsables principales de proyecto marcados sobre los asignados (2.18), layout de hasta 3 columnas y contraste Light/Dark (2.19), animaciones y las dos primeras gráficas con `fl_chart` (2.20), auditoría de tipos de notificación con `onMinutaCreated` (2.21) y alineación del Flutter del build web con el de desarrollo (2.22). Los pendientes vivos están consolidados en la sección **Pendientes**.*

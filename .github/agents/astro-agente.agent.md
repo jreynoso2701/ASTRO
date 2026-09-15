@@ -54,12 +54,13 @@ El desarrollo y la gestión del proyecto se inspiran fuertemente en:
 | ------------------------ | ------------------------------------------ |
 | **Framework**            | Flutter (móvil + web)                      |
 | **Identificador Android**| `com.constelacionr.apps.astro`             |
-| **Google Play**          | Closed Testing, versión 7 (1.4.1)         |
+| **Versión actual**       | `3.1.0+31`                                 |
+| **Google Play**          | Closed Testing                             |
 | **Backend / BaaS**       | Firebase                                   |
 | **Firebase Project Name**| ASTRO                                      |
 | **Firebase Project ID**  | `astro-b97c2`                              |
 | **Servicios Firebase**   | Authentication, Firestore Database, Storage, Functions, Messaging |
-| **Deploy Web**           | Servidor Railway                           |
+| **Deploy Web**           | Railway — `astro-production-be6a.up.railway.app` (push a `main`) |
 | **Temas**                | Dark (por defecto) / Light                 |
 
 > **Nota:** La primera fase se desarrolló en FlutterFlow (no se cuenta con ese código fuente). Esta nueva fase es un desarrollo desde cero en Flutter nativo.
