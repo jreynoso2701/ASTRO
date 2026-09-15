@@ -317,7 +317,17 @@ abstract final class AppTheme {
         backgroundColor: card,
         selectedColor: accent,
         checkmarkColor: onAccent,
-        side: BorderSide.none,
+        // Sin borde el chip sin seleccionar desaparecia: `card` y el fondo se
+        // diferencian por muy poco, sobre todo en oscuro. El contorno le
+        // devuelve silueta; el seleccionado no lo necesita porque su relleno
+        // ya contrasta.
+        side: WidgetStateBorderSide.resolveWith(
+          (states) => BorderSide(
+            color: onSurface.withValues(
+              alpha: states.contains(WidgetState.selected) ? 0.45 : 0.22,
+            ),
+          ),
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         // El color del texto se resuelve por estado: el chip seleccionado se
         // pinta con `accent`, que en oscuro es blanco, asi que un label fijo

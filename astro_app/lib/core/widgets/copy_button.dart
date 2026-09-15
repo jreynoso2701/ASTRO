@@ -40,13 +40,19 @@ class CopyButton extends StatelessWidget {
     if (text.trim().isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
 
+    // Un icono suelto en gris apagado sobre la tarjeta no se leia como un
+    // control: había que saber que estaba ahí para encontrarlo. Con un fondo
+    // propio y el icono a `onSurface` se ve como lo que es, un botón.
     return IconButton(
       icon: Icon(Icons.copy_rounded, size: size),
-      color: scheme.onSurfaceVariant,
       tooltip: label == null ? 'Copiar' : 'Copiar $label',
       visualDensity: VisualDensity.compact,
       padding: const EdgeInsets.all(4),
       constraints: BoxConstraints(minWidth: size + 16, minHeight: size + 16),
+      style: IconButton.styleFrom(
+        foregroundColor: scheme.onSurface,
+        backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+      ),
       onPressed: () => copyToClipboard(context, text, label: label),
     );
   }

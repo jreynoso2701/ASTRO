@@ -134,11 +134,10 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
             ),
 
             // Filtros de estado
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
                 children: [
                   _FilterChip(
                     label: 'Todos',
@@ -160,11 +159,10 @@ class _TareasGlobalScreenState extends ConsumerState<TareasGlobalScreen>
             ),
 
             // Filtros de prioridad
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
                 children: [
                   _FilterChip(
                     label: 'Prioridad: Todas',

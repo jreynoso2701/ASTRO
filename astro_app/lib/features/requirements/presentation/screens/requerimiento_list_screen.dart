@@ -144,11 +144,10 @@ class _RequerimientoListScreenState
 
                     // Filtros de estado — solo en modo lista
                     if (!kanban)
-                      SizedBox(
-                        height: 40,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
                           children: [
                             _FilterChip(
                               label: 'Todos',
@@ -174,11 +173,10 @@ class _RequerimientoListScreenState
                       ),
 
                     // Filtros de tipo
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
                         children: [
                           _FilterChip(
                             label: 'Tipo: Todos',

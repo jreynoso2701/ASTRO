@@ -209,11 +209,10 @@ class _FormalesTab extends ConsumerWidget {
       child: Column(
         children: [
           // Filtro de categoría
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
               children: [
                 _FilterChip(
                   label: 'Todas',
@@ -321,11 +320,10 @@ class _CompartidosTab extends ConsumerWidget {
       child: Column(
         children: [
           // ── Filtros ──────────────────────────────────────
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
               children: [
                 // Origen
                 _FilterChip(

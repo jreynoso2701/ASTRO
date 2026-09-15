@@ -152,11 +152,10 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
 
                     // Filtros de estado — solo en modo lista
                     if (!kanban)
-                      SizedBox(
-                        height: 40,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
                           children: [
                             _FilterChip(
                               label: 'Todos',
@@ -182,11 +181,10 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                       ),
 
                     // Filtro de prioridad
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
                         children: [
                           _FilterChip(
                             label: 'Prioridad: Todas',
@@ -212,11 +210,10 @@ class _TicketListScreenState extends ConsumerState<TicketListScreen> {
                     ),
 
                     // Filtro de impacto
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
                         children: [
                           _FilterChip(
                             label: 'Impacto: Todos',
@@ -1046,11 +1043,10 @@ class _ArchivedTicketsSheetState extends ConsumerState<_ArchivedTicketsSheet> {
         const SizedBox(height: 8),
 
         // ── Filtros de prioridad ──
-        SizedBox(
-          height: 38,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
             children: [
               _FilterChip(
                 label: 'Todas',
