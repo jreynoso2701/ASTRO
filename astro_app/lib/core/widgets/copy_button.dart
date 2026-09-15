@@ -41,16 +41,15 @@ class CopyButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final diameter = size + 16;
 
-    // Se construye a mano en vez de con `IconButton` a proposito. IconButton
-    // resuelve el color del icono por `ButtonStyle`, mezclando el estilo del
-    // widget, `IconButtonTheme`, el `IconTheme` heredado y los valores por
-    // omision de M3; en web ese encadenado dejaba el glifo sin pintar y solo
-    // se veia el circulo del fondo. Un `Icon` con `color` explicito no
-    // depende de esa cadena.
+    // El icono se dibuja, no se toma de la fuente. `Icons.copy_rounded` no
+    // llegaba a pintarse en el build web de Docker por mas que el glifo
+    // estuviera en el subconjunto compilado y el color fuera el correcto;
+    // otros iconos de la misma familia si salian, asi que era ese codepoint.
+    // Un trazo propio no depende del tree-shaking ni de que codepoint le
+    // toque, y toma el color del tema, que es lo que hace falta.
     //
-    // Ademas, un icono suelto en gris apagado sobre la tarjeta no se leia
-    // como un control: hay que saber que esta ahi para encontrarlo. El fondo
-    // propio lo declara como boton.
+    // El fondo tampoco es adorno: un icono suelto sobre la tarjeta no se leia
+    // como un control, habia que saber que estaba ahi para encontrarlo.
     return Tooltip(
       message: label == null ? 'Copiar' : 'Copiar $label',
       child: Material(
@@ -63,10 +62,9 @@ class CopyButton extends StatelessWidget {
             width: diameter,
             height: diameter,
             child: Center(
-              child: Icon(
-                Icons.copy_rounded,
-                size: size,
-                color: scheme.onSurface,
+              child: CustomPaint(
+                size: Size.square(size),
+                painter: _CopyGlyphPainter(color: scheme.onSurface),
               ),
             ),
           ),
@@ -74,6 +72,58 @@ class CopyButton extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Las dos hojas superpuestas del icono clasico de copiar, trazadas a mano.
+///
+/// La hoja de atras no se dibuja entera: solo el tramo que la de delante no
+/// tapa, que es como se lee la superposicion sin tener que rellenar nada con
+/// el color del fondo (que aqui es translucido y no se puede saber).
+class _CopyGlyphPainter extends CustomPainter {
+  const _CopyGlyphPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final s = size.shortestSide;
+    // Todo el trazado va en fracciones del lado para que escale con `size`.
+    double x(double f) => f * s;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = x(0.09)
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    // Hoja de delante: abajo a la derecha, cerrada.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(x(0.32), x(0.30), x(0.94), x(0.94)),
+        Radius.circular(x(0.12)),
+      ),
+      paint,
+    );
+
+    // Hoja de atras: arriba a la izquierda, abierta por donde se solapan.
+    final r = Radius.circular(x(0.12));
+    final back = Path()
+      ..moveTo(x(0.68), x(0.30))
+      ..lineTo(x(0.68), x(0.18))
+      ..arcToPoint(Offset(x(0.56), x(0.06)), radius: r, clockwise: false)
+      ..lineTo(x(0.18), x(0.06))
+      ..arcToPoint(Offset(x(0.06), x(0.18)), radius: r, clockwise: false)
+      ..lineTo(x(0.06), x(0.58))
+      ..arcToPoint(Offset(x(0.18), x(0.70)), radius: r, clockwise: false)
+      ..lineTo(x(0.32), x(0.70));
+    canvas.drawPath(back, paint);
+  }
+
+  @override
+  bool shouldRepaint(_CopyGlyphPainter old) => old.color != color;
 }
 
 /// Encabezado de un bloque de texto copiable: la etiqueta a la izquierda y el
