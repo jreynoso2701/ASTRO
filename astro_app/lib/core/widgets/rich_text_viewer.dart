@@ -81,18 +81,22 @@ class _RichTextViewerState extends State<RichTextViewer> {
       );
     }
 
-    return QuillEditor(
-      controller: _controller,
-      focusNode: FocusNode(canRequestFocus: false),
-      scrollController: ScrollController(),
-      config: QuillEditorConfig(
-        autoFocus: false,
-        expands: false,
-        scrollable: false,
-        showCursor: false,
-        enableInteractiveSelection: true,
-        padding: widget.padding,
-        customStyles: _buildStyles(theme),
+    // Quill gestiona su propia seleccion; anidarla dentro de la del arbol
+    // hace que las dos se disputen el arrastre y ninguna funcione bien.
+    return SelectionContainer.disabled(
+      child: QuillEditor(
+        controller: _controller,
+        focusNode: FocusNode(canRequestFocus: false),
+        scrollController: ScrollController(),
+        config: QuillEditorConfig(
+          autoFocus: false,
+          expands: false,
+          scrollable: false,
+          showCursor: false,
+          enableInteractiveSelection: true,
+          padding: widget.padding,
+          customStyles: _buildStyles(theme),
+        ),
       ),
     );
   }

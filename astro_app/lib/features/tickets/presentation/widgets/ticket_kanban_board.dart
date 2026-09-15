@@ -222,175 +222,182 @@ class _KanbanColumn extends StatelessWidget {
     final theme = Theme.of(context);
     final color = ticketStatusColor(status);
 
-    return DragTarget<Ticket>(
-      onWillAcceptWithDetails: (details) => details.data.status != status,
-      onAcceptWithDetails: (details) => onStatusChange(details.data, status),
-      builder: (context, candidateData, rejectedData) {
-        final isHovering = candidateData.isNotEmpty;
+    // El tablero vive del arrastre: si la seleccion de texto entra en la
+    // arena de gestos, mover una tarjeta empieza a seleccionar en su lugar.
+    // Para leer y copiar estan las pantallas de detalle.
+    return SelectionContainer.disabled(
+      child: DragTarget<Ticket>(
+        onWillAcceptWithDetails: (details) => details.data.status != status,
+        onAcceptWithDetails: (details) => onStatusChange(details.data, status),
+        builder: (context, candidateData, rejectedData) {
+          final isHovering = candidateData.isNotEmpty;
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          decoration: BoxDecoration(
-            color: isHovering
-                ? color.withValues(alpha: 0.08)
-                : theme.colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            decoration: BoxDecoration(
               color: isHovering
-                  ? color.withValues(alpha: 0.5)
-                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-              width: isHovering ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              // ── Header ──
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(11),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        status.label,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${tickets.length}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    // ── Botón archivar masivo (solo Resuelto, Root/Soporte) ──
-                    if (status == TicketStatus.resuelto &&
-                        canManage &&
-                        tickets.isNotEmpty &&
-                        onBulkArchive != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: _BulkArchiveButton(
-                          ticketCount: tickets.length,
-                          onConfirmed: () => onBulkArchive!(tickets),
-                        ),
-                      ),
-                  ],
-                ),
+                  ? color.withValues(alpha: 0.08)
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isHovering
+                    ? color.withValues(alpha: 0.5)
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                width: isHovering ? 2 : 1,
               ),
-
-              // ── Cards ──
-              Expanded(
-                child: tickets.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            'Sin tickets',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+            ),
+            child: Column(
+              children: [
+                // ── Header ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(11),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          status.label,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${tickets.length}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(6),
-                        itemCount: tickets.length,
-                        itemBuilder: (context, index) {
-                          final ticket = tickets[index];
-                          return LongPressDraggable<Ticket>(
-                            data: ticket,
-                            delay: const Duration(milliseconds: 200),
-                            hapticFeedbackOnStart: true,
-                            feedback: Material(
-                              elevation: 8,
-                              borderRadius: BorderRadius.circular(8),
-                              child: SizedBox(
-                                width: 210,
+                      ),
+                      // ── Botón archivar masivo (solo Resuelto, Root/Soporte) ──
+                      if (status == TicketStatus.resuelto &&
+                          canManage &&
+                          tickets.isNotEmpty &&
+                          onBulkArchive != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: _BulkArchiveButton(
+                            ticketCount: tickets.length,
+                            onConfirmed: () => onBulkArchive!(tickets),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // ── Cards ──
+                Expanded(
+                  child: tickets.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'Sin tickets',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(6),
+                          itemCount: tickets.length,
+                          itemBuilder: (context, index) {
+                            final ticket = tickets[index];
+                            return LongPressDraggable<Ticket>(
+                              data: ticket,
+                              delay: const Duration(milliseconds: 200),
+                              hapticFeedbackOnStart: true,
+                              feedback: Material(
+                                elevation: 8,
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 210,
+                                  child: _KanbanCard(
+                                    ticket: ticket,
+                                    isDragging: true,
+                                    showDeadline: showDeadline,
+                                  ),
+                                ),
+                              ),
+                              childWhenDragging: Opacity(
+                                opacity: 0.3,
                                 child: _KanbanCard(
                                   ticket: ticket,
-                                  isDragging: true,
                                   showDeadline: showDeadline,
                                 ),
                               ),
-                            ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: _KanbanCard(
-                                ticket: ticket,
-                                showDeadline: showDeadline,
-                              ),
-                            ),
-                            child: GestureDetector(
-                              onTap: () => onTicketTap(ticket),
-                              onSecondaryTapDown: (details) {
-                                _showStatusMenu(
-                                  context,
-                                  details.globalPosition,
-                                  ticket,
-                                  status,
-                                  onStatusChange,
-                                );
-                              },
-                              child: _KanbanCard(
-                                ticket: ticket,
-                                showDeadline: showDeadline,
-                                onMovePressed: () {
-                                  final box =
-                                      context.findRenderObject() as RenderBox;
-                                  final offset = box.localToGlobal(Offset.zero);
+                              child: GestureDetector(
+                                onTap: () => onTicketTap(ticket),
+                                onSecondaryTapDown: (details) {
                                   _showStatusMenu(
                                     context,
-                                    offset,
+                                    details.globalPosition,
                                     ticket,
                                     status,
                                     onStatusChange,
                                   );
                                 },
+                                child: _KanbanCard(
+                                  ticket: ticket,
+                                  showDeadline: showDeadline,
+                                  onMovePressed: () {
+                                    final box =
+                                        context.findRenderObject() as RenderBox;
+                                    final offset = box.localToGlobal(
+                                      Offset.zero,
+                                    );
+                                    _showStatusMenu(
+                                      context,
+                                      offset,
+                                      ticket,
+                                      status,
+                                      onStatusChange,
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 

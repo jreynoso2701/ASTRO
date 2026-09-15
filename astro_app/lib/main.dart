@@ -77,7 +77,18 @@ class AstroApp extends ConsumerWidget {
         supportedLocales: const [Locale('es'), Locale('en')],
         locale: const Locale('es'),
         builder: (context, child) {
-          return InAppNotificationListener(child: child!);
+          // Flutter web pinta el texto en canvas, asi que el navegador no ve
+          // nada que seleccionar y su menu contextual no ofrece "Copiar".
+          // `SelectionArea` devuelve ese comportamiento: arrastrar selecciona,
+          // Ctrl+C copia y el clic derecho abre el menu propio de Flutter.
+          // Va en la raiz porque la peticion es que cualquier dato en modo
+          // consulta se pueda copiar, no solo los que lleven boton.
+          //
+          // Las superficies que arrastran (kanban, listas reordenables) y los
+          // editores Quill —que traen su propia seleccion— quedan fuera con
+          // `SelectionContainer.disabled()`, para no pelear en la arena de
+          // gestos.
+          return SelectionArea(child: InAppNotificationListener(child: child!));
         },
       ),
     );

@@ -205,131 +205,139 @@ class _KanbanColumn extends StatelessWidget {
     final theme = Theme.of(context);
     final color = _statusColor(status);
 
-    return DragTarget<Requerimiento>(
-      onWillAcceptWithDetails: (details) => details.data.status != status,
-      onAcceptWithDetails: (details) => onStatusChange(details.data, status),
-      builder: (context, candidateData, rejectedData) {
-        final isHovering = candidateData.isNotEmpty;
+    // El tablero vive del arrastre: si la seleccion de texto entra en la
+    // arena de gestos, mover una tarjeta empieza a seleccionar en su lugar.
+    // Para leer y copiar estan las pantallas de detalle.
+    return SelectionContainer.disabled(
+      child: DragTarget<Requerimiento>(
+        onWillAcceptWithDetails: (details) => details.data.status != status,
+        onAcceptWithDetails: (details) => onStatusChange(details.data, status),
+        builder: (context, candidateData, rejectedData) {
+          final isHovering = candidateData.isNotEmpty;
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          decoration: BoxDecoration(
-            color: isHovering
-                ? color.withValues(alpha: 0.08)
-                : theme.colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            decoration: BoxDecoration(
               color: isHovering
-                  ? color.withValues(alpha: 0.5)
-                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
-              width: isHovering ? 2 : 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              // ── Header ──
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(11),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        status.label,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${requerimientos.length}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ? color.withValues(alpha: 0.08)
+                  : theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isHovering
+                    ? color.withValues(alpha: 0.5)
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                width: isHovering ? 2 : 1,
               ),
-
-              // ── Cards ──
-              Expanded(
-                child: requerimientos.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            'Sin requerimientos',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+            ),
+            child: Column(
+              children: [
+                // ── Header ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(11),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          status.label,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${requerimientos.length}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(6),
-                        itemCount: requerimientos.length,
-                        itemBuilder: (context, index) {
-                          final req = requerimientos[index];
-                          return LongPressDraggable<Requerimiento>(
-                            data: req,
-                            delay: const Duration(milliseconds: 150),
-                            feedback: Material(
-                              elevation: 8,
-                              borderRadius: BorderRadius.circular(8),
-                              child: SizedBox(
-                                width: 210,
-                                child: _KanbanCard(req: req, isDragging: true),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Cards ──
+                Expanded(
+                  child: requerimientos.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              'Sin requerimientos',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: _KanbanCard(req: req),
-                            ),
-                            child: GestureDetector(
-                              onTap: () => onReqTap(req),
-                              child: _KanbanCard(req: req),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(6),
+                          itemCount: requerimientos.length,
+                          itemBuilder: (context, index) {
+                            final req = requerimientos[index];
+                            return LongPressDraggable<Requerimiento>(
+                              data: req,
+                              delay: const Duration(milliseconds: 150),
+                              feedback: Material(
+                                elevation: 8,
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 210,
+                                  child: _KanbanCard(
+                                    req: req,
+                                    isDragging: true,
+                                  ),
+                                ),
+                              ),
+                              childWhenDragging: Opacity(
+                                opacity: 0.3,
+                                child: _KanbanCard(req: req),
+                              ),
+                              child: GestureDetector(
+                                onTap: () => onReqTap(req),
+                                child: _KanbanCard(req: req),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

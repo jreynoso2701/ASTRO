@@ -151,17 +151,21 @@ class RichTextEditorState extends State<RichTextEditor>
               minHeight: widget.minHeight,
               maxHeight: widget.maxHeight,
             ),
-            child: QuillEditor(
-              controller: _controller,
-              focusNode: _focusNode,
-              scrollController: ScrollController(),
-              config: QuillEditorConfig(
-                autoFocus: widget.autoFocus,
-                expands: false,
-                scrollable: true,
-                placeholder: widget.placeholder,
-                padding: const EdgeInsets.all(12),
-                customStyles: _buildCustomStyles(theme),
+            // El editor trae su propia seleccion y su propio menu; queda
+            // fuera de la seleccion del arbol para que no compitan.
+            child: SelectionContainer.disabled(
+              child: QuillEditor(
+                controller: _controller,
+                focusNode: _focusNode,
+                scrollController: ScrollController(),
+                config: QuillEditorConfig(
+                  autoFocus: widget.autoFocus,
+                  expands: false,
+                  scrollable: true,
+                  placeholder: widget.placeholder,
+                  padding: const EdgeInsets.all(12),
+                  customStyles: _buildCustomStyles(theme),
+                ),
               ),
             ),
           ),
