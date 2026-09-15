@@ -10,6 +10,7 @@ import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
+import 'package:astro/core/widgets/app_filter_chip.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_chip.dart';
@@ -449,17 +450,11 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      // FilterChip reserva 48 px de area tactil aunque mida menos, y las
-      // tiras de filtros miden 40: el chip se desbordaba y pintaba encima
-      // del conteo de resultados de la fila siguiente.
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      label: Text(label),
+    return AppFilterChip(
+      label: label,
       selected: selected,
       onSelected: onSelected,
-      showCheckmark: false,
-      side: color != null && selected ? BorderSide(color: color!) : null,
-      selectedColor: color?.withValues(alpha: 0.2),
+      color: color,
     );
   }
 }

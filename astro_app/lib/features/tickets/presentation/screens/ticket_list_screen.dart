@@ -16,6 +16,7 @@ import 'package:astro/core/widgets/adaptive_body.dart';
 import 'package:astro/core/widgets/adaptive_card_list.dart';
 import 'package:astro/features/tickets/presentation/widgets/ticket_kanban_board.dart';
 import 'package:astro/features/etiquetas/providers/etiqueta_providers.dart';
+import 'package:astro/core/widgets/app_filter_chip.dart';
 import 'package:astro/features/etiquetas/presentation/widgets/etiqueta_filter_button.dart';
 
 /// Pantalla de listado de tickets de un proyecto.
@@ -896,17 +897,11 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      // FilterChip reserva 48 px de area tactil aunque mida menos, y las
-      // tiras de filtros miden 40: el chip se desbordaba y pintaba encima
-      // del conteo de resultados de la fila siguiente.
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      label: Text(label),
+    return AppFilterChip(
+      label: label,
       selected: selected,
       onSelected: onSelected,
-      selectedColor: (color ?? Colors.white).withValues(alpha: 0.12),
-      checkmarkColor: color ?? Colors.white,
-      visualDensity: VisualDensity.compact,
+      color: color,
     );
   }
 }

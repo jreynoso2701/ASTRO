@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:astro/core/models/documento_proyecto.dart';
 import 'package:astro/core/models/adjunto_compartido.dart';
+import 'package:astro/core/widgets/app_filter_chip.dart';
 import 'package:astro/features/documentation/providers/documento_providers.dart';
 import 'package:astro/features/projects/providers/project_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
@@ -1139,24 +1140,12 @@ class _FilterChip extends StatelessWidget {
   final bool selected;
   final ValueChanged<bool> onSelected;
 
-  static const _accent = Color(0xFFFFFFFF);
-
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      // FilterChip reserva 48 px de area tactil aunque mida menos, y las
-      // tiras de filtros miden 40: el chip se desbordaba y pintaba encima
-      // del conteo de resultados de la fila siguiente.
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      label: Text(label),
+    return AppFilterChip(
+      label: label,
       selected: selected,
       onSelected: onSelected,
-      selectedColor: _accent.withValues(alpha: 0.12),
-      checkmarkColor: _accent,
-      side: selected ? BorderSide(color: _accent.withValues(alpha: 0.3)) : null,
-      labelStyle: TextStyle(fontSize: 12, color: selected ? _accent : null),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      visualDensity: VisualDensity.compact,
     );
   }
 }

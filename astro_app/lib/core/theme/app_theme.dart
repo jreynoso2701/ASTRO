@@ -329,14 +329,13 @@ abstract final class AppTheme {
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        // El color del texto se resuelve por estado: el chip seleccionado se
-        // pinta con `accent`, que en oscuro es blanco, asi que un label fijo
-        // en onSurface desaparecia sobre su propio fondo.
-        labelStyle: WidgetStateTextStyle.resolveWith(
-          (states) => AppTypography.labelSmall.copyWith(
-            color: states.contains(WidgetState.selected) ? onAccent : onSurface,
-          ),
-        ),
+        // Sin estado: los chips de esta familia (ActionChip, Chip) no se
+        // seleccionan. Resolverlo por estado no sirve, porque el Chip no
+        // propaga `selected` al labelStyle del tema: el texto del chip
+        // marcado salia del mismo color que su propio relleno. Los que si se
+        // seleccionan son los filtros, y esos fijan sus colores en
+        // `AppFilterChip`.
+        labelStyle: AppTypography.labelSmall.copyWith(color: onSurface),
         secondaryLabelStyle: AppTypography.labelSmall.copyWith(color: onAccent),
         iconTheme: IconThemeData(size: 18, color: onSurface),
         shape: const RoundedRectangleBorder(borderRadius: _pill),
