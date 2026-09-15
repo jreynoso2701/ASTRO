@@ -17,6 +17,36 @@ import 'package:astro/features/tareas/providers/tarea_providers.dart';
 import 'package:astro/features/users/providers/user_providers.dart';
 import 'package:astro/features/auth/providers/auth_providers.dart';
 import 'package:astro/core/widgets/resolved_ref_text.dart';
+import 'package:astro/core/widgets/copy_button.dart';
+
+/// Aplana los asuntos tratados a texto plano, numerados y con sus subpuntos.
+///
+/// Copiar la sección solo sirve si lo que cae en el portapapeles se puede
+/// pegar tal cual en un correo o un chat, así que la jerarquía se representa
+/// con sangría en vez de perderse.
+String _asuntosToText(Minuta minuta) {
+  return minuta.asuntosTratados
+      .map(
+        (a) => [
+          '${a.numero}. ${a.texto}',
+          ...a.subitems.map((s) => '   - $s'),
+        ].join('\n'),
+      )
+      .join('\n');
+}
+
+/// Aplana los compromisos a texto plano: número, tarea, responsable y fecha.
+String _compromisosToText(Minuta minuta) {
+  final fmt = DateFormat('dd/MM/yyyy');
+  return minuta.compromisos
+      .map((c) {
+        final fecha = c.fechaEntrega != null
+            ? ' (${fmt.format(c.fechaEntrega!)})'
+            : '';
+        return '${c.numero}. ${c.tarea} — ${c.responsable}$fecha';
+      })
+      .join('\n');
+}
 
 /// Pantalla de detalle de una minuta de reunión.
 class MinutaDetailScreen extends ConsumerStatefulWidget {
@@ -262,21 +292,25 @@ class _MinutaInfoSection extends StatelessWidget {
               const SizedBox(height: 12),
               Text('MINUTA DE REUNIÓN', style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  minuta.folio,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
+              CopyOnTap(
+                text: minuta.folio,
+                label: 'Folio',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    minuta.folio,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
               ),
@@ -331,8 +365,10 @@ class _MinutaInfoSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'OBJETIVO',
+                CopyableSectionLabel(
+                  label: 'OBJETIVO',
+                  text: minuta.objetivo,
+                  copyLabel: 'Objetivo',
                   style: theme.textTheme.labelLarge?.copyWith(
                     letterSpacing: 1,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -422,8 +458,10 @@ class _MinutaInfoSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'ASUNTOS TRATADOS',
+                CopyableSectionLabel(
+                  label: 'ASUNTOS TRATADOS',
+                  text: _asuntosToText(minuta),
+                  copyLabel: 'Asuntos tratados',
                   style: theme.textTheme.labelLarge?.copyWith(
                     letterSpacing: 1,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -489,8 +527,10 @@ class _MinutaInfoSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'OBSERVACIONES',
+                  CopyableSectionLabel(
+                    label: 'OBSERVACIONES',
+                    text: minuta.observaciones!,
+                    copyLabel: 'Observaciones',
                     style: theme.textTheme.labelLarge?.copyWith(
                       letterSpacing: 1,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -655,12 +695,18 @@ class _MinutaInfoSection extends StatelessWidget {
                         color: theme.colorScheme.primary,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'RESUMEN IA',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          letterSpacing: 1,
-                          color: theme.colorScheme.onSurfaceVariant,
+                      Expanded(
+                        child: Text(
+                          'RESUMEN IA',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            letterSpacing: 1,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
+                      ),
+                      CopyButton(
+                        text: minuta.resumenIA!,
+                        label: 'Resumen IA',
                       ),
                     ],
                   ),
@@ -732,8 +778,10 @@ class _CompromisosSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'COMPROMISOS ASUMIDOS',
+        CopyableSectionLabel(
+          label: 'COMPROMISOS ASUMIDOS',
+          text: _compromisosToText(minuta),
+          copyLabel: 'Compromisos',
           style: theme.textTheme.labelLarge?.copyWith(
             letterSpacing: 1,
             color: theme.colorScheme.onSurfaceVariant,

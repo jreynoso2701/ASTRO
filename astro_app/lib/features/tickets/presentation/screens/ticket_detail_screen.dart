@@ -522,21 +522,25 @@ class _TicketInfoSection extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  ticket.folio,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
+              CopyOnTap(
+                text: ticket.folio,
+                label: 'Folio',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    ticket.folio,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
               ),
@@ -1667,6 +1671,7 @@ class _CommentTile extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                CopyButton(text: comment.text, label: 'Comentario', size: 16),
                 if (isOwner && onDelete != null)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18),

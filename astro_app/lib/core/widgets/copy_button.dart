@@ -58,12 +58,19 @@ class CopyableSectionLabel extends StatelessWidget {
   const CopyableSectionLabel({
     required this.label,
     required this.text,
+    this.copyLabel,
     this.style,
     super.key,
   });
 
   final String label;
   final String text;
+
+  /// Nombre usado en el tooltip y el aviso. Por omisión es [label]; se separa
+  /// porque varias secciones se rotulan en mayúsculas y "OBJETIVO copiado" se
+  /// lee como un grito.
+  final String? copyLabel;
+
   final TextStyle? style;
 
   @override
@@ -82,8 +89,40 @@ class CopyableSectionLabel extends StatelessWidget {
                 ),
           ),
         ),
-        CopyButton(text: text, label: label),
+        CopyButton(text: text, label: copyLabel ?? label),
       ],
+    );
+  }
+}
+
+/// Hace copiable un elemento ya compacto tocándolo.
+///
+/// El badge de folio es el caso típico: es tan pequeño que un botón al lado
+/// pesaría más que el dato. El tooltip existe porque, sin él, la acción no se
+/// anuncia por ningún lado.
+class CopyOnTap extends StatelessWidget {
+  const CopyOnTap({
+    required this.text,
+    required this.child,
+    this.label,
+    super.key,
+  });
+
+  final String text;
+  final String? label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (text.trim().isEmpty) return child;
+
+    return Tooltip(
+      message: label == null ? 'Copiar' : 'Copiar $label',
+      child: InkWell(
+        onTap: () => copyToClipboard(context, text, label: label),
+        borderRadius: BorderRadius.circular(4),
+        child: child,
+      ),
     );
   }
 }

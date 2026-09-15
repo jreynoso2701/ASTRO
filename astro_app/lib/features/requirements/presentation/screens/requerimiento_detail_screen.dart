@@ -650,11 +650,18 @@ class _InfoSection extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(
-                req.folio,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: muted,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: CopyOnTap(
+                  text: req.folio,
+                  label: 'Folio',
+                  child: Text(
+                    req.folio,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: muted,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1438,6 +1445,7 @@ class _CommentTile extends StatelessWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
+                CopyButton(text: comment.text, label: 'Comentario', size: 16),
                 if (isOwner && onDelete != null)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 18),

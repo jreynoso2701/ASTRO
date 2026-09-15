@@ -539,18 +539,22 @@ class _HeroSection extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         // Folio
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            tarea.folio,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontFamily: 'monospace',
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
+        CopyOnTap(
+          text: tarea.folio,
+          label: 'Folio',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              tarea.folio,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontFamily: 'monospace',
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
             ),
           ),
         ),
